@@ -257,7 +257,7 @@ void ImageModeller::model_update() {
                 }
                 else {
                     m_uihelper->SpinePointCandidate(m_mouse);
-                    m_uihelper->UpdateDynamicEllipse(m_dynamic_profile);
+                    m_uihelper->UpdateDynamicProfile(m_dynamic_profile);
                 }
             }
         }
@@ -319,36 +319,27 @@ void ImageModeller::generate_dynamic_profile() {
     // vector from last validated spine point to the current mouse position
     osg::Vec2d vec1 = m_mouse - m_last_profile->points[2];
 
-    if(sp_constraints != spine_constraints::straight_planar) {
-
+    if(sp_constraints == spine_constraints::straight_planar) {
+        // translate the profile to the current spine point
+        m_dynamic_profile->translate(vec1);
+    }
+    else {
         // rotate the dynamic ellipse according to the bend of the spine curve
         osg::Vec2d vec2 = m_last_profile->points[3] - m_last_profile->points[2];
         vec2.normalize();
         double angle = acos((vec1 * vec2) / vec1.length());
 
-        int sign = 1;
-        if(angle > HALF_PI) {
-            angle = PI - angle;
-            sign = -1;
-        }
-
-        // determine the orientation of the rotation(CW or CCW)
-        double rot_ori = vec2.x()*vec1.y() - vec2.y()*vec1.x();
-        if(rot_ori > 0)
-            m_dynamic_profile->rotate(sign * angle);
-        else if(rot_ori < 0)
-            m_dynamic_profile->rotate(-sign * angle);
+        // determine the orientation of the rotation: CW (negative angles) or CCW(positive angles)
+        if(angle > HALF_PI) angle -= PI;
+        if(vec2.x()*vec1.y() - vec2.y()*vec1.x() > 0) m_dynamic_profile->rotate(angle);
+        else m_dynamic_profile->rotate(-angle);
 
         // translate the rotated ellipse such that p2 concides back to the mouse point
         m_dynamic_profile->translate(m_mouse - m_dynamic_profile->points[2]);
-    }
-    else {
-        // translate the profile to the current spine point
-        m_dynamic_profile->translate(vec1);
+        // m_dynamic_profile->translate(m_mouse - m_dynamic_profile->center);
     }
 
-    if(m_bimg_exists)
-        ray_cast_for_profile_match(m_dynamic_profile);
+    if(m_bimg_exists) ray_cast_for_profile_match();
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder() {
@@ -419,97 +410,86 @@ size_t ImageModeller::select_parallel_circle(const Circle3D * const circles) {
 
 size_t ImageModeller::select_planar_circle(const Circle3D* const circles) { }
 
-void ImageModeller::ray_cast_for_profile_match(std::unique_ptr<Ellipse2D>& profile) {
+void ImageModeller::ray_cast_for_profile_match() {
 
     // 1) transform the point coordinates to pixel coordinates
-    Point2D<int> p0(static_cast<int>(profile->points[0].x()), static_cast<int>(profile->points[0].y()));
-    Point2D<int> p1(static_cast<int>(profile->points[1].x()), static_cast<int>(profile->points[1].y()));
+    Point2D<int> p0(static_cast<int>(m_dynamic_profile->points[0].x()), static_cast<int>(m_dynamic_profile->points[0].y()));
+    Point2D<int> p1(static_cast<int>(m_dynamic_profile->points[1].x()), static_cast<int>(m_dynamic_profile->points[1].y()));
     m_canvas->UsrTransformCoordinates(p0);
     m_canvas->UsrTransformCoordinates(p1);
 
     // 2) calculate the ray_cast direction vector,the change in major-axis length is limited by a factor
     Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
 
-    // 3) perform ray casts and display shot rays
-    // variables for ray casting
+    // 3) perform ray casts and display shot rays variables for ray casting
     bool hit_result[4] = { false, false, false, false };
     Point2D<int> hit[4];
 
     // 3.1) ray cast from p0-center direction
     Point2D<int> end = p0 + dir_vec;
-    if(m_rect->intersect(p0, end))
-        hit_result[0] = ray_cast(m_image, p0, end, hit[0]);
+    if(m_rect->intersect(p0, end)) hit_result[0] = ray_cast(m_image, p0, end, hit[0]);
 
     // 3.2) ray cast from p0-outside direction
     end = p0 - dir_vec;
-    if(m_rect->intersect(p0, end))
-        hit_result[1] = ray_cast(m_image, p0, end, hit[1]);
+    if(m_rect->intersect(p0, end)) hit_result[1] = ray_cast(m_image, p0, end, hit[1]);
 
     // 3.3) ray cast from p1-center direction
     end = p1 - dir_vec;
-    if(m_rect->intersect(p1, end))
-        hit_result[2] = ray_cast(m_image, p1, end, hit[2]);
+    if(m_rect->intersect(p1, end)) hit_result[2] = ray_cast(m_image, p1, end, hit[2]);
 
     // 3.4) ray cast from p1-outside direction
     end = p1 + dir_vec;
-    if(m_rect->intersect(p1, end))
-        hit_result[3] = ray_cast(m_image, p1, end, hit[3]);
+    if(m_rect->intersect(p1, end)) hit_result[3] = ray_cast(m_image, p1, end, hit[3]);
 
     // 5) analyze the result of the ray casts
     Point2D<int> p0_hit = p0;
-    if(hit_result[0] && hit_result[1])
-        p0_hit = p0;
-    else if(hit_result[0])
-        p0_hit = hit[0];
-    else if(hit_result[1])
-        p0_hit = hit[1];
+    if(hit_result[0] && hit_result[1])  p0_hit = p0;
+    else if(hit_result[0])              p0_hit = hit[0];
+    else if(hit_result[1])              p0_hit = hit[1];
     m_canvas->UsrTransformCoordinates(p0_hit);
 
     Point2D<int> p1_hit;
-    if(hit_result[2] && hit_result[3])
-        p1_hit = p1;
-    else if(hit_result[2])
-        p1_hit = hit[2];
-    else if(hit_result[3])
-        p1_hit = hit[3];
+    if(hit_result[2] && hit_result[3])  p1_hit = p1;
+    else if(hit_result[2])              p1_hit = hit[2];
+    else if(hit_result[3])              p1_hit = hit[3];
     m_canvas->UsrTransformCoordinates(p1_hit);
 
     // if p0 and p1 hits
     if((hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {
         // update p0, p1 and center, semi-major and semi-minor
-        osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
-        profile->points[1] = profile->points[1] + (profile->points[0] - new_p0);
-        profile->points[0] = new_p0;
+        m_dynamic_profile->points[0] = osg::Vec2d(p0_hit.x, p0_hit.y);
+        m_dynamic_profile->points[1] = osg::Vec2d(p1_hit.x, p1_hit.y);
+        m_dynamic_profile->center = (m_dynamic_profile->points[0] + m_dynamic_profile->points[1]) / 2.0;
 
-        // profile->points[0] = osg::Vec2d(p0_hit.x, p0_hit.y);
-        // profile->points[1] = osg::Vec2d(p1_hit.x, p1_hit.y);
-        // profile->center = (profile->points[0] + profile->points[1]) / 2.0;
+        // osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+        // m_dynamic_profile->points[1] = m_dynamic_profile->points[1] + (m_dynamic_profile->points[0] - new_p0);
+        // m_dynamic_profile->points[0] = new_p0;
     }
     // only p0_hits
     else if((hit_result[0] || hit_result[1]) && !(hit_result[2] || hit_result[3])) {
-        osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
         // the second point is the mirror of the hit_point
-        profile->points[1] = profile->points[1] + (profile->points[0] - new_p0);
-        profile->points[0] = new_p0;
+        osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+        m_dynamic_profile->points[1] = m_dynamic_profile->points[1] + (m_dynamic_profile->points[0] - new_p0);
+        m_dynamic_profile->points[0] = new_p0;
     }
     // only p1_hits
     else if(!(hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {
-        osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
         // the second point is the mirror of the hit_point
-        profile->points[0] = profile->points[0] + (profile->points[1] - new_p1);
-        profile->points[1] = new_p1;
+        osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
+        m_dynamic_profile->points[0] = m_dynamic_profile->points[0] + (m_dynamic_profile->points[1] - new_p1);
+        m_dynamic_profile->points[1] = new_p1;
     }
     else {
         return;
     }
 
-    // osg::Vec2d vec_mn(p0_hit.y - p1_hit.y, p1_hit.x - p0_hit.x);
-    // vec_mn.normalize();
-    double smj_new = (profile->points[0] - profile->center).length();
-    // profile->smn_axis *= (smj_new / profile->smj_axis);
-    // profile->points[2] = profile->center - vec_mn * profile->smn_axis;
-    // profile->points[3] = profile->center + vec_mn * profile->smn_axis;
-    profile->smj_axis = smj_new;
+    osg::Vec2d vec_mn(p0_hit.y - p1_hit.y, p1_hit.x - p0_hit.x);
+    vec_mn.normalize();
+    double smj_new = (m_dynamic_profile->points[0] - m_dynamic_profile->center).length();
+    m_dynamic_profile->smn_axis *= (smj_new / m_dynamic_profile->smj_axis);
+    m_dynamic_profile->points[2] = m_dynamic_profile->center - vec_mn * m_dynamic_profile->smn_axis;
+    m_dynamic_profile->points[3] = m_dynamic_profile->center + vec_mn * m_dynamic_profile->smn_axis;
+    m_dynamic_profile->smj_axis = smj_new;
 }
 
 
