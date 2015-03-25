@@ -15,6 +15,7 @@
 #include <wx/menu.h>
 #include <wx/filedlg.h>
 
+#include <osg/ValueObject>
 #include <osg/Group>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
