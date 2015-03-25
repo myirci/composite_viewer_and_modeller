@@ -111,7 +111,7 @@ private:
     void model_update();
     void calculate_ellipse();
     void generate_dynamic_profile();
-    void ray_cast_for_profile_match(std::unique_ptr<Ellipse2D>& profile);
+    void ray_cast_for_profile_match();
     void initialize_spine_drawing_mode();
     inline void add_planar_section_to_the_generalized_cylinder();
 
