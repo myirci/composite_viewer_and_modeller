@@ -86,6 +86,7 @@ private:
     std::unique_ptr<Ellipse2D> m_dynamic_profile;
     std::unique_ptr<Rectangle2D> m_rect;
     std::unique_ptr<ModelSolver> m_solver;
+
     std::shared_ptr<PersProjParam> m_ppp;
 
 public:
@@ -113,6 +114,7 @@ private:
     void generate_dynamic_profile();
     void ray_cast_for_profile_match();
     void initialize_spine_drawing_mode();
+    void constrain_mouse_point();
     inline void add_planar_section_to_the_generalized_cylinder();
 
     // 3D circle estimation functions
@@ -124,7 +126,6 @@ private:
     size_t select_parallel_circle(const Circle3D* const circles);
     size_t select_planar_circle(const Circle3D* const circles);
 
-    // void constrain_point(osg::Vec2d& pt);
     // inline void constrain_spine_point_in_piecewise_linear_mode();
     // inline void constrain_spine_point_in_continuous_mode();
 };

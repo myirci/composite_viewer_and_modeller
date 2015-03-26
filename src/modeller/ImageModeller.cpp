@@ -493,44 +493,22 @@ void ImageModeller::ray_cast_for_profile_match() {
 }
 
 
-/*
-
-void ImageModeller::constrain_point(osg::Vec2d& pt) {
+void ImageModeller::constrain_mouse_point() {
 
     switch(sp_constraints) {
     case spine_constraints::none:
         break;
     case spine_constraints::straight_planar:
-
-        // major axis vector of the base ellipse
-        osg::Vec2d vec_mj = m_ellipse->points[1] - m_ellipse->points[0];
-
-        // normalized minor axis vector of the base ellipse
-        osg::Vec2d vec_mn(-vec_mj.y(), vec_mj.x());
-        vec_mn.normalize();
-
-        // continuosu mode: candidate point is mouse pt
-        // piece_wise linear mode candidate point is m_vertices->back() (last clicked point)
-
-        osg::Vec2d candidate_pt(pt.x(), pt.y());
-        osg::Vec2d vec = candidate_pt - m_ellipse->center;
-
-//        Vector2D<double> proj_vec = mouse_vec.dot(vec_mn) * vec_mn;
-//        Point2D<double> proj_pt = m_ellipse->center + proj_vec;
-//        m_vertices->back().set(proj_pt.x, proj_pt.y);
-//        break;
-
-//        Vector2D<double> vec =
-//                Point2D<double>(m_vertices->back().x(), m_vertices->back().y()) -
-//                m_ellipse->center;
-
-//        Vector2D<double> proj_vec = vec.dot(vec_mn) * vec_mn;
-//        Point2D<double> proj_pt = m_ellipse->center + proj_vec;
-//        m_vertices->back().set(proj_pt.x, proj_pt.y);
-//        break;
+        break;
+    case spine_constraints::planar:
+        break;
+    default:
+        break;
 
     }
 }
+
+/*
 
 // The spine points may be restricted by constraints. This function checks
 // the mouse position along with the possible constraints and updates the
