@@ -3,18 +3,17 @@
 
 #include <vector>
 #include <memory>
-#include "UIHelper.hpp"
-#include "optimization/ModelSolver.hpp"
-#include "../geometry/Ellipse2D.hpp"
-#include "../geometry/Rectangle2D.hpp"
-
 #include "components/GeneralizedCylinder.hpp"
-
 #include <osg/Geometry>
 #include <otbImage.h>
 #include <wx/gdicmn.h>
 
+class Rectangle2D;
+class UIHelper;
+class Line2D;
 class Circle3D;
+class Ellipse2D;
+class ModelSolver;
 class GeneralizedCylinder;
 class PersProjParam;
 class OsgWxGLCanvas;
@@ -86,7 +85,7 @@ private:
     std::unique_ptr<Ellipse2D> m_dynamic_profile;
     std::unique_ptr<Rectangle2D> m_rect;
     std::unique_ptr<ModelSolver> m_solver;
-
+    std::unique_ptr<Line2D> m_constraint_line;
     std::shared_ptr<PersProjParam> m_ppp;
 
 public:

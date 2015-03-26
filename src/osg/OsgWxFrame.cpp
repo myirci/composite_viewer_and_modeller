@@ -11,6 +11,7 @@
 #include "../modeller/ImageModeller.hpp"
 #include "../modeller/PersProjParam.hpp"
 #include "../modeller/gui/ComponentRelationsDialog.hpp"
+#include "../modeller/optimization/ModelSolver.hpp"
 
 #include <wx/menu.h>
 #include <wx/filedlg.h>
@@ -770,6 +771,7 @@ void OsgWxFrame::OnPrintProjectionMatrix(wxCommandEvent& event) {
     print_window_matrix(m_viewer->getCamera());
     std::cout << "---------------------------------" << std::endl;
     osg::Matrixd mat_vpm;
+    std::cout << "constructed viewport mapping matrix:" << std::endl;
     m_ppp->construct_viewport_mapping_matrix(mat_vpm);
     print_osg_matrix(mat_vpm, std::cout);
     std::cout << "---------------------------------" << std::endl;
