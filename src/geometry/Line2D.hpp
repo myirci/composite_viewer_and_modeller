@@ -1,21 +1,41 @@
 #ifndef LINE2D_HPP
 #define LINE2D_HPP
 
-#include <cmath>
+#include <osg/Vec2d>
+#include <osg/Vec3d>
 
-struct Line2D {
-    Line2D(double m_, double n_) : m(m_), n(n_) { }             // y = mx + n
-    Line2D(double a, double b, double c) : m(-a/b), n(-c/b) { } // ax + by + c = 0
-    Line2D(double x1, double y1, double x2, double y2) {        // passing two points (x1,y1) and (x2,y2)
-        m = (y2-y1) / (x2-x1);
-        n = y1 - m*x1;
-    }
-    double distance_to_line_from_a_point(double x0, double y0) {
-        return std::abs(m*x0-y0+n)/std::sqrt(m*m + 1);
-    }
-    double evaluate(double x, double y) { return (y - m*x - n); }
-    double m;
-    double n;
+class Line2D {
+public:
+
+    // construct from coefficients
+    Line2D(double a, double b, double c);
+    Line2D(const osg::Vec3d& coeff);
+
+    // from two points: l = p1xp2, p1 & p2 are in homemogenous coordinates
+    Line2D(const osg::Vec3d& pt1, const osg::Vec3d& pt2);
+    Line2D(const osg::Vec2d& pt1, const osg::Vec2d& pt2);
+
+    // creates the line which is perpendicular to the given line at the given point pt
+    Line2D(const Line2D& ln, const osg::Vec2d& pt);
+
+    // copy constructor
+    Line2D(const Line2D& ln);
+
+    double distance(const osg::Vec2d& pt) const;
+    double evaluate(const osg::Vec2d& pt) const;
+    void project(const osg::Vec2d& pt, osg::Vec2d& proj) const;
+
+    void get_tangent_vec1(osg::Vec2d& vec1) const;
+    void get_tangent_vec2(osg::Vec2d& vec2) const;
+    void get_normal_vec1(osg::Vec2d& vec1) const;
+    void get_normal_vec2(osg::Vec2d& vec2) const;
+
+    const osg::Vec3d& get_coefficients() const { return line; }
+    osg::Vec3d& get_coefficients() { return line; }
+    virtual void print() const;
+
+protected:
+    osg::Vec3d line;
 };
 
 #endif // LINE2D_HPP
