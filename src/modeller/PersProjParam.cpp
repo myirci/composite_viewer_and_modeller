@@ -12,11 +12,15 @@ void PersProjParam::construct_projection_matrix(osg::Matrixd& proj_mat) {
 }
 
 void PersProjParam::construct_viewport_mapping_matrix(osg::Matrixd& vp_mat) {
+    double fVal = 1.0;
+    double nVal = 0.0;
     vp_mat = osg::Matrixd::identity();
     vp_mat(0,0) = width/2.0;
     vp_mat(0,3) = width/2.0;
     vp_mat(1,1) = height/2.0;
     vp_mat(1,3) = height/2.0;
+    vp_mat(2,2) = (fVal - nVal) / 2.0;
+    vp_mat(2,3) = (fVal + nVal) / 2.0;
 }
 
 std::ostream& operator<<(std::ostream& out, const PersProjParam& ppp) {

@@ -201,9 +201,8 @@ void print_transposed_osg_matrix(const osg::Matrixd& mat) {
     osg::Matrixd mat_transposed;
     transpose(mat, mat_transposed);
     for(int i = 0; i < 4; ++i) {
-        for(int j = 0; j < 4; ++j) {
+        for(int j = 0; j < 4; ++j)
             std::cout << mat_transposed(i, j) << "\t";
-        }
         std::cout << std::endl;
     }
 }
@@ -211,9 +210,8 @@ void print_transposed_osg_matrix(const osg::Matrixd& mat) {
 void print_osg_matrix(const osg::Matrixd &mat, std::ostream& out) {
 
     for(int i = 0; i < 4; ++i) {
-        for(int j = 0; j < 4; ++j) {
+        for(int j = 0; j < 4; ++j)
             out << mat(i, j) << "\t";
-        }
         out << std::endl;
     }
 }

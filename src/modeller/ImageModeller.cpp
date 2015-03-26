@@ -1,7 +1,12 @@
 #include "ImageModeller.hpp"
 #include "optimization/CircleEstimator.hpp"
+#include "optimization/ModelSolver.hpp"
 #include "PersProjParam.hpp"
+#include "UIHelper.hpp"
 #include "../geometry/Circle3D.hpp"
+#include "../geometry/Line2D.hpp"
+#include "../geometry/Rectangle2D.hpp"
+#include "../geometry/Ellipse2D.hpp"
 #include "../osg/OsgWxGLCanvas.hpp"
 #include "../osg/OsgUtility.hpp"
 #include "../utility/Utility.hpp"
@@ -29,7 +34,8 @@ ImageModeller::ImageModeller(const std::string& fpath, const std::shared_ptr<Per
     m_last_profile(new Ellipse2D),
     m_dynamic_profile(new Ellipse2D),
     m_last_circle(new Circle3D),
-    m_uihelper(nullptr) {
+    m_uihelper(nullptr),
+    m_constraint_line(nullptr) {
 
     std::ifstream infile(fpath);
     if(!infile.good()) {
@@ -279,6 +285,11 @@ void ImageModeller::initialize_spine_drawing_mode() {
     *m_last_circle = circles[select_first_3d_circle(circles)];
     m_gcyl = new GeneralizedCylinder(GenerateComponentId(), *m_last_circle);
     m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
+
+    // initialize the constraint line if spine contraint is straight_planar
+    if(sp_constraints == spine_constraints::straight_planar) {
+        m_constraint_line = std::unique_ptr<Line2D>(new Line2D(1,1,1));
+    }
 
     // Copy the base ellipse into the m_last_profile.
     *m_last_profile = *m_ellipse;

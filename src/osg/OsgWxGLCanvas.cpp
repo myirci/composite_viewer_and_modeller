@@ -4,7 +4,7 @@
 #include "../wx/WxUtility.hpp"
 #include "../modeller/ImageModeller.hpp"
 #include "../modeller/PersProjParam.hpp"
-
+#include "../geometry/Primitives.hpp"
 #include <wx/dcclient.h>
 #include <wx/image.h>
 
