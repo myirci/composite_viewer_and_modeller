@@ -44,6 +44,7 @@ OsgWxGLCanvas::OsgWxGLCanvas(wxWindow *parent, wxWindowID id, int *attributes, c
 }
 
 OsgWxGLCanvas::~OsgWxGLCanvas() {
+
     if(m_context  != nullptr) {
         delete m_context;
         m_context = nullptr;
@@ -59,7 +60,8 @@ void OsgWxGLCanvas::UsrMakeContextCurrent() {
 }
 
 void OsgWxGLCanvas::UsrUseCursor(bool value) {
-    if (value) { SetCursor(m_oldCursor); } // show the old cursor
+
+    if (value) SetCursor(m_oldCursor); // show the old cursor
     else {
         m_oldCursor = GetCursor(); // remember the old cursor
         SetCursor(wxStockCursor(wxCURSOR_BLANK)); // hide the cursor
@@ -97,16 +99,19 @@ void OsgWxGLCanvas::UsrAddToBackgroundDisplay(osg::Geometry* geom) {
 }
 
 wxPoint OsgWxGLCanvas::usrDeviceToLogical(const wxPoint& p) const {
+
     wxSize size = m_parent->GetClientSize();
     return wxPoint(p.x, size.GetHeight() - p.y - 1);
 }
 
 void OsgWxGLCanvas::UsrLogicalToDevice(wxPoint& p) const {
+
     wxSize size = m_parent->GetClientSize();
     p.y = size.GetHeight() - p.y - 1;
 }
 
 void OsgWxGLCanvas::UsrTransformCoordinates(Point2D<int>& pt) const {
+
     // DeviceToLogical and LogicalToDevice tranformation is same in both ways
     wxSize size = m_parent->GetClientSize();
     pt.y = size.GetHeight() - pt.y - 1;
@@ -235,10 +240,11 @@ void OsgWxGLCanvas::OnMouseMotion(wxMouseEvent& event) {
 }
 
 void OsgWxGLCanvas::OnMouseWheel(wxMouseEvent& event) {
+
     int delta = event.GetWheelRotation() / event.GetWheelDelta() * event.GetLinesPerAction();
-    if (m_graphics_window.valid()) {
+    if (m_graphics_window.valid())
         m_graphics_window->getEventQueue()->mouseScroll(delta > 0 ? osgGA::GUIEventAdapter::SCROLL_UP : osgGA::GUIEventAdapter::SCROLL_DOWN);
-    }
+
 }
 
 void OsgWxGLCanvas::UsrLogErrorMessage(const std::string& str) const {

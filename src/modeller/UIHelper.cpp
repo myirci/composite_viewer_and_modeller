@@ -1,5 +1,7 @@
 #include "UIHelper.hpp"
 
+#include "../geometry/Ellipse2D.hpp"
+
 #include <memory>
 #include <osg/Geometry>
 
@@ -8,6 +10,7 @@ UIHelper::UIHelper(osg::Geode* geode) : m_dprofile_vertices(nullptr), m_base_elp
     geode->addDrawable(initialize_dynamic_profile_display());
     geode->addDrawable(initialize_base_ellipse_display());
     geode->addDrawable(initialize_spine_display());
+    geode->addDrawable(initialize_constraint_display());
 
     // for smooth lines
     geode->getOrCreateStateSet()->setMode(GL_LINE_SMOOTH, osg::StateAttribute::ON);
@@ -108,19 +111,48 @@ osg::Geometry* UIHelper::initialize_spine_display() {
     return geom.release();
 }
 
+osg::Geometry* UIHelper::initialize_constraint_display() {
+
+    // for dynamic ellipse display
+    // 2 for constraint line         : lines,     m_constraint_arrays[0], Color: Gray
+    // 10 for mouse point projection : line_loop, m_constraint_arrays[1], Color: Gray
+
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
+    geom->setUseDisplayList(false);
+    geom->setUseVertexBufferObjects(true);
+    geom->setDataVariance(osg::Object::DYNAMIC);
+
+    m_constraint_vertices = new osg::Vec2dArray(12);
+    geom->setVertexArray(m_constraint_vertices);
+
+    m_constraint_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
+    geom->addPrimitiveSet(m_constraint_arrays.back());
+    m_constraint_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
+    geom->addPrimitiveSet(m_constraint_arrays.back());
+
+    osg::Vec4Array* colors = new osg::Vec4Array;
+    colors->push_back(osg::Vec4(0.65f, 0.65f, 0.65f, 1.0f)); // Gray
+    colors->push_back(osg::Vec4(0.65f, 0.65f, 0.65f, 1.0f)); // Gray
+    geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
+    return geom.release();
+}
+
 void UIHelper::Reset() {
 
     for(auto it = m_dprofile_arrays.begin(); it != m_dprofile_arrays.end(); ++it)
         (*it)->setCount(0);
     for(auto it = m_base_elp_arrays.begin(); it != m_base_elp_arrays.end(); ++it)
         (*it)->setCount(0);
-    m_spine_array->setCount(0);
+    for(auto it = m_constraint_arrays.begin(); it != m_constraint_arrays.end(); ++it)
+        (*it)->setCount(0);
 
+    m_spine_array->setCount(0);
     m_spine_vertices->clear();
 
     m_spine_vertices->dirty();
     m_dprofile_vertices->dirty();
     m_base_elp_vertices->dirty();
+    m_constraint_vertices->dirty();
 }
 
 // pt = p0 (first click)
@@ -193,7 +225,6 @@ void UIHelper::UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp) {
     m_base_elp_arrays[2]->setCount(40);
     m_base_elp_vertices->dirty();
 }
-
 
 void UIHelper::InitializeSpineDrawing(const std::unique_ptr<Ellipse2D>& ellipse) {
 
@@ -271,6 +302,34 @@ void UIHelper::AddSpinePoint(const osg::Vec2d& pt) {
     m_spine_array->setCount(m_spine_vertices->size());
     m_spine_vertices->dirty();
 }
+
+void UIHelper::DisplayConstraintLine(const std::vector<osg::Vec2d>& pts) {
+
+    m_constraint_vertices->push_back(pts[0]);
+    m_constraint_vertices->push_back(pts[1]);
+    m_constraint_arrays[0]->setCount(2);
+    m_constraint_vertices->dirty();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

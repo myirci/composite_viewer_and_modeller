@@ -288,7 +288,46 @@ void ImageModeller::initialize_spine_drawing_mode() {
 
     // initialize the constraint line if spine contraint is straight_planar
     if(sp_constraints == spine_constraints::straight_planar) {
-        m_constraint_line = std::unique_ptr<Line2D>(new Line2D(1,1,1));
+
+        // let's define the constraint line in the opengl screen coordinate which is also
+        double a = m_last_circle->center[1] * m_last_circle->normal[2] - m_last_circle->center[2] * m_last_circle->normal[1];
+        double b = m_last_circle->center[2] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[2];
+        double c = (m_last_circle->center[1] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[1]) * m_ppp->height / (2*tan(m_ppp->fovy/2.0)) - a*(m_ppp->width/2.0) - b*(m_ppp->height/2.0);
+        m_constraint_line = std::unique_ptr<Line2D>(new Line2D(a,b,c));
+
+        std::cout << "Constraint line: " << std::endl;
+        m_constraint_line->print();
+
+        std::cout << "Perspective projection parameters " << std::endl;
+        std::cout << *m_ppp << std::endl;
+
+        // display the constraint line
+        std::vector<osg::Vec2d> intersection_pts;
+        double var = m_constraint_line->get_x_at_y(0);
+        if(var >= 0 && var < m_ppp->width)
+            intersection_pts.push_back(osg::Vec2d(var, 0));
+
+        var = m_constraint_line->get_x_at_y(m_ppp->height - 1);
+        if(var >= 0 && var < m_ppp->width)
+            intersection_pts.push_back(osg::Vec2d(var, m_ppp->height - 1));
+
+        var = m_constraint_line->get_y_at_x(0);
+        if(var >= 0 && var < m_ppp->height)
+            intersection_pts.push_back(osg::Vec2d(0, var));
+
+        var = m_constraint_line->get_y_at_x(m_ppp->width - 1);
+        if(var >= 0 && var < m_ppp->height)
+            intersection_pts.push_back(osg::Vec2d(m_ppp->width - 1, var));
+
+        if(intersection_pts.size() == 2)
+            m_uihelper->DisplayConstraintLine(intersection_pts);
+        else
+            std::cout << "ERROR: Number of intersections must be two!" << std::endl;
+
+        std::cout << "intersection points: \n";
+        for(auto it = intersection_pts.begin(); it != intersection_pts.end(); ++it)
+            std::cout << it->x() << " " << it->y() << std::endl;
+
     }
 
     // Copy the base ellipse into the m_last_profile.
@@ -510,7 +549,10 @@ void ImageModeller::constrain_mouse_point() {
     case spine_constraints::none:
         break;
     case spine_constraints::straight_planar:
+    {
+        // mouse point should be on the projection of the 3D line
         break;
+    }
     case spine_constraints::planar:
         break;
     default:

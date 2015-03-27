@@ -16,14 +16,18 @@ public:
     Line2D(const osg::Vec2d& pt1, const osg::Vec2d& pt2);
 
     // creates the line which is perpendicular to the given line at the given point pt
-    Line2D(const Line2D& ln, const osg::Vec2d& pt);
+    Line2D(const Line2D& other, const osg::Vec2d& pt);
 
     // copy constructor
-    Line2D(const Line2D& ln);
+    Line2D(const Line2D& other);
 
+    bool intersect(const Line2D& other, osg::Vec2d& pt) const;
+    bool is_parallel(const Line2D& other) const;
     double distance(const osg::Vec2d& pt) const;
     double evaluate(const osg::Vec2d& pt) const;
     void project(const osg::Vec2d& pt, osg::Vec2d& proj) const;
+    double get_x_at_y(double y) const;
+    double get_y_at_x(double x) const;
 
     void get_tangent_vec1(osg::Vec2d& vec1) const;
     void get_tangent_vec2(osg::Vec2d& vec2) const;
