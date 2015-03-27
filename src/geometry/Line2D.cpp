@@ -17,15 +17,15 @@ Line2D::Line2D(const osg::Vec2d& pt1, const osg::Vec2d& pt2) {
     line = pt1_h ^ pt2_h;
 }
 
-Line2D::Line2D(const Line2D& ln, const osg::Vec2d& pt) {
+Line2D::Line2D(const Line2D& other, const osg::Vec2d& pt) {
 
-    line.x() = ln.line.y();
-    line.y() = -ln.line.x();
-    line.z() =  ln.line.x() * pt.y() - ln.line.y() * pt.x();
+    line.x() = other.line.y();
+    line.y() = -other.line.x();
+    line.z() =  other.line.x() * pt.y() - other.line.y() * pt.x();
 }
 
-Line2D::Line2D(const Line2D& ln) {
-    line = ln.line;
+Line2D::Line2D(const Line2D& other) {
+    line = other.line;
 }
 
 void Line2D::get_normal_vec1(osg::Vec2d& vec1) const {
@@ -52,12 +52,32 @@ void Line2D::get_tangent_vec2(osg::Vec2d& vec2) const {
     vec2.y() = line.x();
 }
 
+bool Line2D::is_parallel(const Line2D& other) const {
+    return (line.x() / other.line.x()) == (line.y() / other.line.y());
+}
+
+bool Line2D::intersect(const Line2D& other, osg::Vec2d& pt) const {
+
+    if(is_parallel(other)) return false;
+    osg::Vec3d intersecting_pt = line ^ other.line;
+    pt.x() = intersecting_pt.x() / intersecting_pt.z();
+    pt.y() = intersecting_pt.y() / intersecting_pt.z();
+}
+
 void Line2D::print() const {
 
     std::cout << "coeff: " ;
     std::cout << line.x() << " " << line.y() << " " << line.z() << std::endl;
     std::cout << "tangent vectors: (" << line.y() << ", " << -line.x() << ") and (" << -line.y() << ", " << line.x() << ")" << std::endl;
     std::cout << "normal vectors: (" << line.x() << ", " << line.y() << ") and (" << -line.x() << ", " << -line.y() << ")" << std::endl;
+}
+
+double Line2D::get_x_at_y(double y) const {
+    return (-line.y()/line.x())*y - line.z() / line.x();
+}
+
+double Line2D::get_y_at_x(double x) const {
+    return (-line.x()/line.y())*x - line.z() / line.y();
 }
 
 double Line2D::evaluate(const osg::Vec2d& pt) const {
