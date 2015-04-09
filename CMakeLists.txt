@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(composite_viewer_and_modeller)
 
-#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 
 add_definitions(-std=c++0x)
 
@@ -47,17 +47,18 @@ else()
     message(FATAL_ERROR "wxWidgets is not found!")
 endif()
 
-find_package(OpenSceneGraph REQUIRED osgDB osgUtil osgGA osgViewer)
-if(OPENSCENEGRAPH_FOUND)
-    include_directories(${OPENSCENEGRAPH_INCLUDE_DIRS})
-    set(LINK_LIBS ${LINK_LIBS} ${OPENSCENEGRAPH_LIBRARIES})
-    message(STATUS "OPENSCENEGRAPH_LIBRARIES: " ${OPENSCENEGRAPH_LIBRARIES})
-else(OPENSCENEGRAPH_FOUND)
-    message(FATAL_ERROR "OSG is not found!")
-endif(OPENSCENEGRAPH_FOUND)
+#find_package(OpenSceneGraph REQUIRED osgDB osgUtil osgGA osgViewer)
+#if(OPENSCENEGRAPH_FOUND)
+#    include_directories(${OPENSCENEGRAPH_INCLUDE_DIRS})
+#    set(LINK_LIBS ${LINK_LIBS} ${OPENSCENEGRAPH_LIBRARIES})
+#    message(STATUS "OPENSCENEGRAPH_LIBRARIES: " ${OPENSCENEGRAPH_LIBRARIES})
+#else(OPENSCENEGRAPH_FOUND)
+#    message(FATAL_ERROR "OSG is not found!")
+#endif(OPENSCENEGRAPH_FOUND)
+
 
 # If the find_package OpenSceneGraph fails use the following
-# set(LINK_LIBS ${LINK_LIBS} libosg.so libosgViewer.so libosgDB.so libosgGA.so libosgUtil.so)
+set(LINK_LIBS ${LINK_LIBS} libosg.so libosgViewer.so libosgDB.so libosgGA.so libosgUtil.so)
 
 # Names of the OpenSceneGraph Libraries
 # libosg.so

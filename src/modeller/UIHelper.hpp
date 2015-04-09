@@ -25,7 +25,6 @@ public:
     void UpdateDynamicProfile(const std::unique_ptr<Ellipse2D>& ellipse);
     void UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp);
     void DisplayConstraintLine(const std::vector<osg::Vec2d>& pts);
-
 private:
 
     osg::ref_ptr<osg::Vec2dArray>               m_dprofile_vertices;    // for displaying the dynamic_profile
