@@ -1,0 +1,61 @@
+digraph G 
+{
+	1 [label = "root\n(osg::Group)", shape = rectangle, style = filled, fillcolor = "#FFCC80"]
+	2 [label = "selection boxes\n(osg::Switch)", shape = rectangle, style = filled, fillcolor = "#D6D6CC"]
+	3 [label = "loaded model-1\n(osg::Node)", shape = rectangle, style = filled, fillcolor = "#FFE6E6"]
+	3.1 [label = "...", shape = rectangle, style = filled, fillcolor = "#FFE6E6"]
+	3.2 [label = "loaded model-n\n(osg::Node)", shape = rectangle, style = filled, fillcolor = "#FFE6E6"]
+	4 [label = "background camera\n(osg::Camera)", shape = rectangle, style = filled, fillcolor = "#E0FFE0"]
+	5 [label = "model\n(osg::Group)", shape = rectangle, style = filled, fillcolor = "#EBD699"]
+	6 [label = "coordinate frame\n(osg::Node)", shape = rectangle, style = filled, fillcolor = "#D1E0B2"]
+	7 [label = "local frames\n(osg::Geode)\n(not implemented yet)", shape = rectangle, style = filled, fillcolor = "#FFFFB2"]
+	8 [label = "vertex normals\n(osg::Geode)\n(not implemented yet)", shape = rectangle, style = filled, fillcolor = "#9999EB"]
+
+	9  [label = "selection box-1\n(osg::MatrixTransform)", shape = rectangle, style = filled, fillcolor = "#D6D6CC"]
+	10 [label = "...", shape = rectangle, style = filled, fillcolor = "#D6D6CC"]
+	11 [label = "selection box-n\n(osg::MatrixTransform)", shape = rectangle, style = filled, fillcolor = "#D6D6CC"]
+	12 [label = "geode\n(osg::Geode)", shape = rectangle, style = filled, fillcolor = "#D6D6CC"]
+	13 [label = "box\n(osg::ShapeDrawable)", shape = rectangle, style = filled, fillcolor = "#D6D6CC"]
+	12.1 [label = "geode\n(osg::Geode)", shape = rectangle, style = filled, fillcolor = "#D6D6CC"]
+	13.1 [label = "box\n(osg::ShapeDrawable)", shape = rectangle, style = filled, fillcolor = "#D6D6CC"]
+
+	14 [label = "background image\n(osg::Geode)", shape = rectangle, style = filled, fillcolor = "#E0FFE0"]
+	15 [label = "textured quad\n(osg::Geometry)", shape = rectangle, style = filled, fillcolor = "#E0FFE0"]
+
+	// 16 [label = "component-1\n(osg::MatrixTransform)\n(inverse view matrix)", shape = rectangle, style = filled, fillcolor = "#EBD699"]
+	18 [label = "...", shape = rectangle, style = filled, fillcolor = "#EBD699"]
+	// 19 [label = "component-n\n(osg::MatrixTransform)\n(inverse view matrix)", shape = rectangle, style = filled, fillcolor = "#EBD699"]
+	17 [label = "geode\n(osg::Geode)", shape = rectangle, style = filled, fillcolor = "#EBD699"]
+	17.1 [label = "geode\n(osg::Geode)", shape = rectangle, style = filled, fillcolor = "#EBD699"]
+	20 [label = "generalized cylinder\n(osg::Geometry)", shape = rectangle, style = filled, fillcolor = "#EBD699"]
+	21 [label = "generalized cylinder\n(osg::Geometry)", shape = rectangle, style = filled, fillcolor = "#EBD699"]
+	
+	1->2;
+	1->3;
+	1->3.1;
+	1->3.2;
+	1->4;
+	1->5;
+	1->6;
+	1->7;
+	1->8;
+
+	2->9;
+	2->10;
+	2->11;
+	9->12;
+	12->13;
+	11->12.1;
+	12.1->13.1;
+
+	4->14;
+	14->15;
+
+	5->17; // 5->16;
+	5->18;
+	5->17.1 // 5->19;
+	// 16->17;
+	// 19->17.1;
+	17->20;
+	17.1->21;
+}
