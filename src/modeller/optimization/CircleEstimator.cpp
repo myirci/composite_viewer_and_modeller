@@ -6,6 +6,7 @@
 
 // PUBLIC METHODS
 
+/*
 // Method-1: Needed to solve a nonlinear optimization problem for estimating the orientation of the circles
 void CircleEstimator::estimate_3d_circles_with_fixed_depth_method1(const Ellipse2D& ellipse, Circle3D* circles, PersProjParam const * const ppp, double desired_depth) {
 
@@ -41,6 +42,7 @@ void CircleEstimator::estimate_3d_circles_with_fixed_radius_method1(const Ellips
         }
     }
 }
+*/
 
 // Method-2: Based on analytical solution
 int CircleEstimator::estimate_3d_circles_with_fixed_depth(const Ellipse2D& ellipse, Circle3D* circles, const PersProjParam* const ppp, double desired_depth) {
@@ -71,8 +73,32 @@ int CircleEstimator::estimate_3d_circles_with_fixed_radius(const Ellipse2D& elli
 }
 
 
-// PRIVATE METHODS
+void CircleEstimator::estimate_3d_circles_under_orthographic_projection(const Ellipse2D& ellipse, Circle3D* circles, PersProjParam const * const ppp) {
 
+    osg::Vec2d u2 = ellipse.points[1] - ellipse.center;
+    osg::Vec2d v2 = ellipse.points[2] - ellipse.center;
+
+    osg::Vec3 u3(u2.x(), u2.y(), 0);
+    osg::Vec3 v3(v2.x(), v2.y(), std::sqrt(u2*u2 - v2*v2));
+    osg::Vec3 n = u3 ^ v3;
+    circles[0].normal[0] = n.x();
+    circles[0].normal[1] = n.y();
+    circles[0].normal[2] = n.z();
+    circles[0].center[0] = ellipse.center.x();
+    circles[0].center[1] = ellipse.center.y();
+    circles[0].center[2] = ppp->near;
+
+    circles[1].normal[0] = n.x();
+    circles[1].normal[1] = n.y();
+    circles[1].normal[2] = n.z();
+    circles[1].center[0] = ellipse.center.x();
+    circles[1].center[1] = ellipse.center.y();
+    circles[1].center[2] = ppp->near;
+}
+
+
+// PRIVATE METHODS
+/*
 void CircleEstimator::estimate_unit_3d_circles_method1(const Ellipse2D& ellipse, Circle3D* circles, const PersProjParam* const ppp) {
 
     // we need to negate the near value, because in opengl near and far values are positive. We need the actual value
@@ -146,6 +172,7 @@ void CircleEstimator::construct_change_of_basis_matrix(Eigen::Matrix3d& mat, con
     mat(1, 2) = vec2(1);
     mat(2, 2) = vec2(2);
 }
+*/
 
 int CircleEstimator::estimate_unit_3d_circles(const Ellipse2D& ellipse, Circle3D* circles, const PersProjParam *const ppp) {
 

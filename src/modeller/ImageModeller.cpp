@@ -279,6 +279,7 @@ void ImageModeller::initialize_spine_drawing_mode() {
     Circle3D circles[2];
     // estimate_unit_3d_circles(m_ellipse, circles);
     estimate_3d_circles_with_fixed_depth(m_ellipse, circles, -(m_ppp->near + m_ppp->far)/2.0);
+    // estimate_3d_circles_under_orthographic_projection(m_ellipse, circles);
 
     // initialize the generalized cylinder as a new node in the scene graph.
     if(m_gcyl.valid()) m_gcyl = nullptr;
@@ -398,6 +399,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder() {
     Circle3D circles[2];
     // estimate_unit_3d_circles(m_last_profile, circles);
     estimate_3d_circles_with_fixed_depth(m_last_profile, circles, -(m_ppp->near + m_ppp->far)/2.0);
+    // estimate_3d_circles_under_orthographic_projection(m_last_profile, circles);
 
     *m_last_circle = circles[select_parallel_circle(circles)];
     // *m_last_circle = circles[select_first_3d_circle(circles)];
@@ -424,6 +426,13 @@ void ImageModeller::estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse
     CircleEstimator estimator;
     ellipse->calculate_algebraic_equation_in_projected_coordinates(m_ppp->width, m_ppp->height, m_ppp->near, deg2rad(m_ppp->fovy/2.0));
     estimator.estimate_unit_3d_circles(*ellipse, circles, m_ppp.get());
+}
+
+void ImageModeller::estimate_3d_circles_under_orthographic_projection(std::unique_ptr<Ellipse2D> &ellipse, Circle3D *circles) {
+
+    CircleEstimator estimator;
+    ellipse->calculate_algebraic_equation_in_projected_coordinates(m_ppp->width, m_ppp->height, m_ppp->near, deg2rad(m_ppp->fovy/2.0));
+    estimator.estimate_3d_circles_under_orthographic_projection(*ellipse, circles, m_ppp.get());
 }
 
 size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles) {
