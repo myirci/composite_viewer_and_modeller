@@ -5,7 +5,11 @@
 #include <memory>
 #include <osg/Geometry>
 
-UIHelper::UIHelper(osg::Geode* geode) : m_dprofile_vertices(nullptr), m_base_elp_vertices(nullptr) {
+UIHelper::UIHelper(osg::Geode* geode) :
+    m_dprofile_vertices(nullptr),
+    m_base_elp_vertices(nullptr),
+    m_spine_vertices(nullptr),
+    m_constraint_vertices(nullptr) {
 
     geode->addDrawable(initialize_dynamic_profile_display());
     geode->addDrawable(initialize_base_ellipse_display());
@@ -131,7 +135,7 @@ osg::Geometry* UIHelper::initialize_constraint_display() {
     geom->addPrimitiveSet(m_constraint_arrays.back());
 
     osg::Vec4Array* colors = new osg::Vec4Array;
-    colors->push_back(osg::Vec4(0.65f, 0.65f, 0.65f, 1.0f)); // Gray
+    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f)); // Gray
     colors->push_back(osg::Vec4(0.65f, 0.65f, 0.65f, 1.0f)); // Gray
     geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
     return geom.release();
@@ -305,11 +309,12 @@ void UIHelper::AddSpinePoint(const osg::Vec2d& pt) {
 
 void UIHelper::DisplayConstraintLine(const std::vector<osg::Vec2d>& pts) {
 
-    m_constraint_vertices->push_back(pts[0]);
-    m_constraint_vertices->push_back(pts[1]);
+    m_constraint_vertices->at(0) = pts[0];
+    m_constraint_vertices->at(1) = pts[1];
     m_constraint_arrays[0]->setCount(2);
     m_constraint_vertices->dirty();
 }
+
 
 
 
