@@ -114,8 +114,11 @@ private:
     void ray_cast_for_profile_match();
     void initialize_spine_drawing_mode();
     void constrain_mouse_point();
-    inline void add_planar_section_to_the_generalized_cylinder();
-    inline void estimate_first_circle();
+    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+    inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+    inline void add_planar_section_to_the_generalized_cylinder_constrained();
+    inline void estimate_first_circle_under_persective_projection();
+    inline void estimate_first_circle_under_orthographic_projection();
 
     // 3D circle estimation functions
     void estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius);

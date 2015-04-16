@@ -1,6 +1,8 @@
 #include "Utility.hpp"
 #include "../geometry/Ellipse2D.hpp"
 
+#include <osg/Vec3d>
+
 double deg2rad(double deg) { return (PI/180.0)*deg; }
 double rad2deg(double rad) { return (180.0/PI)*rad; }
 
@@ -48,4 +50,12 @@ void convert_ellipse_from_logical_device_coordinates_to_projected_point_coordina
     elp_prj.coeff[5] = elp_prj.center.x()*elp_prj.center.x()*elp_prj.coeff[0] +
                        elp_prj.center.x()*elp_prj.center.y()*elp_prj.coeff[1] +
                        elp_prj.center.y()*elp_prj.center.y()*elp_prj.coeff[2] - as*bs;
+}
+
+double calculate_angle_in_degrees(const osg::Vec3d& v1, const osg::Vec3d& v2) {
+    return rad2deg(acos((v1 * v2) / (v1.length() * v2.length())));
+}
+
+double calculate_angle_in_radians(const osg::Vec3d& v1, const osg::Vec3d& v2) {
+    return acos((v1 * v2) / (v1.length() * v2.length()));
 }

@@ -11,4 +11,8 @@ double rad2deg(double rad);
 class Ellipse2D;
 void convert_ellipse_from_logical_device_coordinates_to_projected_point_coordinates(int w, int h, double n, double half_fovy, const Ellipse2D& elp_log, Ellipse2D& elp_prj);
 
+namespace osg { class Vec3d; }
+double calculate_angle_in_degrees(const osg::Vec3d& v1, const osg::Vec3d& v2);
+double calculate_angle_in_radians(const osg::Vec3d& v1, const osg::Vec3d& v2);
+
 #endif // UTILITY_HPP
