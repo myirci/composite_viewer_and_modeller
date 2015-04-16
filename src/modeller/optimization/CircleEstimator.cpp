@@ -72,28 +72,85 @@ int CircleEstimator::estimate_3d_circles_with_fixed_radius(const Ellipse2D& elli
     return count;
 }
 
+void CircleEstimator::estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(const Ellipse2D& ellipse, Circle3D& circle, double near, double desired_depth) {
 
-void CircleEstimator::estimate_3d_circles_under_orthographic_projection(const Ellipse2D& ellipse, Circle3D* circles, PersProjParam const * const ppp) {
+    // estimate the circle on the near clipping plane (image plane)
+    estimate_3d_circles_under_orthographic_projection(ellipse, circle, near);
 
-    osg::Vec2d u2 = ellipse.points[1] - ellipse.center;
-    osg::Vec2d v2 = ellipse.points[2] - ellipse.center;
+    /* radius of the circle is equal to the length of the smj_vec_2d = smj_vec_3d = tilted_smn_vec_3d = ellipse.smj_axis on the
+     * near plane (image plane). On the near plane, depth = 0 w.r.t computer graphics and depth = -near w.r.t mathematical notion.
+     * Here we need to use the mathematical notion and take the depth = -near on the image plane. At the desired depth, the radius
+     * will be calculated as below from the similar triangles.
+     *
+     * radius_at_desired_depth = (desired_depth / depth_at_near_plane) * radius_on_near_plane
+     *                         = (desired_depth / -near) * length(smj_vec_2d)
+     *
+     */
+    circle.radius *= (desired_depth / -near);
 
-    osg::Vec3 u3(u2.x(), u2.y(), 0);
-    osg::Vec3 v3(v2.x(), v2.y(), std::sqrt(u2*u2 - v2*v2));
-    osg::Vec3 n = u3 ^ v3;
-    circles[0].normal[0] = n.x();
-    circles[0].normal[1] = n.y();
-    circles[0].normal[2] = n.z();
-    circles[0].center[0] = ellipse.center.x();
-    circles[0].center[1] = ellipse.center.y();
-    circles[0].center[2] = ppp->near;
+    /* center of the ellipse on the image plane is (ellipse.center.x(), ellipse.center.y(), -near)
+     * however circle is moved to the desired depth. We need to multiply the center with the ratio (new_radius / old_radius) or
+     * (new_depth / old_depth)
+    */
+    circle.center *= (desired_depth / -near);
+}
 
-    circles[1].normal[0] = n.x();
-    circles[1].normal[1] = n.y();
-    circles[1].normal[2] = n.z();
-    circles[1].center[0] = ellipse.center.x();
-    circles[1].center[1] = ellipse.center.y();
-    circles[1].center[2] = ppp->near;
+void CircleEstimator::estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(const Ellipse2D& ellipse, Circle3D& circle, double near, double desired_depth) {
+
+    // estimate the circle on the near clipping plane (image plane)
+    estimate_3d_circles_under_orthographic_projection(ellipse, circle, near);
+
+    // radius and x,y components of the center coordinates does not change. Only the z coordinate of the circle needs to be updated
+    // with the desired depth
+    circle.center[2] = desired_depth;
+}
+
+void CircleEstimator::estimate_3d_circles_under_orthographic_projection(const Ellipse2D& ellipse, Circle3D& circle, double near) {
+
+    // 2d semi-major and semi-minor axis vectors
+    osg::Vec2d smj_vec_2d = ellipse.points[1] - ellipse.center;
+    osg::Vec2d smn_vec_2d = ellipse.points[2] - ellipse.center;
+
+    // 3d semi-major axis: given ellipse must be on the image plane (z = k). Thus, the z-ccordinate of the
+    // 3d semi-major axis must be zero.
+    osg::Vec3 smj_vec_3d(smj_vec_2d.x(), smj_vec_2d.y(), 0);
+
+    /* tilted 3d semi-minor axis vector must have the same magnitude with the 3d semi-major axis. In otder to have this,
+     *
+     * smj_vec_2d = (ux,uy)  smj_vec_3d = (ux,uy,0)
+     * smn_vec_2d = (vx,vy)  smn_vec_3d = (vx,vy,0)  tilted_smn_vec_3d = (vx,vy,z)
+     *
+     * length²(tilted_smn_vec_3d) = length²(smj_vec_3d)
+     * vx² + vy² + z² = ux² + uy²
+     * z² = ux² + uy² - vx² - vy²
+     * z = +/- sqrt(ux² + uy² - vx² - vy²)
+     *
+     * we select the positive z, which means tilt of the minor axis vector is always towards the camera. (Camera is located at
+     * the origin, image plane is located at the negative side of the z-axis and z-coordinate of the tilted semi_minor axis is
+     * selected as positive)
+     *
+     */
+    osg::Vec3 tilted_smn_vec_3d(smn_vec_2d.x(), smn_vec_2d.y(), std::sqrt(smj_vec_2d*smj_vec_2d - smn_vec_2d*smn_vec_2d));
+
+    // orientation of the circle : normal of the circle
+    osg::Vec3 n = smj_vec_3d ^ tilted_smn_vec_3d;
+    n.normalize();
+    circle.normal[0] = n.x();
+    circle.normal[1] = n.y();
+    circle.normal[2] = n.z();
+
+    // radius of the circle is equal to the length of the smj_vec_2d = smj_vec_3d = tilted_smn_vec_3d = ellipse.smj_axis on the
+    // near plane (image plane).
+    circle.radius =  ellipse.smj_axis;
+
+    // center of the ellipse on the image plane is (ellipse.center.x(), ellipse.center.y(), -near)
+    circle.center[0] = ellipse.center.x();
+    circle.center[1] = ellipse.center.y();
+    circle.center[2] = -near;
+
+
+    std::cout << "tilt_angle: " << rad2deg(acos(osg::Vec3d(0,0,1) * n)) << std::endl;
+
 }
 
 
@@ -176,8 +233,8 @@ void CircleEstimator::construct_change_of_basis_matrix(Eigen::Matrix3d& mat, con
 
 int CircleEstimator::estimate_unit_3d_circles(const Ellipse2D& ellipse, Circle3D* circles, const PersProjParam *const ppp) {
 
-     // Step-1: Construct the associated quadratic form matrix of the 3D cone.
-     /*
+    // Step-1: Construct the associated quadratic form matrix of the 3D cone.
+    /*
      * 'ellipse' is the intersection of the 3D cone (whose vertex is at origin) and a plane z = k.
      * The plane is the near clipping plane, since the ellipse is on the near clipping plane.
      * k = -near (recall that near > 0).
@@ -188,8 +245,8 @@ int CircleEstimator::estimate_unit_3d_circles(const Ellipse2D& ellipse, Circle3D
     double near = -ppp->near;
     Eigen::Matrix3d Q;
     Q << ellipse.coeff[0],          ellipse.coeff[1]/2.0,      ellipse.coeff[3]/(2*near),
-         ellipse.coeff[1]/2.0,      ellipse.coeff[2],          ellipse.coeff[4]/(2*near),
-         ellipse.coeff[3]/(2*near), ellipse.coeff[4]/(2*near), ellipse.coeff[5]/(near*near);
+            ellipse.coeff[1]/2.0,      ellipse.coeff[2],          ellipse.coeff[4]/(2*near),
+            ellipse.coeff[3]/(2*near), ellipse.coeff[4]/(2*near), ellipse.coeff[5]/(near*near);
 
     // Step-2: Find the eigenvalues and eigenvectors of the matrix Q.
     /*
