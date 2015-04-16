@@ -218,7 +218,7 @@ void ImageModeller::model_update() {
                     // clicked point is accepted as the last sample point.
                     generate_dynamic_profile();
                     *m_last_profile = *m_dynamic_profile;
-                    add_planar_section_to_the_generalized_cylinder();
+                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
 
                     m_solver->AddComponent(m_gcyl.get());
                     Reset2DDrawingInterface();
@@ -235,7 +235,7 @@ void ImageModeller::model_update() {
                     if(vec.length2() > 100) {
                         generate_dynamic_profile();
                         *m_last_profile = *m_dynamic_profile;
-                        add_planar_section_to_the_generalized_cylinder();
+                        add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     }
                 }
             }
@@ -249,7 +249,8 @@ void ImageModeller::model_update() {
                     m_right_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_last_profile = *m_dynamic_profile;
-                    add_planar_section_to_the_generalized_cylinder();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                     // update_component_local_frame();
                     m_solver->AddComponent(m_gcyl.get());
                     Reset2DDrawingInterface();
@@ -259,7 +260,8 @@ void ImageModeller::model_update() {
                     m_left_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_last_profile = *m_dynamic_profile;
-                    add_planar_section_to_the_generalized_cylinder();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                 }
                 else {
                     m_uihelper->SpinePointCandidate(m_mouse);
@@ -270,10 +272,54 @@ void ImageModeller::model_update() {
     }
 }
 
-void ImageModeller::estimate_first_circle() {
+void ImageModeller::estimate_first_circle_under_persective_projection() {
 
+    Circle3D circles[2];
+    // estimate_unit_3d_circles(m_ellipse, circles);
+    estimate_3d_circles_with_fixed_depth(m_ellipse, circles, -(m_ppp->near + m_ppp->far)/2.0);
+    *m_last_circle = circles[select_first_3d_circle(circles)];
+}
 
+void ImageModeller::estimate_first_circle_under_orthographic_projection() {
 
+    // estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
+    estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, -(m_ppp->near + m_ppp->far)/2.0);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, -(m_ppp->near + m_ppp->far)/2.0);
+}
+
+void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
+
+    // estimate the 3D circle for the current profile and add it to the generatlized cylinder.
+    Circle3D circles[2];
+    // estimate_unit_3d_circles(m_last_profile, circles);
+    estimate_3d_circles_with_fixed_depth(m_last_profile, circles, -(m_ppp->near + m_ppp->far)/2.0);
+    *m_last_circle = circles[select_parallel_circle(circles)];
+    // *m_last_circle = circles[select_first_3d_circle(circles)];
+    m_gcyl->AddPlanarSection(*m_last_circle);
+    m_gcyl->Update();
+}
+
+void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthographic_projection() {
+
+    // estimate_3d_circles_under_orthographic_projection(m_last_profile, *m_last_circle);
+    estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_last_profile, *m_last_circle, -(m_ppp->near + m_ppp->far)/2.0);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_last_profile, *m_last_circle, -(m_ppp->near + m_ppp->far)/2.0);
+    m_gcyl->AddPlanarSection(*m_last_circle);
+    m_gcyl->Update();
+}
+
+void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained() {
+
+    // two angles are required: theta and phi
+
+    // theta is the angle between the image plane and the normals of the circles. (90 - theta) is the angle between the
+    // circle planes and the image plane. We keep the angle theta constant which is calculated from the first circle
+    // estimation. Thus the angle between the image plane and the plane of the circles are also kept constant.
+
+    // phi is the angle between two consequtive normals which is calculated from the bend of the projection of the main axis.
+
+    // m_gcyl->AddPlanarSection(*m_last_circle);
+    // m_gcyl->Update();
 }
 
 void ImageModeller::initialize_spine_drawing_mode() {
@@ -281,18 +327,13 @@ void ImageModeller::initialize_spine_drawing_mode() {
     // modify the user clicked point with its projection on the minor-axis guide line
     m_vertices->at(2) = m_ellipse->points[2];
 
-    // estimate the 3D cicrles.
-    Circle3D circles[2];
-    // estimate_unit_3d_circles(m_ellipse, circles);
-    estimate_3d_circles_with_fixed_depth(m_ellipse, circles, -(m_ppp->near + m_ppp->far)/2.0);
-    // estimate_3d_circles_under_orthographic_projection(m_ellipse, circles[0]);
-    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, circles[0], -(m_ppp->near + m_ppp->far)/2.0);
-    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, circles[0], -(m_ppp->near + m_ppp->far)/2.0);
-
     // initialize the generalized cylinder as a new node in the scene graph.
     if(m_gcyl.valid()) m_gcyl = nullptr;
-    *m_last_circle = circles[select_first_3d_circle(circles)];
-    // *m_last_circle = circles[0];
+
+    // estimate the first circle
+    estimate_first_circle_under_persective_projection();
+    // estimate_first_circle_under_orthographic_projection();
+
     m_gcyl = new GeneralizedCylinder(GenerateComponentId(), *m_last_circle);
     m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
 
@@ -341,23 +382,6 @@ void ImageModeller::initialize_spine_drawing_mode() {
 
     // Copy the base ellipse into the m_last_profile.
     *m_last_profile = *m_ellipse;
-}
-
-void ImageModeller::add_planar_section_to_the_generalized_cylinder() {
-
-    // estimate the 3D circle for the current profile and add it to the generatlized cylinder.
-    Circle3D circles[2];
-    // estimate_unit_3d_circles(m_last_profile, circles);
-    estimate_3d_circles_with_fixed_depth(m_last_profile, circles, -(m_ppp->near + m_ppp->far)/2.0);
-    // estimate_3d_circles_under_orthographic_projection(m_last_profile, circles[0]);
-    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_last_profile, circles[0], -(m_ppp->near + m_ppp->far)/2.0);
-    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_last_profile, circles[0], -(m_ppp->near + m_ppp->far)/2.0);
-
-    *m_last_circle = circles[select_parallel_circle(circles)];
-    // *m_last_circle = circles[0];
-    // *m_last_circle = circles[select_first_3d_circle(circles)];
-    m_gcyl->AddPlanarSection(*m_last_circle);
-    m_gcyl->Update();
 }
 
 void ImageModeller::calculate_ellipse() {
@@ -490,8 +514,6 @@ size_t ImageModeller::select_parallel_circle(const Circle3D * const circles) {
 
     double a = (m_last_circle->normal).dot(circles[0].normal);
     double b = (m_last_circle->normal).dot(circles[1].normal);
-    std::cout << "a: " << a << std::endl;
-    std::cout << "b: " << b << std::endl;
     return std::abs(a) > std::abs(b) ? 0 : 1;
 }
 
