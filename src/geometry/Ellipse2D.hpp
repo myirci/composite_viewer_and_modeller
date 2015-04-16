@@ -15,7 +15,8 @@ struct Ellipse2D : public Ellipse2DLight {
         }
     }
     Ellipse2D& operator=(const Ellipse2D& rhs);
-    void calculate_algebraic_equation_in_projected_coordinates(int w, int h, double n, double half_fovy);
+    // from screen-coordinates to projected coordinates
+    void calculate_algebraic_equation_in_projected_coordinates(int w, int h, double n, double half_fovy);   
     void rotate(double angle);
     void translate(const osg::Vec2d& translation_vec);
     void update_major_axis(const osg::Vec2d& pt0, const osg::Vec2d& pt1);

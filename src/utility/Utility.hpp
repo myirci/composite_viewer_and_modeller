@@ -8,4 +8,7 @@ const double HALF_PI = PI / 2.0;
 double deg2rad(double deg);
 double rad2deg(double rad);
 
+class Ellipse2D;
+void convert_ellipse_from_logical_device_coordinates_to_projected_point_coordinates(int w, int h, double n, double half_fovy, const Ellipse2D& elp_log, Ellipse2D& elp_prj);
+
 #endif // UTILITY_HPP

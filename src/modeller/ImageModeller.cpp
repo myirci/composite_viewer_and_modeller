@@ -270,6 +270,12 @@ void ImageModeller::model_update() {
     }
 }
 
+void ImageModeller::estimate_first_circle() {
+
+
+
+}
+
 void ImageModeller::initialize_spine_drawing_mode() {
 
     // modify the user clicked point with its projection on the minor-axis guide line
@@ -279,11 +285,14 @@ void ImageModeller::initialize_spine_drawing_mode() {
     Circle3D circles[2];
     // estimate_unit_3d_circles(m_ellipse, circles);
     estimate_3d_circles_with_fixed_depth(m_ellipse, circles, -(m_ppp->near + m_ppp->far)/2.0);
-    // estimate_3d_circles_under_orthographic_projection(m_ellipse, circles);
+    // estimate_3d_circles_under_orthographic_projection(m_ellipse, circles[0]);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, circles[0], -(m_ppp->near + m_ppp->far)/2.0);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, circles[0], -(m_ppp->near + m_ppp->far)/2.0);
 
     // initialize the generalized cylinder as a new node in the scene graph.
     if(m_gcyl.valid()) m_gcyl = nullptr;
     *m_last_circle = circles[select_first_3d_circle(circles)];
+    // *m_last_circle = circles[0];
     m_gcyl = new GeneralizedCylinder(GenerateComponentId(), *m_last_circle);
     m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
 
@@ -328,11 +337,27 @@ void ImageModeller::initialize_spine_drawing_mode() {
         std::cout << "intersection points: \n";
         for(auto it = intersection_pts.begin(); it != intersection_pts.end(); ++it)
             std::cout << it->x() << " " << it->y() << std::endl;
-
     }
 
     // Copy the base ellipse into the m_last_profile.
     *m_last_profile = *m_ellipse;
+}
+
+void ImageModeller::add_planar_section_to_the_generalized_cylinder() {
+
+    // estimate the 3D circle for the current profile and add it to the generatlized cylinder.
+    Circle3D circles[2];
+    // estimate_unit_3d_circles(m_last_profile, circles);
+    estimate_3d_circles_with_fixed_depth(m_last_profile, circles, -(m_ppp->near + m_ppp->far)/2.0);
+    // estimate_3d_circles_under_orthographic_projection(m_last_profile, circles[0]);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_last_profile, circles[0], -(m_ppp->near + m_ppp->far)/2.0);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_last_profile, circles[0], -(m_ppp->near + m_ppp->far)/2.0);
+
+    *m_last_circle = circles[select_parallel_circle(circles)];
+    // *m_last_circle = circles[0];
+    // *m_last_circle = circles[select_first_3d_circle(circles)];
+    m_gcyl->AddPlanarSection(*m_last_circle);
+    m_gcyl->Update();
 }
 
 void ImageModeller::calculate_ellipse() {
@@ -393,20 +418,6 @@ void ImageModeller::generate_dynamic_profile() {
     if(m_bimg_exists) ray_cast_for_profile_match();
 }
 
-void ImageModeller::add_planar_section_to_the_generalized_cylinder() {
-
-    // estimate the 3D circle for the current profile and add it to the generatlized cylinder.
-    Circle3D circles[2];
-    // estimate_unit_3d_circles(m_last_profile, circles);
-    estimate_3d_circles_with_fixed_depth(m_last_profile, circles, -(m_ppp->near + m_ppp->far)/2.0);
-    // estimate_3d_circles_under_orthographic_projection(m_last_profile, circles);
-
-    *m_last_circle = circles[select_parallel_circle(circles)];
-    // *m_last_circle = circles[select_first_3d_circle(circles)];
-    m_gcyl->AddPlanarSection(*m_last_circle);
-    m_gcyl->Update();
-}
-
 void ImageModeller::estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius) {
 
     CircleEstimator estimator;
@@ -428,11 +439,28 @@ void ImageModeller::estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse
     estimator.estimate_unit_3d_circles(*ellipse, circles, m_ppp.get());
 }
 
-void ImageModeller::estimate_3d_circles_under_orthographic_projection(std::unique_ptr<Ellipse2D> &ellipse, Circle3D *circles) {
+void ImageModeller::estimate_3d_circles_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle) {
 
     CircleEstimator estimator;
-    ellipse->calculate_algebraic_equation_in_projected_coordinates(m_ppp->width, m_ppp->height, m_ppp->near, deg2rad(m_ppp->fovy/2.0));
-    estimator.estimate_3d_circles_under_orthographic_projection(*ellipse, circles, m_ppp.get());
+    Ellipse2D elp_prj;
+    convert_ellipse_from_logical_device_coordinates_to_projected_point_coordinates(m_ppp->width, m_ppp->height, m_ppp->near, deg2rad(m_ppp->fovy/2.0), *ellipse, elp_prj);
+    estimator.estimate_3d_circles_under_orthographic_projection(elp_prj, circle, m_ppp->near);
+}
+
+void ImageModeller::estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(std::unique_ptr<Ellipse2D>& ellipse, Circle3D &circle, double desired_depth) {
+
+    CircleEstimator estimator;
+    Ellipse2D elp_prj;
+    convert_ellipse_from_logical_device_coordinates_to_projected_point_coordinates(m_ppp->width, m_ppp->height, m_ppp->near, deg2rad(m_ppp->fovy/2.0), *ellipse, elp_prj);
+    estimator.estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(elp_prj, circle, m_ppp->near, desired_depth);
+}
+
+void ImageModeller::estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(std::unique_ptr<Ellipse2D>& ellipse, Circle3D &circle, double desired_depth) {
+
+    CircleEstimator estimator;
+    Ellipse2D elp_prj;
+    convert_ellipse_from_logical_device_coordinates_to_projected_point_coordinates(m_ppp->width, m_ppp->height, m_ppp->near, deg2rad(m_ppp->fovy/2.0), *ellipse, elp_prj);
+    estimator.estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(elp_prj, circle, m_ppp->near, desired_depth);
 }
 
 size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles) {

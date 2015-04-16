@@ -115,12 +115,15 @@ private:
     void initialize_spine_drawing_mode();
     void constrain_mouse_point();
     inline void add_planar_section_to_the_generalized_cylinder();
+    inline void estimate_first_circle();
 
     // 3D circle estimation functions
     void estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius);
     void estimate_3d_circles_with_fixed_depth(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_depth);
     void estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles);
-    void estimate_3d_circles_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles);
+    void estimate_3d_circles_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
+    void estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle, double desired_depth);
+    void estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle, double desired_depth);
 
     size_t select_first_3d_circle(const Circle3D* const circles);
     size_t select_parallel_circle(const Circle3D* const circles);

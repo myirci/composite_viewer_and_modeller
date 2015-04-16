@@ -109,8 +109,8 @@ void Circle3D::find_random_orthonomal_basis(Eigen::Vector3d& e1, Eigen::Vector3d
 
 std::ostream& operator<<(std::ostream& out, const Circle3D& circle) {
 
-    out << "center: " << circle.center[0] << " " << circle.center[1] << " " << circle.center[2] << std::endl;
-    out << "normal: " << circle.normal[0] << " " << circle.normal[1] << " " << circle.normal[2] << std::endl;
+    out << "center: " << circle.center[0] << "\t" << circle.center[1] << "\t" << circle.center[2] << std::endl;
+    out << "normal: " << circle.normal[0] << "\t" << circle.normal[1] << "\t" << circle.normal[2] << std::endl;
     out << "radius: " << circle.radius << std::endl;
     out << "d: " << -(circle.center.dot(circle.normal)) << std::endl;
     return out;
