@@ -274,7 +274,7 @@ void ImageModeller::model_update() {
                 }
                 else {
                     m_uihelper->SpinePointCandidate(m_mouse);
-                    m_uihelper->UpdateDynamicProfile(m_dynamic_profile);
+                    m_uihelper->UpdateSweepline(m_dynamic_profile);
                 }
             }
         }
@@ -435,12 +435,6 @@ void ImageModeller::initialize_spine_drawing_mode() {
         double c = (m_last_circle->center[1] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[1]) * m_ppp->height / (2*tan(m_ppp->fovy/2.0)) - a*(m_ppp->width/2.0) - b*(m_ppp->height/2.0);
         m_constraint_line = std::unique_ptr<Line2D>(new Line2D(a,b,c));
 
-        std::cout << "Constraint line: " << std::endl;
-        m_constraint_line->print();
-
-        std::cout << "Perspective projection parameters " << std::endl;
-        std::cout << *m_ppp << std::endl;
-
         // display the constraint line
         std::vector<osg::Vec2d> intersection_pts;
         double var = m_constraint_line->get_x_at_y(0);
@@ -524,8 +518,8 @@ void ImageModeller::generate_dynamic_profile() {
         else m_dynamic_profile->rotate(-angle);
 
         // translate the rotated ellipse such that p2 concides back to the mouse point
-        m_dynamic_profile->translate(m_mouse - m_dynamic_profile->points[2]);
-        // m_dynamic_profile->translate(m_mouse - m_dynamic_profile->center);
+        // m_dynamic_profile->translate(m_mouse - m_dynamic_profile->points[2]);
+        m_dynamic_profile->translate(m_mouse - m_dynamic_profile->center);
     }
 
     if(m_bimg_exists) ray_cast_for_profile_match();
@@ -715,7 +709,6 @@ void ImageModeller::constrain_mouse_point() {
 }
 
 /*
-
 // The spine points may be restricted by constraints. This function checks
 // the mouse position along with the possible constraints and updates the
 // spine point. If there are not any constraints, it does update the spine
