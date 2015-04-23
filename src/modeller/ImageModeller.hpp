@@ -15,8 +15,9 @@ class Circle3D;
 class Ellipse2D;
 class ModelSolver;
 class GeneralizedCylinder;
-class PersProjParam;
+class CoordinateTransformations;
 class OsgWxGLCanvas;
+class CircleEstimator;
 
 enum class drawing_mode : unsigned char {
     mode_0,     // do nothing
@@ -50,7 +51,7 @@ enum class spine_drawing_mode : unsigned char {
 
 class ImageModeller {
 public:
-    ImageModeller(const std::string& fpath, const std::shared_ptr<PersProjParam>& ppp, OsgWxGLCanvas* canvas);
+    ImageModeller(const std::string& fpath, const std::shared_ptr<CoordinateTransformations>& ppp, OsgWxGLCanvas* canvas);
     ~ImageModeller();
 
     component_type comp_type;           // type of the component being modelled
@@ -86,7 +87,11 @@ private:
     std::unique_ptr<Rectangle2D> m_rect;
     std::unique_ptr<ModelSolver> m_solver;
     std::unique_ptr<Line2D> m_constraint_line;
-    std::shared_ptr<PersProjParam> m_ppp;
+    std::shared_ptr<CoordinateTransformations> m_ppp;
+    std::unique_ptr<CircleEstimator> m_circle_estimator;
+
+    double m_tilt_angle;
+    double m_fixed_depth;
 
 public:
 
@@ -114,23 +119,30 @@ private:
     void ray_cast_for_profile_match();
     void initialize_spine_drawing_mode();
     void constrain_mouse_point();
+
+    // estimation of the other circles
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
     inline void add_planar_section_to_the_generalized_cylinder_constrained();
+
+    // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
+    inline void estimate_first_circle_under_persective_projection__();
     inline void estimate_first_circle_under_orthographic_projection();
 
     // 3D circle estimation functions
-    void estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius);
-    void estimate_3d_circles_with_fixed_depth(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_depth);
-    void estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles);
-    void estimate_3d_circles_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
-    void estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle, double desired_depth);
-    void estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle, double desired_depth);
+    inline int estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius);
+    inline int estimate_3d_circles_with_fixed_depth(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_depth);
+    inline int estimate_3d_circles_with_fixed_depth__(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_depth);
+    inline int estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles);
+    inline void estimate_3d_circles_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
+    inline void estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle, double desired_depth);
+    inline void estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle, double desired_depth);
 
-    size_t select_first_3d_circle(const Circle3D* const circles);
-    size_t select_parallel_circle(const Circle3D* const circles);
-    size_t select_planar_circle(const Circle3D* const circles);
+    // selection of the estimated circles under perspective projection
+    inline size_t select_first_3d_circle(const Circle3D* const circles);
+    inline size_t select_parallel_circle(const Circle3D* const circles);
+    inline size_t select_planar_circle(const Circle3D* const circles);
 
     // inline void constrain_spine_point_in_piecewise_linear_mode();
     // inline void constrain_spine_point_in_continuous_mode();

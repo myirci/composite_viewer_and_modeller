@@ -1,10 +1,10 @@
 #include "ComponentSolver.hpp"
 #include "../../geometry/Circle3D.hpp"
 #include "../../utility/Utility.hpp"
-#include "../PersProjParam.hpp"
+#include "../CoordinateTransformations.hpp"
 #include <iostream>
 
-ComponentSolver::ComponentSolver(const std::shared_ptr<PersProjParam>& ppp) : m_lfpts(nullptr), m_ppp(ppp) {
+ComponentSolver::ComponentSolver(const std::shared_ptr<CoordinateTransformations>& ppp) : m_lfpts(nullptr), m_ppp(ppp) {
 
     base_circles = new Circle3D[2];
     base_circles[0].radius = 1.0;

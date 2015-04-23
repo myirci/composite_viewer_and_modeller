@@ -10,7 +10,7 @@
 class MainFrame;
 class OsgWxGLCanvas;
 class OsgWxGraphicsWindow;
-class PersProjParam;
+class CoordinateTransformations;
 class ComponentRelationsDialog;
 class ModelSolver;
 
@@ -41,7 +41,7 @@ private:
 
     int m_id;
     operation_mode m_uiopmode;
-    std::shared_ptr<PersProjParam> m_ppp;
+    std::shared_ptr<CoordinateTransformations> m_ppp;
     std::unique_ptr<ComponentRelationsDialog> m_component_relations_win;
 
 public:

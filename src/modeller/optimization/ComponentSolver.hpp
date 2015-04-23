@@ -5,11 +5,11 @@
 #include <memory>
 
 class Circle3D;
-class PersProjParam;
+class CoordinateTransformations;
 
 class ComponentSolver {
 public:
-    ComponentSolver(const std::shared_ptr<PersProjParam>& ppp);
+    ComponentSolver(const std::shared_ptr<CoordinateTransformations>& ppp);
     ~ComponentSolver();
     Circle3D* GetBaseCircles();
     void SolveDepthValues() const;
@@ -17,7 +17,7 @@ private:
 
     Circle3D* base_circles;                 // possible base circles of a generalized cylinder
     osg::ref_ptr<osg::Vec2dArray> m_lfpts;  // local frame end points
-    std::shared_ptr<PersProjParam> m_ppp;   // perspective projection parameters
+    std::shared_ptr<CoordinateTransformations> m_ppp;   // perspective projection parameters
 
     void calculate_bottom_center_point(osg::Vec3d& cbt, double z1, double z2) const;
     void calculate_top_center_point(const osg::Vec3d& cbt, osg::Vec3d& ctp, double z0, double z3) const;

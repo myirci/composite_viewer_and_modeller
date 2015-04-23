@@ -9,7 +9,7 @@
 #include "../wx/WxUtility.hpp"
 #include "../wx/WxGuiId.hpp"
 #include "../modeller/ImageModeller.hpp"
-#include "../modeller/PersProjParam.hpp"
+#include "../modeller/CoordinateTransformations.hpp"
 #include "../modeller/gui/ComponentRelationsDialog.hpp"
 #include "../modeller/optimization/ModelSolver.hpp"
 
@@ -436,7 +436,7 @@ bool OsgWxFrame::usrLoadImageFile(const wxString& fpath) {
     SetClientSize(img_size);
 
     // perspective projection parameters of the main camera
-    m_ppp = std::shared_ptr<PersProjParam>(new PersProjParam(45.0, img_size.x, img_size.y, 1.0, 100.0));
+    m_ppp = std::shared_ptr<CoordinateTransformations>(new CoordinateTransformations(45.0, img_size.x, img_size.y, 1.0, 100.0));
 
     // set the properties of the main camera
     m_viewer->getCamera()->setViewport(0, 0, img_size.x, img_size.y);
