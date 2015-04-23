@@ -6,12 +6,12 @@
 #include <osg/Geometry>
 
 UIHelper::UIHelper(osg::Geode* geode) :
-    m_dprofile_vertices(nullptr),
+    m_sweepline_vertices(nullptr),
     m_base_elp_vertices(nullptr),
     m_spine_vertices(nullptr),
     m_constraint_vertices(nullptr) {
 
-    geode->addDrawable(initialize_dynamic_profile_display());
+    geode->addDrawable(initialize_sweepline_display());
     geode->addDrawable(initialize_base_ellipse_display());
     geode->addDrawable(initialize_spine_display());
     geode->addDrawable(initialize_constraint_display());
@@ -20,32 +20,30 @@ UIHelper::UIHelper(osg::Geode* geode) :
     geode->getOrCreateStateSet()->setMode(GL_LINE_SMOOTH, osg::StateAttribute::ON);
 }
 
-osg::Geometry* UIHelper::initialize_dynamic_profile_display() {
+osg::Geometry* UIHelper::initialize_sweepline_display() {
 
     // for dynamic ellipse display
-    // 4 for major & minor axes         Lines    : m_dprofile_arrays[0], Color: Red
-    // 40 for dynamic ellipse           Line Loop: m_dprofile_arrays[1], Color: Red
-    // 10 for center                    Line Loop: m_dprofile_arrays[2], Color: Gray
-    // 10 for p0                        Line Loop: m_dprofile_arrays[3], Color: Light Blue
-    // 10 for p1                        Line Loop: m_dprofile_arrays[4], Color: Royal Blue
+    // 2 for sweepline                  Line     : m_sweepline_arrays[0], Color: Red
+    // 10 for center                    Line Loop: m_sweepline_arrays[1], Color: Gray
+    // 10 for p0                        Line Loop: m_sweepline_arrays[2], Color: Light Blue
+    // 10 for p1                        Line Loop: m_sweepline_arrays[3], Color: Royal Blue
 
     osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
     geom->setUseDisplayList(false);
     geom->setUseVertexBufferObjects(true);
     geom->setDataVariance(osg::Object::DYNAMIC);
 
-    m_dprofile_vertices = new osg::Vec2dArray(74);
-    geom->setVertexArray(m_dprofile_vertices);
+    m_sweepline_vertices = new osg::Vec2dArray(32);
+    geom->setVertexArray(m_sweepline_vertices);
 
-    m_dprofile_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
-    geom->addPrimitiveSet(m_dprofile_arrays.back());
-    for(int i = 0; i < 4; ++i) {
-        m_dprofile_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
-        geom->addPrimitiveSet(m_dprofile_arrays.back());
+    m_sweepline_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
+    geom->addPrimitiveSet(m_sweepline_arrays.back());
+    for(int i = 0; i < 3; ++i) {
+        m_sweepline_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
+        geom->addPrimitiveSet(m_sweepline_arrays.back());
     }
 
     osg::Vec4Array* colors = new osg::Vec4Array;
-    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f));                   // Red
     colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f));                   // Red
     colors->push_back(osg::Vec4(0.2901961f, 0.2901961f, 0.2901961f, 1.0f)); // Gray
     colors->push_back(osg::Vec4(0.749019608f, 0.937254902f, 1.0f, 1.0f));   // Light Blue
@@ -143,7 +141,7 @@ osg::Geometry* UIHelper::initialize_constraint_display() {
 
 void UIHelper::Reset() {
 
-    for(auto it = m_dprofile_arrays.begin(); it != m_dprofile_arrays.end(); ++it)
+    for(auto it = m_sweepline_arrays.begin(); it != m_sweepline_arrays.end(); ++it)
         (*it)->setCount(0);
     for(auto it = m_base_elp_arrays.begin(); it != m_base_elp_arrays.end(); ++it)
         (*it)->setCount(0);
@@ -154,7 +152,7 @@ void UIHelper::Reset() {
     m_spine_vertices->clear();
 
     m_spine_vertices->dirty();
-    m_dprofile_vertices->dirty();
+    m_sweepline_vertices->dirty();
     m_base_elp_vertices->dirty();
     m_constraint_vertices->dirty();
 }
@@ -240,56 +238,47 @@ void UIHelper::InitializeSpineDrawing(const std::unique_ptr<Ellipse2D>& ellipse)
     m_spine_vertices->dirty();
 
     // initialize the major and minor axes display
-    m_dprofile_vertices->at(0) = ellipse->points[0];
-    m_dprofile_vertices->at(1) = ellipse->points[1];
-    m_dprofile_vertices->at(2) = ellipse->points[2];
-    m_dprofile_vertices->at(3) = ellipse->points[3];
-    m_dprofile_arrays[0]->setFirst(0);
-    m_dprofile_arrays[0]->setCount(4);
-
-    // display the dynamic ellipse
-    ellipse->generate_points_on_the_ellipse(m_dprofile_vertices, 4, 40);
-    m_dprofile_arrays[1]->setFirst(4);
-    m_dprofile_arrays[1]->setCount(40);
+    m_sweepline_vertices->at(0) = ellipse->points[0];
+    m_sweepline_vertices->at(1) = ellipse->points[1];
+    m_sweepline_vertices->at(2) = ellipse->points[2];
+    m_sweepline_vertices->at(3) = ellipse->points[3];
+    m_sweepline_arrays[0]->setFirst(0);
+    m_sweepline_arrays[0]->setCount(2);
 
     // display the center
     Ellipse2DLight tmp(3, 3, 0, ellipse->center);
-    tmp.generate_points_on_the_ellipse(m_dprofile_vertices, 44, 10);
-    m_dprofile_arrays[2]->setFirst(44);
-    m_dprofile_arrays[2]->setCount(10);
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 2, 10);
+    m_sweepline_arrays[1]->setFirst(2);
+    m_sweepline_arrays[1]->setCount(10);
 
     // display p0
     tmp.center = ellipse->points[0];
-    tmp.generate_points_on_the_ellipse(m_dprofile_vertices, 54, 10);
-    m_dprofile_arrays[3]->setFirst(54);
-    m_dprofile_arrays[3]->setCount(10);
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 12, 10);
+    m_sweepline_arrays[2]->setFirst(12);
+    m_sweepline_arrays[2]->setCount(10);
 
     // display p1
     tmp.center = ellipse->points[1];
-    tmp.generate_points_on_the_ellipse(m_dprofile_vertices, 64, 10);
-    m_dprofile_arrays[4]->setFirst(64);
-    m_dprofile_arrays[4]->setCount(10);
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 22, 10);
+    m_sweepline_arrays[3]->setFirst(22);
+    m_sweepline_arrays[3]->setCount(10);
 
-    m_dprofile_vertices->dirty();
+    m_sweepline_vertices->dirty();
 }
 
-void UIHelper::UpdateDynamicProfile(const std::unique_ptr<Ellipse2D>& ellipse) {
+void UIHelper::UpdateSweepline(const std::unique_ptr<Ellipse2D>& ellipse) {
 
-    m_dprofile_vertices->at(0) = ellipse->points[0];
-    m_dprofile_vertices->at(1) = ellipse->points[1];
-    m_dprofile_vertices->at(2) = ellipse->points[2];
-    m_dprofile_vertices->at(3) = ellipse->points[3];
-
-    ellipse->generate_points_on_the_ellipse(m_dprofile_vertices, 4, 40);
+    m_sweepline_vertices->at(0) = ellipse->points[0];
+    m_sweepline_vertices->at(1) = ellipse->points[1];
 
     Ellipse2DLight tmp(3, 3, 0, ellipse->center);
-    tmp.generate_points_on_the_ellipse(m_dprofile_vertices, 44, 10);
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 2, 10);
     tmp.center = ellipse->points[0];
-    tmp.generate_points_on_the_ellipse(m_dprofile_vertices, 54, 10);
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 12, 10);
     tmp.center = ellipse->points[1];
-    tmp.generate_points_on_the_ellipse(m_dprofile_vertices, 64, 10);
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 22, 10);
 
-    m_dprofile_vertices->dirty();
+    m_sweepline_vertices->dirty();
 }
 
 void UIHelper::SpinePointCandidate(const osg::Vec2d& pt) {
