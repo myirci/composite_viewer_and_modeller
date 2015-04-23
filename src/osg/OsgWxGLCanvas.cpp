@@ -3,7 +3,7 @@
 #include "OsgSelectionHandler.hpp"
 #include "../wx/WxUtility.hpp"
 #include "../modeller/ImageModeller.hpp"
-#include "../modeller/PersProjParam.hpp"
+#include "../modeller/CoordinateTransformations.hpp"
 #include "../geometry/Primitives.hpp"
 #include <wx/dcclient.h>
 #include <wx/image.h>
@@ -68,7 +68,7 @@ void OsgWxGLCanvas::UsrUseCursor(bool value) {
     }
 }
 
-void OsgWxGLCanvas::UsrInitializeModeller(const std::shared_ptr<PersProjParam>& ppp, const std::string& fpath) {
+void OsgWxGLCanvas::UsrInitializeModeller(const std::shared_ptr<CoordinateTransformations>& ppp, const std::string& fpath) {
 
     if(m_modeller != nullptr) {
         delete m_modeller;
