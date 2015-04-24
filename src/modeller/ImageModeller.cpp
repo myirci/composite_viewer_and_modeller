@@ -256,9 +256,9 @@ void ImageModeller::model_update() {
                     m_right_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_last_profile = *m_dynamic_profile;
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                    // add_planar_section_to_the_generalized_cylinder_constrained();
+                    add_planar_section_to_the_generalized_cylinder_constrained();
                     // update_component_local_frame();
                     m_solver->AddComponent(m_gcyl.get());
                     Reset2DDrawingInterface();
@@ -268,9 +268,9 @@ void ImageModeller::model_update() {
                     m_left_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_last_profile = *m_dynamic_profile;
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                    // add_planar_section_to_the_generalized_cylinder_constrained();
+                    add_planar_section_to_the_generalized_cylinder_constrained();
                 }
                 else {
                     m_uihelper->SpinePointCandidate(m_mouse);
@@ -336,8 +336,8 @@ void ImageModeller::estimate_first_circle_under_persective_projection__() {
 void ImageModeller::estimate_first_circle_under_orthographic_projection() {
 
     // 1) Estimate the 3D circles under orthographic projection
-    estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
-    // estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
+    estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
     // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, m_fixed_depth);
 
     // 2) Calculate the tilt angle

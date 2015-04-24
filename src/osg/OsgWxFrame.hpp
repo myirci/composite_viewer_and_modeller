@@ -34,7 +34,7 @@ private:
     osg::ref_ptr<osg::Camera> m_bgcam;              // to render background image
     osg::ref_ptr<osg::Geode> m_bgeode;              // to draw on the screen
 
-    osg::ref_ptr<osg::Switch> m_world_frame;              // display world coordinate frame
+    osg::ref_ptr<osg::Switch> m_world_frame;        // display world coordinate frame
 
     osg::PolygonMode::Mode m_render_mode;
     osg::PolygonMode::Face m_render_face;

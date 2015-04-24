@@ -16,9 +16,7 @@ typedef itk::ImageRegionConstIterator<OtbImageType> ItkImgIt_ConstIteratorType;
 typedef itk::NeighborhoodIterator<OtbImageType>     ItkImgIt_NeighborhoodIteratorType;
 typedef otb::ImageFileWriter<OtbImageType>          OtbImageWriterType;
 
-OtbImageType::Pointer region_grow(const wxImage& wxImg,
-                                  const wxPoint& pt,
-                                  int threshold) {
+OtbImageType::Pointer region_grow(const wxImage& wxImg, const wxPoint& pt, int threshold) {
 
     // Step-1: Convert wxImage to OtbVectorImage
     typedef otb::ImportVectorImageFilter<OtbVectorImageType> ImporterType;
@@ -46,8 +44,7 @@ OtbImageType::Pointer region_grow(const wxImage& wxImg,
 
     // Step-2: Convert OtbVectorImage to OtbImage
     OtbImageType::Pointer intensity_image = OtbImageType::New();
-    typedef otb::VectorImageToIntensityImageFilter<
-            OtbVectorImageType, OtbImageType> IntensityFilter;
+    typedef otb::VectorImageToIntensityImageFilter<OtbVectorImageType, OtbImageType> IntensityFilter;
     IntensityFilter::Pointer filter = IntensityFilter::New();
     filter->SetInput(vecImg);
     filter->Update();
@@ -65,10 +62,8 @@ OtbImageType::Pointer region_grow(const wxImage& wxImg,
     // Step-4: Define the neighborhood iterators for the intensity and labels images
     ItkImgIt_NeighborhoodIteratorType::RadiusType radius;
     radius.Fill(1);
-    ItkImgIt_NeighborhoodIteratorType it1(radius, intensity_image,
-                                          intensity_image->GetLargestPossibleRegion());
-    ItkImgIt_NeighborhoodIteratorType it2(radius, labels_image,
-                                          labels_image->GetLargestPossibleRegion());
+    ItkImgIt_NeighborhoodIteratorType it1(radius, intensity_image, intensity_image->GetLargestPossibleRegion());
+    ItkImgIt_NeighborhoodIteratorType it2(radius, labels_image, labels_image->GetLargestPossibleRegion());
     it1.NeedToUseBoundaryConditionOff();
     it2.NeedToUseBoundaryConditionOff();
 
@@ -126,6 +121,7 @@ OtbImageType::Pointer region_grow(const wxImage& wxImg,
 }
 
 bool region_grow_segmentation(const wxImage& wxImg, const wxPoint& pt, int threshold) {
+
     OtbImageType::Pointer img = region_grow(wxImg, pt, threshold);
     OtbImageWriterType::Pointer writer = OtbImageWriterType::New();
     writer->SetFileName("deneme.jpeg");
@@ -134,10 +130,8 @@ bool region_grow_segmentation(const wxImage& wxImg, const wxPoint& pt, int thres
     return true;
 }
 
-bool region_grow_segmentation(const wxImage& wxImg,
-                              wxImage& segImg,
-                              const wxPoint& pt,
-                              int threshold) {
+bool region_grow_segmentation(const wxImage& wxImg, wxImage& segImg, const wxPoint& pt, int threshold) {
+
     OtbImageType::Pointer img = region_grow(wxImg, pt, threshold);
     int numPixels = 3*wxImg.GetWidth()*wxImg.GetHeight();
 

@@ -15,6 +15,11 @@ typedef unsigned char PixelType;
 typedef otb::Image<PixelType, 2>         OtbImageType;
 typedef otb::VectorImage<PixelType, 2>   OtbVectorImageType;
 
+
+// typedef otb::Image<float,2>         FloatImageType;
+// typedef otb::VectorImage<float,2>   FloatVectorImageType;
+
+
 enum class PxlValues : PixelType {
     UNKNOWN = 127,
     SELECTED = 255,
@@ -23,23 +28,15 @@ enum class PxlValues : PixelType {
 };
 
 struct IndexCompare {
-    bool operator()(const OtbImageType::IndexType& lhs,
-                    const OtbImageType::IndexType& rhs) const {
+    bool operator()(const OtbImageType::IndexType& lhs, const OtbImageType::IndexType& rhs) const {
         if(lhs[1] != rhs[1]) { return (lhs[1] < rhs[1]); }
         return (lhs[0] < rhs[0]); }
 };
 
 OtbImageType::Pointer region_grow(const wxImage& wxImg, const wxPoint& pt, int threshold);
 bool region_grow_segmentation(const wxImage& wxImg, const wxPoint& pt, int threshold);
-bool region_grow_segmentation(const wxImage& wxImg, wxImage& segImg,
-                              const wxPoint& pt, int threshold);
-bool ray_cast(const OtbImageType::Pointer& image,
-              const OtbImageType::IndexType& start,
-              const OtbImageType::IndexType& end,
-              OtbImageType::IndexType& first_hit);
-bool ray_cast(const OtbImageType::Pointer& image,
-              const Point2D<int>& start,
-              const Point2D<int>& end,
-              Point2D<int>& first_hit);
+bool region_grow_segmentation(const wxImage& wxImg, wxImage& segImg, const wxPoint& pt, int threshold);
+bool ray_cast(const OtbImageType::Pointer& image, const OtbImageType::IndexType& start, const OtbImageType::IndexType& end, OtbImageType::IndexType& first_hit);
+bool ray_cast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& first_hit);
 
 #endif // ALGORITHM_HPP
