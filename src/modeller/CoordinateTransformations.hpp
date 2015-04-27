@@ -7,6 +7,7 @@
 
 class Ellipse2D;
 
+
 struct CoordinateTransformations {
 
     double fovy;        // vertical field of view

@@ -51,7 +51,8 @@ public:
     bool UsrOpenModelFile();
     bool UsrOpenOrientedImageFile();
     bool UsrOpenImageFile();
-    void UsrSetProjectionMatrix(double fovy, double aspect, double near, double far);
+    void UsrSetPerspectiveProjectionMatrix(double fovy, double aspect, double near, double far);
+    void UsrSetOrthographicProjectionMatrix(double left, double right, double bottom, double top, double near, double far);
     void UsrAddSelectableComponent(osg::Node* node, unsigned int component_id);
     osg::Camera* UsrGetMainCamera();
     osg::Camera* UsrGetBackgroundCamera();
@@ -81,6 +82,7 @@ private:
     void OnOpenModel(wxCommandEvent& event);
     void OnOpenOrientedImage(wxCommandEvent& event);
     void OnExit(wxCommandEvent& event);
+    void OnToggleProjectionMode(wxCommandEvent& event);
     void OnToggleRenderMode(wxCommandEvent& event);
     void OnToggleRenderFaceMode(wxCommandEvent& event);
     void OnToggleRenderType(wxCommandEvent& event);

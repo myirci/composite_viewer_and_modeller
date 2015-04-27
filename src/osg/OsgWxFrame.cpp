@@ -32,6 +32,8 @@ EVT_CLOSE(OsgWxFrame::OnClose)
 EVT_MENU(wxID_EXIT, OsgWxFrame::OnExit)
 EVT_MENU(wxID_OSG_OPEN_MODEL, OsgWxFrame::OnOpenModel)
 EVT_MENU(wxID_OSG_OPEN_IMAGE, OsgWxFrame::OnOpenOrientedImage)
+EVT_MENU(wxID_MODES_PERSPECTIVE_PROJECTION, OsgWxFrame::OnToggleProjectionMode)
+EVT_MENU(wxID_MODES_ORTHOGRAPHIC_PROJECTION, OsgWxFrame::OnToggleProjectionMode)
 EVT_MENU(wxID_MODES_RENDER_MODE_POINT, OsgWxFrame::OnToggleRenderMode)
 EVT_MENU(wxID_MODES_RENDER_MODE_WIREFRAME, OsgWxFrame::OnToggleRenderMode)
 EVT_MENU(wxID_MODES_RENDER_MODE_FILL, OsgWxFrame::OnToggleRenderMode)
@@ -68,26 +70,18 @@ END_EVENT_TABLE()
 
 OsgWxFrame::OsgWxFrame(wxWindow* parent, const wxPoint& pos, const wxSize& size, operation_mode md) :
     wxFrame(parent, wxID_ANY, wxEmptyString, pos, size, wxDEFAULT_FRAME_STYLE, wxEmptyString),
-    m_render_mode(osg::PolygonMode::FILL),
-    m_render_face(osg::PolygonMode::FRONT_AND_BACK),
-    m_uiopmode(md),
-    m_component_relations_win(new ComponentRelationsDialog(this, wxT("Component Relations"))),
-    m_ppp(nullptr),
-    m_bgcam(nullptr),
-    m_bgeode(nullptr),
-    m_model(nullptr),
-    m_world_frame(nullptr),
-    m_id(-1) {
+    m_render_mode(osg::PolygonMode::FILL), m_render_face(osg::PolygonMode::FRONT_AND_BACK),
+    m_uiopmode(md), m_component_relations_win(new ComponentRelationsDialog(this, wxT("Component Relations"))),
+    m_ppp(nullptr), m_bgcam(nullptr), m_bgeode(nullptr), m_model(nullptr), m_world_frame(nullptr), m_id(-1) {
 
     m_parent = dynamic_cast<MainFrame*>(parent);
     if(!m_parent) utilityShowMessageDialog(message_type::ERROR, wxT("Dynamic cast error"));
     usrInitMenubar();
     CreateStatusBar(2);
 
-    // Array of integers. With this parameter you can set the device context
-    // attributes associated to this window. This array is zero-terminated:
-    // it should be set up using wxGL_FLAGS constants.
-    // If a constant should be followed by a value, put it in the next array position
+    // Array of integers. With this parameter you can set the device context  attributes associated to this window.
+    // This array is zero-terminated: it should be set up using wxGL_FLAGS constants. If a constant should be followed
+    // by a value, put it in the next array position
     int* attributes = new int[7];
     attributes[0] = int(WX_GL_DOUBLEBUFFER);
     attributes[1] = WX_GL_RGBA;
@@ -186,8 +180,14 @@ bool OsgWxFrame::UsrOpenImageFile(){
     }
 }
 
-void OsgWxFrame::UsrSetProjectionMatrix(double fovy, double aspect, double near, double far) {
+void OsgWxFrame::UsrSetPerspectiveProjectionMatrix(double fovy, double aspect, double near, double far) {
+
     m_viewer->getCamera()->setProjectionMatrixAsPerspective(fovy, aspect, near, far);
+}
+
+void OsgWxFrame::UsrSetOrthographicProjectionMatrix(double left, double right, double bottom, double top, double near, double far) {
+
+    m_viewer->getCamera()->setProjectionMatrixAsOrtho(left, right, bottom, top, near, far);
 }
 
 void OsgWxFrame::UsrAddSelectableComponent(osg::Node* node, unsigned int component_id) {
@@ -246,11 +246,13 @@ void OsgWxFrame::UsrSetUIOperationMode(operation_mode mode) {
 }
 
 void OsgWxFrame::UsrDisplayComponentRelationsDialog() {
+
     m_component_relations_win->Show(!m_component_relations_win->IsShown());
     GetMenuBar()->FindItem(wxID_WINDOWS_COMPONENT_RELATIONS)->Toggle();
 }
 
 void OsgWxFrame::UsrGetSelectedComponentIds(std::vector<unsigned int>& ids) {
+
     bool selected = false;
     int id = 0;
     for(int i = 0; i < m_model->getNumChildren(); ++i) {
@@ -289,6 +291,7 @@ void OsgWxFrame::UsrUpdateGeosemanticConstraints() {
 
 // Private Member Functions:
 void OsgWxFrame::usrInitMenubar() {
+
     wxMenuBar* menubar = new wxMenuBar;
     wxMenu* file = new wxMenu;
     wxMenu* open = new wxMenu;
@@ -323,7 +326,7 @@ void OsgWxFrame::usrInitMenubar() {
     render_mode->AppendRadioItem(wxID_MODES_RENDER_TRIANGLE_FAN, wxT("Triangle Fan"));
     render_mode->AppendRadioItem(wxID_MODES_RENDER_PLANAR_SECTIONS, wxT("Planar Sections"));
     render_mode->AppendRadioItem(wxID_MODES_RENDER_PLANAR_AND_VERTICAL_SECTIONS, wxT("Planar and Vertical Sections"));
-    modes->AppendSubMenu(render_mode, wxT("Reder Mode"));
+    modes->AppendSubMenu(render_mode, wxT("Render Mode"));
 
     wxMenu* op_modes = new wxMenu;
     if(m_uiopmode == operation_mode::displaying) {
@@ -334,8 +337,13 @@ void OsgWxFrame::usrInitMenubar() {
         op_modes->AppendRadioItem(wxID_MODES_OPERATION_MODE_MODELLING, wxT("Modelling"));
         op_modes->AppendRadioItem(wxID_MODES_OPERATION_MODE_DISPLAY, wxT("Display"));
     }
-
     modes->AppendSubMenu(op_modes, wxT("Operation Mode"));
+
+    wxMenu* projection_mode = new wxMenu;
+    projection_mode->AppendRadioItem(wxID_MODES_PERSPECTIVE_PROJECTION, wxT("Perspective"));
+    projection_mode->AppendRadioItem(wxID_MODES_ORTHOGRAPHIC_PROJECTION, wxT("Othographic"));
+    modes->AppendSubMenu(projection_mode, wxT("Projection Mode"));
+
     menubar->Append(modes, wxT("&Modes"));
 
     wxMenu* model = new wxMenu;
@@ -382,15 +390,13 @@ void OsgWxFrame::usrInitMenubar() {
     menubar->FindItem(wxID_MODES_RENDER_MODE_FILL)->Check(true);
     menubar->FindItem(wxID_MODES_RENDER_FACE_FRONT_AND_BACK)->Check(true);
 
-    if(m_uiopmode == operation_mode::modelling) {
-        usrEnableModellingMenus(true);
-    }
-    else if(m_uiopmode == operation_mode::displaying) {
-        usrEnableModellingMenus(false);
-    }
+    if(m_uiopmode == operation_mode::modelling)       usrEnableModellingMenus(true);
+    else if(m_uiopmode == operation_mode::displaying) usrEnableModellingMenus(false);
+
 }
 
 bool OsgWxFrame::usrLoadModelFile(const wxString& fpath) {
+
     // load the scene.
     osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFile(std::string(fpath.mb_str()));
     if (!loadedModel) { return false; }
@@ -401,6 +407,7 @@ bool OsgWxFrame::usrLoadModelFile(const wxString& fpath) {
 }
 
 bool OsgWxFrame::usrLoadOrientationFile(const wxString& fpath) {
+
     std::shared_ptr<Orientation> ori(new Orientation());
     if(ori->Read(fpath.ToStdString())) {
         return true;
@@ -455,18 +462,21 @@ bool OsgWxFrame::usrLoadImageFile(const wxString& fpath) {
 }
 
 void OsgWxFrame::usrSetPolygonMode(osg::Node* node) {
+
     osg::ref_ptr<osg::PolygonMode> pm = new osg::PolygonMode;
     pm->setMode(m_render_face, m_render_mode);
     node->getOrCreateStateSet()->setAttribute(pm.get());
 }
 
 void OsgWxFrame::usrSetCustomPolygonMode(osg::Node *node, osg::PolygonMode::Mode mode, osg::PolygonMode::Face face) {
+
     osg::ref_ptr<osg::PolygonMode> pm = new osg::PolygonMode;
     pm->setMode(face, mode);
     node->getOrCreateStateSet()->setAttribute(pm.get());
 }
 
 void OsgWxFrame::usrUpdateFileTree(char type) {
+
     wxArrayString strArr;
     wxString str = MainFrame::frame_text + wxString(std::to_string(m_id));
     strArr.Add(str);
@@ -478,6 +488,7 @@ void OsgWxFrame::usrUpdateFileTree(char type) {
 }
 
 void OsgWxFrame::usrEnableModellingMenus(bool flag) {
+
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_NO_SPINE_CONSTRAINTS)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_PLANAR_SPINE_POINTS)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_STRAIGHT_PLANAR_SPINE)->Enable(flag);
@@ -490,12 +501,14 @@ void OsgWxFrame::usrEnableModellingMenus(bool flag) {
 
 // Event Handlers:
 void OsgWxFrame::OnIdle(wxIdleEvent& event) {
-    if(!m_viewer->isRealized()) { return; }
+
+    if(!m_viewer->isRealized()) return;
     m_viewer->frame();
     event.RequestMore();
 }
 
 void OsgWxFrame::OnClose(wxCloseEvent& event) {
+
     m_parent->UsrFrameClosedMessage(m_id);
     std::cout << "\t-Model File: " << GetTitle().char_str() << " is closed." << std::endl;
     Destroy();
@@ -545,6 +558,26 @@ void OsgWxFrame::OnToggleRenderType(wxCommandEvent& event) {
         if(gcyl) gcyl->ChangeRenderingType(rtype);
     }
     m_root->dirtyBound();
+}
+
+void OsgWxFrame::OnToggleProjectionMode(wxCommandEvent& event) {
+
+    switch (event.GetId()) {
+    case wxID_MODES_PERSPECTIVE_PROJECTION:
+        m_viewer->getCamera()->setProjectionMatrixAsPerspective(m_ppp->fovy, m_ppp->aspect, m_ppp->near, m_ppp->far);
+        std::cout << "\t-Projection mode is changed to perspective" << std::endl;
+        break;
+    case wxID_MODES_ORTHOGRAPHIC_PROJECTION:
+
+        double right = static_cast<double>(m_ppp->width) / 2.0;
+        double left = - right;
+        double top = static_cast<double>(m_ppp->height) / 2.0;
+        double bottom = -top;
+
+        m_viewer->getCamera()->setProjectionMatrixAsOrtho(left, right, bottom, top, m_ppp->near, m_ppp->far);
+        std::cout << "\t-Projection mode is changed to orthographic" << std::endl;
+        break;
+    }
 }
 
 void OsgWxFrame::OnToggleRenderMode(wxCommandEvent& event) {
