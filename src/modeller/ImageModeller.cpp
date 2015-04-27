@@ -55,7 +55,7 @@ ImageModeller::ImageModeller(const std::string& fpath, const std::shared_ptr<Coo
         m_rect = std::unique_ptr<Rectangle2D>(new Rectangle2D(0, 0, size[0] - 1, size[1] - 1));
     }
 
-    m_fixed_depth = -(m_ppp->near + m_ppp->far)/2.0;
+    m_fixed_depth = -(m_ppp->near + m_ppp->far)/10.0;
 }
 
 ImageModeller::~ImageModeller() {
@@ -283,8 +283,8 @@ void ImageModeller::model_update() {
 
 void ImageModeller::estimate_first_circle_under_persective_projection() {
 
-    // 1) Estimate the 3D circles under perspective projection for the initial user drawn ellipse (m_ellipse): projection of two circles
-    //    will match with the ellipse.
+    // 1) Estimate the first 3D circle under perspective projection from the ellipse drawn by the operator
+    // (m_ellipse): projection of two circles will match with the ellipse.
     Circle3D circles[2];
     int count = estimate_3d_circles_with_fixed_depth(m_ellipse, circles, m_fixed_depth);
     if(count == 2) {
@@ -301,9 +301,11 @@ void ImageModeller::estimate_first_circle_under_persective_projection() {
     // 2) Calculate the tilt-angle
     m_tilt_angle = acos(m_last_circle->normal[2]);
     if(m_tilt_angle > HALF_PI)
-        m_tilt_angle -= HALF_PI;
+        m_tilt_angle = PI - m_tilt_angle;
 
      std::cout << "tilt-angle: " << rad2deg(m_tilt_angle) << std::endl;
+
+     std::cout << *m_last_circle << std::endl;
 
 }
 
@@ -337,13 +339,11 @@ void ImageModeller::estimate_first_circle_under_orthographic_projection() {
 
     // 1) Estimate the 3D circles under orthographic projection
     // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
-    estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
-    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, m_fixed_depth);
+    // estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
+    estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, m_fixed_depth);
 
     // 2) Calculate the tilt angle
     m_tilt_angle = acos(m_ellipse->smn_axis / m_ellipse->smj_axis);
-
-
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
@@ -370,9 +370,11 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthographic_projection() {
 
     // 1) Estimate the 3D circles under orthographic projection
-    estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_last_profile, *m_last_circle, m_fixed_depth);
-    // estimate_3d_circles_under_orthographic_projection(m_last_profile, *m_last_circle);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_last_profile, *m_last_circle, m_fixed_depth);
+    estimate_3d_circles_under_orthographic_projection(m_last_profile, *m_last_circle);
     // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_last_profile, *m_last_circle, m_fixed_depth);
+
+    std::cout << *m_last_circle << std::endl;
 
     // 2) Add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
@@ -380,8 +382,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained() {
-
-    std::cout << *m_last_circle << std::endl;
 
     // 1) set the radius : proportional to the length of the semi-major axis
     // m_last_circle->radius = m_last_profile->smj_axis * (m_fixed_depth / -m_ppp->near);
