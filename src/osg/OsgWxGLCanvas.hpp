@@ -28,7 +28,7 @@ public:
     void UsrSetGraphicsWindow(osgViewer::GraphicsWindow *gw) { m_graphics_window = gw; }
     void UsrUseCursor(bool value);
     void UsrMakeContextCurrent();
-    void UsrInitializeModeller(const std::shared_ptr<CoordinateTransformations>& ppp, const std::string& fpath);
+    void UsrInitializeModeller(const std::shared_ptr<CoordinateTransformations>& ppp, const wxString& fpath);
     void UsrAddSelectableNodeToDisplay(osg::Node* node, unsigned int component_id);
     void UsrAddToBackgroundDisplay(osg::Geometry* geom);
     void UsrTransformCoordinates(Point2D<int>& pt) const;

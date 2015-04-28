@@ -16,7 +16,11 @@ public:
     Circle3D() : radius(0.0), center(Eigen::Vector3d::Zero()), normal(Eigen::Vector3d::Zero()) { }
     Circle3D(const Eigen::Vector3d& c, const Eigen::Vector3d& n, double r): center(c), normal(n.normalized()), radius(r) { }
     Circle3D(const Circle3D& rhs);
+
+    //assignment operator
     Circle3D& operator=(const Circle3D& rhs);
+
+    // data generators
     void generate_data(osg::ref_ptr<osg::Vec3Array>& vertices, osg::ref_ptr<osg::Vec3Array>& normals, int num_points, bool random = false) const;
     void generate_data(osg::ref_ptr<osg::Vec3Array>& vertices, int num_points, bool random = false) const;
 

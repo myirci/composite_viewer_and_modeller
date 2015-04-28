@@ -1,22 +1,57 @@
-#include "Algorithms.hpp"
-#include "../../geometry/Primitives.hpp"
-#include <otbImageFileWriter.h>
-#include <otbImportVectorImageFilter.h>
-#include <otbVectorImageToIntensityImageFilter.h>
-#include <itkImageRegionIterator.h>
-#include <itkImageRegionConstIterator.h>
-#include <itkNeighborhoodIterator.h>
-#include <wx/image.h>
+
 #include <list>
 #include <map>
 #include <cmath>
+
+#include "Algorithms.hpp"
+#include "../../geometry/Primitives.hpp"
+
+#include <wx/image.h>
+
+#include <otbImageFileWriter.h>
+#include <otbImportVectorImageFilter.h>
+#include <otbVectorImageToImageListFilter.h>
+#include <otbVectorImageToIntensityImageFilter.h>
+#include <otbImageList.h>
+#include <itkImageRegionIterator.h>
+#include <itkImageRegionConstIterator.h>
+#include <itkNeighborhoodIterator.h>
+#include <itkRescaleIntensityImageFilter.h>
+#include <itkGradientMagnitudeImageFilter.h>
 
 typedef itk::ImageRegionIterator<OtbImageType>      ItkImgIt_IteratorType;
 typedef itk::ImageRegionConstIterator<OtbImageType> ItkImgIt_ConstIteratorType;
 typedef itk::NeighborhoodIterator<OtbImageType>     ItkImgIt_NeighborhoodIteratorType;
 typedef otb::ImageFileWriter<OtbImageType>          OtbImageWriterType;
 
-OtbImageType::Pointer region_grow(const wxImage& wxImg, const wxPoint& pt, int threshold) {
+void CopyToWxImageData(OtbImageType::Pointer image, unsigned char* data) {
+
+    OtbImageType::IndexType index;
+    OtbImageType::SizeType size = image->GetLargestPossibleRegion().GetSize();
+    typedef itk::ImageRegionIterator<OtbImageType> ImageRegionIteratorType;
+    ImageRegionIteratorType it(image, image->GetLargestPossibleRegion());
+    for(it.GoToBegin(); !it.IsAtEnd(); ++it) {
+        index = it.GetIndex();
+        long pos = (index[1]* size[0] + index[0])*3;
+        data[pos] = data[pos+1] = data[pos+2] = it.Get();
+    }
+}
+
+bool RegionGrowSegmentation(const wxImage& wxImg, wxImage& segImg, const wxPoint& pt, int threshold) {
+
+    // execute the region grow algorithm
+    OtbImageType::Pointer img = RegionGrow(wxImg, pt, threshold);
+
+    // convert the output to wxImg
+    int numPixels = 3*wxImg.GetWidth()*wxImg.GetHeight();
+    PixelTypeUC* pxdt = new PixelTypeUC[numPixels];
+    CopyToWxImageData(img, pxdt);
+    segImg = wxImage(wxImg.GetWidth(), wxImg.GetHeight(), pxdt, true);
+
+    return true;
+}
+
+OtbImageType::Pointer RegionGrow(const wxImage& wxImg, const wxPoint& pt, int threshold) {
 
     // Step-1: Convert wxImage to OtbVectorImage
     typedef otb::ImportVectorImageFilter<OtbVectorImageType> ImporterType;
@@ -35,12 +70,12 @@ OtbImageType::Pointer region_grow(const wxImage& wxImg, const wxPoint& pt, int t
     double spacing[2] = {1.0, 1.0};
     importFilter->SetSpacing(spacing);
     int numPixels(3*size[0]*size[1]);
-    PixelType* dt = wxImg.GetData();
-    PixelType* data = new PixelType[numPixels];
+    PixelTypeUC* dt = wxImg.GetData();
+    PixelTypeUC* data = new PixelTypeUC[numPixels];
     std::copy(dt, dt + numPixels, data);
     importFilter->SetImportPointer(data, numPixels, true);
     OtbVectorImageType::Pointer vecImg = OtbVectorImageType::New();
-    vecImg = dynamic_cast<OtbVectorImageType*>(importFilter->GetOutput());
+    vecImg = dynamic_cast<OtbVectorImageType*>(importFilter->GetOutput());  
 
     // Step-2: Convert OtbVectorImage to OtbImage
     OtbImageType::Pointer intensity_image = OtbImageType::New();
@@ -56,7 +91,7 @@ OtbImageType::Pointer region_grow(const wxImage& wxImg, const wxPoint& pt, int t
     labels_image->Allocate();
     ItkImgIt_IteratorType it(labels_image, labels_image->GetLargestPossibleRegion());
     for(it.GoToBegin(); !it.IsAtEnd(); ++it) {
-        it.Set(static_cast<PixelType>(PxlValues::UNKNOWN));
+        it.Set(static_cast<PixelTypeUC>(PxlValues::UNKNOWN));
     }
 
     // Step-4: Define the neighborhood iterators for the intensity and labels images
@@ -94,7 +129,7 @@ OtbImageType::Pointer region_grow(const wxImage& wxImg, const wxPoint& pt, int t
         it2.SetLocation(center_index);
 
         // Update the value of the pixel (indicated by the center_index) with "SELECTED".
-        it2.SetCenterPixel(static_cast<PixelType>(PxlValues::SELECTED));
+        it2.SetCenterPixel(static_cast<PixelTypeUC>(PxlValues::SELECTED));
         OtbImageType::IndexType idx = it2.GetIndex();
         if(idx[0] == 0 || idx[1] == 0 || idx[0] == w-1 || idx[1] == h-1) {
             process.pop_front();
@@ -110,56 +145,21 @@ OtbImageType::Pointer region_grow(const wxImage& wxImg, const wxPoint& pt, int t
                     process.push_back(it1.GetIndex(i));
                 }
                 else {
-                    it2.SetPixel(i, static_cast<PixelType>(PxlValues::REFUSED));
+                    it2.SetPixel(i, static_cast<PixelTypeUC>(PxlValues::REFUSED));
                 }
             }
         }
         process.pop_front();
-
     }
     return labels_image;
-}
-
-bool region_grow_segmentation(const wxImage& wxImg, const wxPoint& pt, int threshold) {
-
-    OtbImageType::Pointer img = region_grow(wxImg, pt, threshold);
-    OtbImageWriterType::Pointer writer = OtbImageWriterType::New();
-    writer->SetFileName("deneme.jpeg");
-    writer->SetInput(img);
-    writer->Update();
-    return true;
-}
-
-bool region_grow_segmentation(const wxImage& wxImg, wxImage& segImg, const wxPoint& pt, int threshold) {
-
-    OtbImageType::Pointer img = region_grow(wxImg, pt, threshold);
-    int numPixels = 3*wxImg.GetWidth()*wxImg.GetHeight();
-
-    PixelType* pxdt = new PixelType[numPixels];
-    PixelType* dit = pxdt;
-    ItkImgIt_ConstIteratorType it(img, img->GetLargestPossibleRegion());
-    OtbImageType::PixelType pxtype;
-    for(it.GoToBegin(); !it.IsAtEnd(); ++it) {
-        pxtype = it.Get();
-        *dit = pxtype;
-        ++dit;
-        *dit = pxtype;
-        ++dit;
-        *dit = pxtype;
-        ++dit;
-    }
-    segImg = wxImage(wxImg.GetWidth(), wxImg.GetHeight(), pxdt, true);
-    return true;
 }
 
 // image is a binary image: pixel_values are either 255 or 0
 // returns true if the ray hits an occupied pixel (value = 0)
 // start: starting point for the ray segment
 // end: end point for the ray segement
-bool ray_cast(const OtbImageType::Pointer& image,
-              const OtbImageType::IndexType& start,
-              const OtbImageType::IndexType& end,
-              OtbImageType::IndexType& first_hit) {
+bool RayCast(const OtbImageType::Pointer& image, const OtbImageType::IndexType& start, const OtbImageType::IndexType& end, OtbImageType::IndexType& first_hit) {
+
     int delta_x = end[0] - start[0];
     int delta_y = end[1] - start[1];
     int dx_1(0), dy_1(0), dx_2(0), dy_2(0);
@@ -199,7 +199,7 @@ bool ray_cast(const OtbImageType::Pointer& image,
     return false;
 }
 
-bool ray_cast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& first_hit) {
+bool RayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& first_hit) {
 
     int delta_x = end.x - start.x;
     int delta_y = end.y - start.y;
@@ -254,5 +254,49 @@ bool ray_cast(const OtbImageType::Pointer& image, const Point2D<int>& start, con
         }
     }
     return false;
+}
+
+void GradientMagnitudeImage(OtbFloatVectorImageType::Pointer img, wxImage& gradImg) {
+
+    OtbImageType::Pointer gImg = GradientMagnitudeImage(img);
+    // convert the output to wxImg
+
+    int numPixels = 3*gradImg.GetWidth()*gradImg.GetHeight();
+    PixelTypeUC* pxdt = new PixelTypeUC[numPixels];
+    CopyToWxImageData(gImg, pxdt);
+    gradImg = wxImage(gradImg.GetWidth(), gradImg.GetHeight(), pxdt, true);
+}
+
+OtbImageType::Pointer GradientMagnitudeImage(OtbFloatVectorImageType::Pointer image) {
+
+    OtbFloatImageType::Pointer float_img;
+    if(image->GetNumberOfComponentsPerPixel() == 1) {
+        typedef otb::ImageList<OtbFloatImageType> FloatImageListType;
+        typedef otb::VectorImageToImageListFilter<OtbFloatVectorImageType, FloatImageListType> VectorImageToImageListFilterType;
+        VectorImageToImageListFilterType::Pointer image_list_filter = VectorImageToImageListFilterType::New();
+        image_list_filter->SetInput(image);
+        image_list_filter->Update();
+        float_img = image_list_filter->GetOutput()->Back();
+    }
+    else {
+        typedef otb::VectorImageToIntensityImageFilter<OtbFloatVectorImageType, OtbFloatImageType> VectorImageToIntensityImageFilterType;
+        VectorImageToIntensityImageFilterType::Pointer intensity_filter = VectorImageToIntensityImageFilterType::New();
+        intensity_filter->SetInput(image);
+        intensity_filter->Update();
+        float_img = intensity_filter->GetOutput();
+    }
+
+    typedef itk::GradientMagnitudeImageFilter<OtbFloatImageType, OtbImageType> GradientMagnitudeImageFilterType;
+    GradientMagnitudeImageFilterType::Pointer gradient_filter = GradientMagnitudeImageFilterType::New();
+    gradient_filter->SetInput(float_img);
+    gradient_filter->Update();
+
+    typedef itk::RescaleIntensityImageFilter<OtbImageType, OtbImageType> RescaleIntensityImageFilterType;
+    RescaleIntensityImageFilterType::Pointer rescaler = RescaleIntensityImageFilterType::New();
+    rescaler->SetOutputMinimum(0);
+    rescaler->SetOutputMaximum(255);
+    rescaler->SetInput(gradient_filter->GetOutput());
+    rescaler->Update();
+    return rescaler->GetOutput();
 }
 

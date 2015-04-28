@@ -5,19 +5,15 @@
 #include <memory>
 #include <osg/Geometry>
 
-UIHelper::UIHelper(osg::Geode* geode) :
-    m_sweepline_vertices(nullptr),
-    m_base_elp_vertices(nullptr),
-    m_spine_vertices(nullptr),
-    m_constraint_vertices(nullptr) {
+UIHelper::UIHelper(osg::Geode* geode) : m_geode(geode), m_sweepline_vertices(nullptr), m_base_elp_vertices(nullptr),
+    m_spine_vertices(nullptr) {
 
-    geode->addDrawable(initialize_sweepline_display());
-    geode->addDrawable(initialize_base_ellipse_display());
-    geode->addDrawable(initialize_spine_display());
-    geode->addDrawable(initialize_constraint_display());
+    m_geode->addDrawable(initialize_sweepline_display());
+    m_geode->addDrawable(initialize_base_ellipse_display());
+    m_geode->addDrawable(initialize_spine_display());
 
     // for smooth lines
-    geode->getOrCreateStateSet()->setMode(GL_LINE_SMOOTH, osg::StateAttribute::ON);
+    m_geode->getOrCreateStateSet()->setMode(GL_LINE_SMOOTH, osg::StateAttribute::ON);
 }
 
 osg::Geometry* UIHelper::initialize_sweepline_display() {
@@ -113,48 +109,27 @@ osg::Geometry* UIHelper::initialize_spine_display() {
     return geom.release();
 }
 
-osg::Geometry* UIHelper::initialize_constraint_display() {
-
-    // for dynamic ellipse display
-    // 2 for constraint line         : lines,     m_constraint_arrays[0], Color: Gray
-    // 10 for mouse point projection : line_loop, m_constraint_arrays[1], Color: Gray
-
-    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
-    geom->setUseDisplayList(false);
-    geom->setUseVertexBufferObjects(true);
-    geom->setDataVariance(osg::Object::DYNAMIC);
-
-    m_constraint_vertices = new osg::Vec2dArray(12);
-    geom->setVertexArray(m_constraint_vertices);
-
-    m_constraint_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
-    geom->addPrimitiveSet(m_constraint_arrays.back());
-    m_constraint_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
-    geom->addPrimitiveSet(m_constraint_arrays.back());
-
-    osg::Vec4Array* colors = new osg::Vec4Array;
-    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f)); // Gray
-    colors->push_back(osg::Vec4(0.65f, 0.65f, 0.65f, 1.0f)); // Gray
-    geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
-    return geom.release();
-}
-
 void UIHelper::Reset() {
 
     for(auto it = m_sweepline_arrays.begin(); it != m_sweepline_arrays.end(); ++it)
         (*it)->setCount(0);
+    m_sweepline_vertices->dirty();
+
     for(auto it = m_base_elp_arrays.begin(); it != m_base_elp_arrays.end(); ++it)
         (*it)->setCount(0);
-    for(auto it = m_constraint_arrays.begin(); it != m_constraint_arrays.end(); ++it)
+    m_base_elp_vertices->dirty();
+
+    for(auto it = m_proj_arrays.begin(); it != m_proj_arrays.end(); ++it)
         (*it)->setCount(0);
+
+    for(auto it = m_proj_vertices.begin(); it != m_proj_vertices.end(); ++it) {
+        (*it)->clear();
+        (*it)->dirty();
+    }
 
     m_spine_array->setCount(0);
     m_spine_vertices->clear();
-
     m_spine_vertices->dirty();
-    m_sweepline_vertices->dirty();
-    m_base_elp_vertices->dirty();
-    m_constraint_vertices->dirty();
 }
 
 // pt = p0 (first click)
@@ -214,7 +189,6 @@ void UIHelper::InitializeMinorAxisDrawing(const osg::Vec2d& pt) {
     tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 74, 10);
     m_base_elp_arrays[6]->setFirst(74);
     m_base_elp_arrays[6]->setCount(10);
-
     m_base_elp_vertices->dirty();
 }
 
@@ -296,19 +270,53 @@ void UIHelper::AddSpinePoint(const osg::Vec2d& pt) {
     m_spine_vertices->dirty();
 }
 
-void UIHelper::DisplayConstraintLine(const std::vector<osg::Vec2d>& pts) {
+void UIHelper::DisplayLineStrip(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color) {
 
-    m_constraint_vertices->at(0) = pts[0];
-    m_constraint_vertices->at(1) = pts[1];
-    m_constraint_arrays[0]->setCount(2);
-    m_constraint_vertices->dirty();
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
+    geom->setUseDisplayList(false);
+    geom->setUseVertexBufferObjects(true);
+    geom->setDataVariance(osg::Object::DYNAMIC);
+
+    osg::ref_ptr<osg::Vec2dArray> vertices = new osg::Vec2dArray(pts.begin(), pts.end());
+    m_proj_vertices.push_back(vertices);
+    geom->setVertexArray(vertices);
+    osg::ref_ptr<osg::DrawArrays>  darray = new osg::DrawArrays(osg::PrimitiveSet::LINE_STRIP);
+    m_proj_arrays.push_back(darray);
+    geom->addPrimitiveSet(darray);
+
+    osg::Vec4Array* colors = new osg::Vec4Array;
+    colors->push_back(color);
+    geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
+    m_geode->addDrawable(geom.get());
+
+    darray->setFirst(0);
+    darray->setCount(pts.size());
+    vertices->dirty();
 }
 
+void UIHelper::DisplayLineLoop(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color) {
 
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
+    geom->setUseDisplayList(false);
+    geom->setUseVertexBufferObjects(true);
+    geom->setDataVariance(osg::Object::DYNAMIC);
 
+    osg::ref_ptr<osg::Vec2dArray> vertices = new osg::Vec2dArray(pts.begin(), pts.end());
+    m_proj_vertices.push_back(vertices);
+    geom->setVertexArray(vertices);
+    osg::ref_ptr<osg::DrawArrays>  darray = new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP);
+    m_proj_arrays.push_back(darray);
+    geom->addPrimitiveSet(darray);
 
+    osg::Vec4Array* colors = new osg::Vec4Array;
+    colors->push_back(color);
+    geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
+    m_geode->addDrawable(geom.get());
 
-
+    darray->setFirst(0);
+    darray->setCount(pts.size());
+    vertices->dirty();
+}
 
 
 

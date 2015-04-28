@@ -7,29 +7,28 @@ CoordinateTransformations::CoordinateTransformations(double fy, int w, int h, do
     c1 = (near * tan(deg2rad(fovy/2.0)));
 }
 
-void CoordinateTransformations::convert_from_image_coordinates_to_logical_device_coordinates(const osg::Vec2d& img_coord, osg::Vec2d& dev_coord) {
+void CoordinateTransformations::convert_from_image_coordinates_to_logical_device_coordinates(const osg::Vec2d& img_coord, osg::Vec2d& log_coord) {
 
-    dev_coord.x() = img_coord.x();
-    dev_coord.y() = -img_coord.y() + height - 1;
+    log_coord.x() = img_coord.x();
+    log_coord.y() = -img_coord.y() + height - 1;
 }
 
-void CoordinateTransformations::convert_from_logical_device_coordinates_to_image_coordinates(const osg::Vec2d& dev_coord, osg::Vec2d& img_coord) {
+void CoordinateTransformations::convert_from_logical_device_coordinates_to_image_coordinates(const osg::Vec2d& log_coord, osg::Vec2d& img_coord) {
 
-    img_coord.x() = dev_coord.x();
-    img_coord.y() = -dev_coord.y() + height - 1;
+    img_coord.x() = log_coord.x();
+    img_coord.y() = -log_coord.y() + height - 1;
 }
 
-void CoordinateTransformations::convert_from_viewport_coordinates_to_logical_device_coordinates(const osg::Vec2d& vp_coord, osg::Vec2d& dev_coord) {
+void CoordinateTransformations::convert_from_viewport_coordinates_to_logical_device_coordinates(const osg::Vec2d& vp_coord, osg::Vec2d& log_coord) {
 
-    dev_coord.x() = vp_coord.x() + static_cast<double>(width) / 2.0;
-    dev_coord.y() = vp_coord.y() + static_cast<double>(height) / 2.0;
+    log_coord.x() = vp_coord.x() + static_cast<double>(width) / 2.0;
+    log_coord.y() = vp_coord.y() + static_cast<double>(height) / 2.0;
 }
 
-void CoordinateTransformations::convert_from_logical_device_coordinates_to_viewport_coordinates(const osg::Vec2d& dev_coord, osg::Vec2d& vp_coord) {
+void CoordinateTransformations::convert_from_logical_device_coordinates_to_viewport_coordinates(const osg::Vec2d& log_coord, osg::Vec2d& vp_coord) {
 
-    vp_coord.x() = dev_coord.x() - static_cast<double>(width) / 2.0;
-    vp_coord.y() = dev_coord.y() - static_cast<double>(height) / 2.0;
-
+    vp_coord.x() = log_coord.x() - static_cast<double>(width) / 2.0;
+    vp_coord.y() = log_coord.y() - static_cast<double>(height) / 2.0;
 }
 
 void CoordinateTransformations::convert_from_normalized_device_coordinates_to_viewport_coordinates(const osg::Vec2d& ndc_coord, osg::Vec2d& vp_coord) {
@@ -56,11 +55,11 @@ void CoordinateTransformations::convert_from_normalized_device_coordinates_to_pr
     prj_coord.y() = ndc_coord.y() * c1;
 }
 
-void CoordinateTransformations::convert_from_logical_device_coordinates_to_projected_coordinates(const osg::Vec2d& dev_coord, osg::Vec2d& prj_coord) {
+void CoordinateTransformations::convert_from_logical_device_coordinates_to_projected_coordinates(const osg::Vec2d& log_coord, osg::Vec2d& prj_coord) {
 
     // logical device coord >> viewport coordinates
     osg::Vec2d vp_coord, ndc_coord;
-    convert_from_logical_device_coordinates_to_viewport_coordinates(dev_coord, vp_coord);
+    convert_from_logical_device_coordinates_to_viewport_coordinates(log_coord, vp_coord);
     // viewport coord >> normalized device coordinates
     convert_from_viewport_coordinates_to_normalized_device_coordinates(vp_coord, ndc_coord);
     // normalized device coord >> projected coordinates

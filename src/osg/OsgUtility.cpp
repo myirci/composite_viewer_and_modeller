@@ -25,18 +25,11 @@ osg::Camera* create_background_camera(int left, int right, int bottom, int top) 
     osg::StateSet* ss = camera->getOrCreateStateSet();
     ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0, 1.0));
-
     return camera;
 }
 
-osg::Geode* create_textured_quad(const std::string& imgFile, wxSize& size) {
+osg::Geode* create_textured_quad( osg::Image* image, wxSize& size) {
 
-    // Read Image
-    osg::Image* image = osgDB::readImageFile(imgFile);
-    if(!image) {
-        std::cout << "Image file can not ve opened!" << std::endl;
-        return nullptr;
-    }
     size.x = image->s();
     size.y = image->t();
 
@@ -138,11 +131,9 @@ double squared_distance(const osg::Vec3d& pt1, const osg::Vec3d& pt2) {
 
 void transpose(const osg::Matrixd& mat, osg::Matrixd& mat_transposed) {
 
-    for(int i = 0; i < 4; ++i) {
-        for(int j = 0; j < 4; ++j) {
+    for(int i = 0; i < 4; ++i)
+        for(int j = 0; j < 4; ++j)
             mat_transposed(i,j) = mat(j,i);
-        }
-    }
 }
 
 void transpose(osg::Matrixd& mat) {

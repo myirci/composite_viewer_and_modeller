@@ -10,13 +10,8 @@ class wxToolBar;
 
 class ImageFrame : public wxFrame {
 public:
-    ImageFrame(wxWindow* parent,
-               wxWindowID id,
-               const wxString& title,
-               const wxPoint& pos = wxDefaultPosition,
-               const wxSize& size = wxDefaultSize,
-               long style = wxDEFAULT_FRAME_STYLE,
-               const wxString& name = wxFrameNameStr);
+    ImageFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition,
+               const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE, const wxString& name = wxFrameNameStr);
     bool UsrOpenImageFile();
     void UsrSetFrameId(int id);
 private:
@@ -33,6 +28,7 @@ private:
     void OnOpen(wxCommandEvent& event);
     void OnViewOriginalSize(wxCommandEvent& event);
     void OnViewInModelWindow(wxCommandEvent& event);
+    void OnViewGradientImage(wxCommandEvent& event);
     void OnRotateCW(wxCommandEvent& event);
     void OnRotateCCW(wxCommandEvent& event);
     void OnExit(wxCommandEvent& event);

@@ -68,7 +68,7 @@ void OsgWxGLCanvas::UsrUseCursor(bool value) {
     }
 }
 
-void OsgWxGLCanvas::UsrInitializeModeller(const std::shared_ptr<CoordinateTransformations>& ppp, const std::string& fpath) {
+void OsgWxGLCanvas::UsrInitializeModeller(const std::shared_ptr<CoordinateTransformations>& ppp, const wxString& fpath) {
 
     if(m_modeller != nullptr) {
         delete m_modeller;

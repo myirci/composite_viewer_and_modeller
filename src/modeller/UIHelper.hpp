@@ -24,7 +24,9 @@ public:
     void Updatep1(const osg::Vec2d& pt);
     void UpdateSweepline(const std::unique_ptr<Ellipse2D>& ellipse);
     void UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp);
-    void DisplayConstraintLine(const std::vector<osg::Vec2d>& pts);
+    void DisplayLineStrip(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
+    void DisplayLineLoop(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
+
 private:
 
     osg::ref_ptr<osg::Vec2dArray>               m_sweepline_vertices;   // for displaying the sweepline
@@ -36,13 +38,14 @@ private:
     osg::ref_ptr<osg::Vec2dArray>               m_spine_vertices;       // for displaying the base ellipse
     osg::ref_ptr<osg::DrawArrays>               m_spine_array;          // draw arrays for m_base_elp_vertices
 
-    osg::ref_ptr<osg::Vec2dArray>               m_constraint_vertices;  // for displaying constraints
-    std::vector<osg::ref_ptr<osg::DrawArrays>>  m_constraint_arrays;    // draw arrays for m_constraint_vertices
+    std::vector<osg::ref_ptr<osg::Vec2dArray>>  m_proj_vertices;        // for displaying projections
+    std::vector<osg::ref_ptr<osg::DrawArrays>>  m_proj_arrays;          // draw arrays for m_proj_vertices
 
     inline osg::Geometry* initialize_sweepline_display();
     inline osg::Geometry* initialize_base_ellipse_display();
     inline osg::Geometry* initialize_spine_display();
-    inline osg::Geometry* initialize_constraint_display();
+
+    osg::Geode* m_geode;
 };
 
 #endif // UIHELPER_HPP

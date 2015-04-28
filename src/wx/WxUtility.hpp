@@ -22,7 +22,7 @@ enum class image_display_mode : unsigned char {
 
 enum class image_operation_mode : unsigned char {
     Default,
-    Region_Growing,
+    RegionGrowing,
     Drawing
 };
 
