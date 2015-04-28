@@ -25,12 +25,12 @@ EVT_KEY_DOWN(ImagePanel::OnKeyPressed)
 END_EVENT_TABLE()
 
 ImagePanel::ImagePanel(ImageFrame* parent, wxString file_path) : wxScrolledWindow(parent),
-    m_minImg(wxSize(0,0)), m_dimgRect(),
-    m_dpmode(image_display_mode(image_display_mode::VARYING)),
-    m_opmode(image_operation_mode::Default) {
+    m_minImg(wxSize(0,0)), m_dimgRect(), m_dpmode(image_display_mode(image_display_mode::VARYING)),
+    m_opmode(image_operation_mode::Default), m_path("") {
     SetBackgroundColour(*wxWHITE);
     SetScrollRate(1, 1);
     if(file_path != wxEmptyString) {
+        m_path = file_path.ToStdString();
         UsrLoadFile(file_path);
     }
     else { /* may load default image */ }
@@ -39,30 +39,55 @@ ImagePanel::ImagePanel(ImageFrame* parent, wxString file_path) : wxScrolledWindo
 
 // Public Member Functions
 bool ImagePanel::UsrLoadFile(const wxString& path) {
+
     m_img.Destroy();
     if(m_img.LoadFile(path)) {
+        m_path = path.ToStdString();
         usrUpdateImage();
         return true;
     }
     return false;
 }
 void ImagePanel::UsrSetDisplayMode(image_display_mode mode) {
+
     m_dpmode = mode;
     wxSizeEvent event;
     OnSize(event);
 }
 void ImagePanel::UsrSetUIOperationMode(image_operation_mode mode) {
+
     m_opmode = mode;
 }
 
 image_display_mode ImagePanel::UsrGetMode() const {
+
     return m_dpmode;
 }
+
 wxSize ImagePanel::UsrGetImageSize() const {
+
     return wxSize(m_img.GetWidth(), m_img.GetHeight());
 }
+
+void ImagePanel::UsrDisplayGraidentImage() {
+
+    if(!m_img.IsOk()) return;
+
+    if(m_path.empty()) {
+        std::cerr << "Image file path is empty" << std::endl;
+        return;
+    }
+
+    wxImage gradImg(m_dimg.ConvertToImage());
+    OtbFloatVectorImageType::Pointer img = LoadImage<OtbFloatVectorImageType>(m_path);
+    GradientMagnitudeImage(img, gradImg);
+    m_dimg = wxBitmap(gradImg);
+    Refresh();
+}
+
 void ImagePanel::UsrViewInOriginalSize() {
-    if(!m_img.IsOk()) { return ; }
+
+    if(!m_img.IsOk()) return;
     SetVirtualSize(m_img.GetWidth(), m_img.GetHeight());
     m_dimgRect.SetPosition(wxPoint(0,0));
     m_dimgRect.SetSize(wxSize(m_img.GetWidth(), m_img.GetHeight()));
@@ -70,23 +95,24 @@ void ImagePanel::UsrViewInOriginalSize() {
     usrUpdateDisplayImage();
     Refresh();
 }
+
 void ImagePanel::UsrRotate(rotation_type rt) {
-    if(!m_img.IsOk()) { return ; }
-    if(rt == rotation_type::CW) {
-        m_img = m_img.Rotate90(true);
-    }
-    else if(rt == rotation_type::CCW) {
-        m_img = m_img.Rotate90(false);
-    }
+
+    if(!m_img.IsOk()) return ;
+    if(rt == rotation_type::CW)       m_img = m_img.Rotate90(true);
+    else if(rt == rotation_type::CCW) m_img = m_img.Rotate90(false);
     usrUpdateImage();
 }
+
 bool ImagePanel::UsrSaveImage(const wxString& path) {
+
     wxImage img = m_dimg.ConvertToImage();
     return img.SaveFile(path);
 }
 
 // Private Member Functions
 void ImagePanel::usrCalculateDisplayImageSize(double percentage) {
+
     int limit(0), k(0);
     wxSize screen_size = wxGetDisplaySize();
     if(screen_size.GetHeight() < screen_size.GetWidth()) {
@@ -109,16 +135,18 @@ void ImagePanel::usrCalculateDisplayImageSize(double percentage) {
     }
     m_dimgRect.SetSize(m_img.GetSize());
 }
+
 void ImagePanel::usrUpdateDisplayImage() {
-    if(!m_img.IsOk()) { return; }
-    if((m_img.GetWidth() == m_dimgRect.GetWidth()) && (m_img.GetHeight() == m_dimgRect.GetHeight())) {
+
+    if(!m_img.IsOk()) return;
+    if((m_img.GetWidth() == m_dimgRect.GetWidth()) && (m_img.GetHeight() == m_dimgRect.GetHeight()))
         m_dimg = wxBitmap(m_img);
-    }
-    else {
+    else
         m_dimg = wxBitmap(m_img.Scale(m_dimgRect.GetWidth(), m_dimgRect.GetHeight(), wxIMAGE_QUALITY_HIGH));
-    }
 }
+
 void ImagePanel::usrUpdateImage() {
+
     m_minImg = utilitySimplify(wxSize(m_img.GetWidth(), m_img.GetHeight()));
     usrCalculateDisplayImageSize(0.6);
     m_parent->SetClientSize(m_dimgRect.GetSize());
@@ -127,7 +155,9 @@ void ImagePanel::usrUpdateImage() {
     usrUpdateDisplayImage();
     Refresh();
 }
+
 void ImagePanel::usrOnOperationModeUpdated() {
+
     if(m_opmode == image_operation_mode::Drawing) {
 
     }
@@ -139,14 +169,16 @@ void ImagePanel::PaintEvent(wxPaintEvent& event) {
     DoPrepareDC(dc);     // to prepare the device context for drawing a scrolled image
     dc.DrawBitmap(m_dimg, m_dimgRect.GetPosition());
 }
+
 void ImagePanel::OnSize(wxSizeEvent& event) {
-    if(!m_img.IsOk()) { return; }
+
+    if(!m_img.IsOk()) return;
     wxSize diff = m_parent->GetClientSize() - m_dimgRect.GetSize();
     if(m_dpmode == image_display_mode::FIXED) {
-        if(diff.GetWidth() > 0) { m_dimgRect.x = diff.GetWidth() / 2; }
-        else                    { m_dimgRect.x = 0; }
-        if(diff.GetHeight() > 0){ m_dimgRect.y = diff.GetHeight() / 2; }
-        else                    { m_dimgRect.y = 0; }
+        if(diff.GetWidth() > 0)  m_dimgRect.x = diff.GetWidth() / 2;
+        else                     m_dimgRect.x = 0;
+        if(diff.GetHeight() > 0) m_dimgRect.y = diff.GetHeight() / 2;
+        else                     m_dimgRect.y = 0;
     }
     else if(m_dpmode == image_display_mode::VARYING) {
         int kw = diff.GetWidth() / m_minImg.GetWidth();
@@ -155,10 +187,10 @@ void ImagePanel::OnSize(wxSizeEvent& event) {
         m_dimgRect.SetSize(m_dimgRect.GetSize() + m_minImg*k);
         SetVirtualSize(m_parent->GetClientSize());
         diff = m_parent->GetClientSize() - m_dimgRect.GetSize();
-        if(diff.GetWidth() > 0) { m_dimgRect.x = diff.GetWidth() / 2; }
-        else                    { m_dimgRect.x = 0; }
-        if(diff.GetHeight() > 0){ m_dimgRect.y = diff.GetHeight() / 2; }
-        else                    { m_dimgRect.y = 0; }
+        if(diff.GetWidth() > 0)  m_dimgRect.x = diff.GetWidth() / 2;
+        else                     m_dimgRect.x = 0;
+        if(diff.GetHeight() > 0) m_dimgRect.y = diff.GetHeight() / 2;
+        else                     m_dimgRect.y = 0;
         usrUpdateDisplayImage();
     }
     m_parent->SetStatusText(utilityToString("disp img size: ", m_dimgRect.GetSize()), 1);
@@ -167,24 +199,25 @@ void ImagePanel::OnSize(wxSizeEvent& event) {
 }
 
 void ImagePanel::OnMouseMoved(wxMouseEvent& event) {
-    if(!m_img.IsOk()) { return; }
+
+    if(!m_img.IsOk()) return;
     wxPoint mouse_pos = event.GetPosition();
-    if(m_dimgRect.Contains(mouse_pos)) {
+    if(m_dimgRect.Contains(mouse_pos))
         m_parent->SetStatusText(utilityToString(mouse_pos - m_dimgRect.GetPosition() + wxPoint(GetScrollPos(wxHORIZONTAL), GetScrollPos(wxVERTICAL))), 0);
-    }
 }
 
 void ImagePanel::OnLeftClick(wxMouseEvent& event) {
-    if(!m_img.IsOk()) { return; }
+
+    if(!m_img.IsOk()) return;
     wxPoint mouse_pos = event.GetPosition();
-    if(m_opmode == image_operation_mode::Region_Growing) {
+    if(m_opmode == image_operation_mode::RegionGrowing) {
         if(m_dimgRect.Contains(mouse_pos)) {
             wxPoint imgCoord = mouse_pos - m_dimgRect.GetPosition() + wxPoint(GetScrollPos(wxHORIZONTAL), GetScrollPos(wxVERTICAL));
             wxImage dummy(m_dimg.ConvertToImage());
             unsigned char* data = dummy.GetData();
             unsigned char* dcopy = new unsigned char[dummy.GetWidth()*dummy.GetHeight()*3];
             std::copy(data, data + dummy.GetWidth()*dummy.GetHeight()*3, dcopy);
-            region_grow_segmentation(m_dimg.ConvertToImage(), dummy, imgCoord, 9);
+            RegionGrowSegmentation(m_dimg.ConvertToImage(), dummy, imgCoord, 9);
             m_dimg = wxBitmap(dummy);
             Refresh();
         }
@@ -192,9 +225,11 @@ void ImagePanel::OnLeftClick(wxMouseEvent& event) {
 }
 
 void ImagePanel::OnRightClick(wxMouseEvent& event) {
-    if(!m_img.IsOk()) { return; }
+
+    if(!m_img.IsOk()) return;
 }
 
 void ImagePanel::OnKeyPressed(wxKeyEvent& event) {
-    if(!m_img.IsOk()) { return; }
+
+    if(!m_img.IsOk()) return;
 }

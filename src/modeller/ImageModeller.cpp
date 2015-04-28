@@ -4,18 +4,18 @@
 #include "CoordinateTransformations.hpp"
 #include "UIHelper.hpp"
 #include "../geometry/Circle3D.hpp"
-#include "../geometry/Line2D.hpp"
 #include "../geometry/Rectangle2D.hpp"
 #include "../geometry/Ellipse2D.hpp"
 #include "../osg/OsgWxGLCanvas.hpp"
 #include "../osg/OsgUtility.hpp"
 #include "../utility/Utility.hpp"
+#include "../wx/WxUtility.hpp"
 #include "../image/algorithms/Algorithms.hpp"
 
 #include <osgDB/WriteFile>
 #include <otbImageFileReader.h>
 
-ImageModeller::ImageModeller(const std::string& fpath, const std::shared_ptr<CoordinateTransformations>& ppp, OsgWxGLCanvas* canvas) :
+ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<CoordinateTransformations>& ppp, OsgWxGLCanvas* canvas) :
     m_ppp(ppp),
     m_canvas(canvas),
     m_gcyl(nullptr),
@@ -36,26 +36,26 @@ ImageModeller::ImageModeller(const std::string& fpath, const std::shared_ptr<Coo
     m_dynamic_profile(new Ellipse2D),
     m_last_circle(new Circle3D),
     m_uihelper(nullptr),
-    m_constraint_line(nullptr),
     m_tilt_angle(0.0),
     m_circle_estimator(new CircleEstimator) {
 
-    std::ifstream infile(fpath);
+    std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
+    std::ifstream infile(binary_img_path);
     if(!infile.good()) {
         std::cout << "INFO: No associated binary image file: " << std::endl;
     }
     else {
-        otb::ImageFileReader<ImageType>::Pointer reader = otb::ImageFileReader<ImageType>::New();
-        reader->SetFileName(fpath);
+        otb::ImageFileReader<OtbImageType>::Pointer reader = otb::ImageFileReader<OtbImageType>::New();
+        reader->SetFileName(binary_img_path);
         reader->Update();
-        m_image = reader->GetOutput();
+        m_bimage = reader->GetOutput();
         m_bimg_exists = true;
         // binary image is ready for processing
-        ImageType::SizeType size = m_image->GetLargestPossibleRegion().GetSize();
+        OtbImageType::SizeType size = m_bimage->GetLargestPossibleRegion().GetSize();
         m_rect = std::unique_ptr<Rectangle2D>(new Rectangle2D(0, 0, size[0] - 1, size[1] - 1));
     }
 
-    m_fixed_depth = -(m_ppp->near + m_ppp->far)/10.0;
+    m_fixed_depth = -(m_ppp->near + m_ppp->far)/2.0;
 }
 
 ImageModeller::~ImageModeller() {
@@ -423,12 +423,20 @@ void ImageModeller::initialize_spine_drawing_mode() {
     estimate_first_circle_under_persective_projection();
     // estimate_first_circle_under_orthographic_projection();
 
+    osg::Vec3d ctr(m_last_circle->center[0], m_last_circle->center[1], m_last_circle->center[2]);
+    osg::Vec2d ctr_proj;
+    project_point(ctr, ctr_proj);
+    std::vector<osg::Vec2d> pts;
+    pts.push_back(ctr_proj);
+    pts.push_back(osg::Vec2d(0,0));
+    m_uihelper->DisplayLineStrip(pts, osg::Vec4(0.5,0.7,0.9,1));
+
     m_gcyl = new GeneralizedCylinder(GenerateComponentId(), *m_last_circle);
     m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
 
     // initialize the constraint line if spine contraint is straight_planar
     if(sp_constraints == spine_constraints::straight_planar) {
-
+        /*
         // let's define the constraint line in the opengl screen coordinate which is also
         double a = m_last_circle->center[1] * m_last_circle->normal[2] - m_last_circle->center[2] * m_last_circle->normal[1];
         double b = m_last_circle->center[2] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[2];
@@ -461,6 +469,7 @@ void ImageModeller::initialize_spine_drawing_mode() {
         std::cout << "intersection points: \n";
         for(auto it = intersection_pts.begin(); it != intersection_pts.end(); ++it)
             std::cout << it->x() << " " << it->y() << std::endl;
+        */
     }
 
     // Copy the base ellipse into the m_last_profile.
@@ -605,7 +614,17 @@ size_t ImageModeller::select_parallel_circle(const Circle3D * const circles) {
     return std::abs(a) > std::abs(b) ? 0 : 1;
 }
 
-size_t ImageModeller::select_planar_circle(const Circle3D* const circles) { }
+
+void ImageModeller::project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d) {
+
+    osg::Vec4d pt4d(pt3d,1);
+    const osg::Matrixd& Mproj = m_canvas->UsrGetMainCamera()->getProjectionMatrix();
+    osg::Vec4d pt_clip = pt4d * Mproj;
+    osg::Matrixd Mvp = m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
+    osg::Vec4d pt_vp = pt_clip * Mvp;
+    pt2d.x() = pt_vp.x() / pt_vp.w();
+    pt2d.y() = pt_vp.y() / pt_vp.w();
+}
 
 void ImageModeller::ray_cast_for_profile_match() {
 
@@ -615,7 +634,7 @@ void ImageModeller::ray_cast_for_profile_match() {
     m_canvas->UsrTransformCoordinates(p0);
     m_canvas->UsrTransformCoordinates(p1);
 
-    // 2) calculate the ray_cast direction vector,the change in major-axis length is limited by a factor
+    // 2) calculate the RayCast direction vector,the change in major-axis length is limited by a factor
     Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
 
     // 3) perform ray casts and display shot rays variables for ray casting
@@ -624,19 +643,19 @@ void ImageModeller::ray_cast_for_profile_match() {
 
     // 3.1) ray cast from p0-center direction
     Point2D<int> end = p0 + dir_vec;
-    if(m_rect->intersect(p0, end)) hit_result[0] = ray_cast(m_image, p0, end, hit[0]);
+    if(m_rect->intersect(p0, end)) hit_result[0] = RayCast(m_bimage, p0, end, hit[0]);
 
     // 3.2) ray cast from p0-outside direction
     end = p0 - dir_vec;
-    if(m_rect->intersect(p0, end)) hit_result[1] = ray_cast(m_image, p0, end, hit[1]);
+    if(m_rect->intersect(p0, end)) hit_result[1] = RayCast(m_bimage, p0, end, hit[1]);
 
     // 3.3) ray cast from p1-center direction
     end = p1 - dir_vec;
-    if(m_rect->intersect(p1, end)) hit_result[2] = ray_cast(m_image, p1, end, hit[2]);
+    if(m_rect->intersect(p1, end)) hit_result[2] = RayCast(m_bimage, p1, end, hit[2]);
 
     // 3.4) ray cast from p1-outside direction
     end = p1 + dir_vec;
-    if(m_rect->intersect(p1, end)) hit_result[3] = ray_cast(m_image, p1, end, hit[3]);
+    if(m_rect->intersect(p1, end)) hit_result[3] = RayCast(m_bimage, p1, end, hit[3]);
 
     // 5) analyze the result of the ray casts
     Point2D<int> p0_hit = p0;

@@ -23,7 +23,8 @@ EVT_MENU(wxID_EDIT_ROTATE_CW, ImageFrame::OnRotateCW)
 EVT_MENU(wxID_EDIT_ROTATE_CCW, ImageFrame::OnRotateCCW)
 EVT_MENU(wxID_SAVE, ImageFrame::OnSaveImage)
 EVT_MENU(wxID_MODE_DEFAULT, ImageFrame::OnChangeOperationMode)
-EVT_MENU(wxID_MODE_REGION_GROWING, ImageFrame::OnChangeOperationMode)
+EVT_MENU(wxID_MODE_RegionGrowING, ImageFrame::OnChangeOperationMode)
+EVT_MENU(wxID_VIEW_GRAIDENT_IMAGE, ImageFrame::OnViewGradientImage)
 // EVT_MENU(wxID_MODE_DRAWING, ImageFrame::OnChangeOperationMode)
 // EVT_TOOL(wxID_DRAWING_MODE_CUBOID, ImageFrame::OnChangeDrawMode)
 // EVT_TOOL(wxID_DRAWING_MODE_CYLIDER, ImageFrame::OnChangeDrawMode)
@@ -36,9 +37,8 @@ ImageFrame::ImageFrame(wxWindow* parent, wxWindowID id, const wxString& title,
     wxFrame(parent, id, title, pos, size, style, name), m_id(-1), m_path("") {
 
     m_parent = dynamic_cast<MainFrame*>(parent);
-    if(!m_parent) {
+    if(!m_parent)
         utilityShowMessageDialog(message_type::ERROR, wxT("Dynamic cast error"));
-    }
     usrInitManubar();
     // usrCreateToolBar();
     CreateStatusBar(3);
@@ -70,6 +70,7 @@ bool ImageFrame::UsrOpenImageFile() {
         return true;
     }
 }
+
 void ImageFrame::UsrSetFrameId(int id) {
     m_id = id;
     wxString title("Frame Id-");
@@ -103,7 +104,9 @@ void ImageFrame::UsrSetFrameId(int id) {
 //    m_toolbar->Realize();
 //    m_toolbar->Hide();
 //}
+
 void ImageFrame::usrUpdateFileTree() {
+
     wxArrayString strArr;
     wxString str = MainFrame::frame_text + wxString(std::to_string(m_id));
     strArr.Add(str);
@@ -113,7 +116,9 @@ void ImageFrame::usrUpdateFileTree() {
     strArr.Add(m_path);
     m_parent->UsrAppendFileTree('i', strArr);
 }
+
 void ImageFrame::usrInitManubar() {
+
     wxMenuBar* menubar = new wxMenuBar;
     wxMenu* file = new wxMenu;
     file->Append(wxID_OPEN, wxT("&Open"));
@@ -123,11 +128,9 @@ void ImageFrame::usrInitManubar() {
 
     wxMenu* view = new wxMenu;
     wxMenu* disp_mode = new wxMenu;
-    wxMenuItem* fixed = new wxMenuItem(disp_mode, wxID_VIEW_MODE_FIXED, wxString(wxT("Fixed")),
-                                       wxEmptyString, wxITEM_CHECK);
+    wxMenuItem* fixed = new wxMenuItem(disp_mode, wxID_VIEW_MODE_FIXED, wxString(wxT("Fixed")), wxEmptyString, wxITEM_CHECK);
     disp_mode->Append(fixed);
-    wxMenuItem* varying = new wxMenuItem(disp_mode, wxID_VIEW_MODE_VARYING, wxString(wxT("Varying")),
-                                         wxEmptyString, wxITEM_CHECK);
+    wxMenuItem* varying = new wxMenuItem(disp_mode, wxID_VIEW_MODE_VARYING, wxString(wxT("Varying")), wxEmptyString, wxITEM_CHECK);
     disp_mode->Append(varying);
     fixed->Check(false);
     varying->Check(true);
@@ -136,13 +139,12 @@ void ImageFrame::usrInitManubar() {
     view->Append(wxID_VIEW_ORIGINAL_SIZE, wxT("Original size"));
     view->AppendSeparator();
 
-    wxMenuItem* viewInModelWindow = new wxMenuItem(
-                disp_mode, wxID_VIEW_IN_MODEL_WINDOW, wxString(wxT("View in Model Window")),
-                wxEmptyString, wxITEM_CHECK);
+    wxMenuItem* viewInModelWindow = new wxMenuItem(disp_mode, wxID_VIEW_IN_MODEL_WINDOW, wxString(wxT("View in Model Window")), wxEmptyString, wxITEM_CHECK);
     view->Append(viewInModelWindow);
     viewInModelWindow->Check(false);
     viewInModelWindow->Enable(false);
-
+    view->AppendSeparator();
+    view->Append(wxID_VIEW_GRAIDENT_IMAGE, wxT("Gradient Image"));
     menubar->Append(view, wxT("&View"));
 
     wxMenu* edit = new wxMenu;
@@ -152,7 +154,7 @@ void ImageFrame::usrInitManubar() {
 
     wxMenu* op_mode = new wxMenu;
     op_mode->AppendRadioItem(wxID_MODE_DEFAULT, wxT("Default"));
-    op_mode->AppendRadioItem(wxID_MODE_REGION_GROWING, wxT("Region Growing"));
+    op_mode->AppendRadioItem(wxID_MODE_RegionGrowING, wxT("Region Growing"));
     // op_mode->AppendRadioItem(wxID_MODE_DRAWING, wxT("Drawing"));
     menubar->Append(op_mode, wxT("Mode"));
     SetMenuBar(menubar);
@@ -160,12 +162,22 @@ void ImageFrame::usrInitManubar() {
 
 // Event Handlers:
 void ImageFrame::OnOpen(wxCommandEvent& event) {
+
     UsrOpenImageFile();
 }
+
 void ImageFrame::OnViewOriginalSize(wxCommandEvent& event) {
+
     m_img_panel->UsrViewInOriginalSize();
 }
+
+void ImageFrame::OnViewGradientImage(wxCommandEvent& event) {
+
+    m_img_panel->UsrDisplayGraidentImage();
+}
+
 void ImageFrame::OnChangeViewMode(wxCommandEvent& event) {
+
     if(event.GetId() == wxID_VIEW_MODE_FIXED) {
         m_img_panel->UsrSetDisplayMode(image_display_mode::FIXED);
         GetMenuBar()->FindItem(wxID_VIEW_MODE_VARYING)->Check(false);
@@ -182,13 +194,15 @@ void ImageFrame::OnChangeViewMode(wxCommandEvent& event) {
         std::cout << "\t-Id match error when setting view mode" << std::endl;
     }
 }
+
 void ImageFrame::OnChangeOperationMode(wxCommandEvent& event) {
+
     if(event.GetId() == wxID_MODE_DEFAULT) {
         m_img_panel->UsrSetUIOperationMode(image_operation_mode::Default);
         std::cout << "Operation mode is set to default" << std::endl;
     }
-    else if(event.GetId() == wxID_MODE_REGION_GROWING) {
-        m_img_panel->UsrSetUIOperationMode(image_operation_mode::Region_Growing);
+    else if(event.GetId() == wxID_MODE_RegionGrowING) {
+        m_img_panel->UsrSetUIOperationMode(image_operation_mode::RegionGrowing);
         std::cout << "Operation mode is set to region growing" << std::endl;
     }
 //    else if(event.GetId() == wxID_MODE_DRAWING) {
@@ -201,6 +215,7 @@ void ImageFrame::OnChangeOperationMode(wxCommandEvent& event) {
     }
 // if(event.GetId() != wxID_MODE_DRAWING) { m_toolbar->Hide(); }
 }
+
 //void ImageFrame::OnChangeDrawMode(wxCommandEvent& event) {
 //    if(event.GetId() == wxID_DRAWING_MODE_CUBOID) {
 //        m_img_panel->UsrSetDrawingMode(draw_mode::Cuboid);
@@ -222,26 +237,31 @@ void ImageFrame::OnChangeOperationMode(wxCommandEvent& event) {
 //        std::cout << "Error in setting drawing mode" << std::endl;
 //    }
 //}
+
 void ImageFrame::OnRotateCW(wxCommandEvent& event) {
     m_img_panel->UsrRotate(rotation_type::CW);
 }
+
 void ImageFrame::OnRotateCCW(wxCommandEvent& event) {
     m_img_panel->UsrRotate(rotation_type::CCW);
 }
+
 void ImageFrame::OnExit(wxCommandEvent& event) {
     Close();
 }
+
 void ImageFrame::OnClose(wxCloseEvent& event) {
     m_parent->UsrFrameClosedMessage(m_id);
     std::cout << "\t-Image File: " << GetTitle().char_str()
               << " is closed." << std::endl;
     Destroy();
 }
+
 void ImageFrame::OnSaveImage(wxCommandEvent& event) {
-    wxFileDialog save_filedialog(this, wxT("Save log to a file"), wxT(""), wxT(""),
-                                 wxT("*.bmp;*.jpeg;*.jpg;*.png;*.pcx;*.pnm;*.tiff;*.xpm"),
-                                 wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-    if(save_filedialog.ShowModal() == wxID_CANCEL) { return; }
+
+    wxFileDialog save_filedialog(this, wxT("Save log to a file"), wxT(""), wxT(""), wxT("*.bmp;*.jpeg;*.jpg;*.png;*.pcx;*.pnm;*.tiff;*.xpm"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if(save_filedialog.ShowModal() == wxID_CANCEL) return;
+
     if(m_img_panel->UsrSaveImage(save_filedialog.GetPath())) {
         std::cout << "\t-Image File: " << save_filedialog.GetPath().char_str()
                   << " is successfully saved." << std::endl;
@@ -252,6 +272,7 @@ void ImageFrame::OnSaveImage(wxCommandEvent& event) {
         m_parent->UsrLogErrorMessage(str);
     }
 }
+
 void ImageFrame::OnViewInModelWindow(wxCommandEvent& event) {
 
 }

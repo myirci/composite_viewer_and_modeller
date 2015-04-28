@@ -14,7 +14,7 @@ class DrawingLayer;
 class ImagePanel : public wxScrolledWindow {
 public:
     ImagePanel(ImageFrame* parent, wxString file = wxEmptyString);
-    // Memeber functions:
+    // Member functions:
     bool UsrLoadFile(const wxString& path);
     bool UsrSaveImage(const wxString& path);
     wxSize UsrGetImageSize() const;
@@ -22,6 +22,7 @@ public:
     void UsrSetDisplayMode(image_display_mode mode);
     void UsrSetUIOperationMode(image_operation_mode mode);
     void UsrViewInOriginalSize();
+    void UsrDisplayGraidentImage();
     void UsrRotate(rotation_type rt);
 private:
     ImageFrame* m_parent;
@@ -31,8 +32,9 @@ private:
     wxRect m_dimgRect;
     image_display_mode m_dpmode;
     image_operation_mode m_opmode;
+    std::string m_path;
 
-    // Memeber functions:
+    // Member functions:
     void usrCalculateDisplayImageSize(double percentage);
     inline void usrUpdateDisplayImage();
     inline void usrUpdateImage();

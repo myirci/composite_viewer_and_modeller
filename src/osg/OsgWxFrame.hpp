@@ -19,6 +19,11 @@ enum class operation_mode : unsigned char {
     modelling
 };
 
+enum class background_image_display_mode : unsigned char {
+    image,
+    gradient_image
+};
+
 class OsgWxFrame : public wxFrame {
 private:
 
@@ -33,7 +38,6 @@ private:
     osg::ref_ptr<osg::Group> m_model;               // parent node that keeps all the model
     osg::ref_ptr<osg::Camera> m_bgcam;              // to render background image
     osg::ref_ptr<osg::Geode> m_bgeode;              // to draw on the screen
-
     osg::ref_ptr<osg::Switch> m_world_frame;        // display world coordinate frame
 
     osg::PolygonMode::Mode m_render_mode;
@@ -41,6 +45,7 @@ private:
 
     int m_id;
     operation_mode m_uiopmode;
+    background_image_display_mode m_imgdisp_mode;
     std::shared_ptr<CoordinateTransformations> m_ppp;
     std::unique_ptr<ComponentRelationsDialog> m_component_relations_win;
 
@@ -75,6 +80,7 @@ private:
     void usrSetCustomPolygonMode(osg::Node* node, osg::PolygonMode::Mode mode, osg::PolygonMode::Face face);
     void usrUpdateFileTree(char type);
     void usrEnableModellingMenus(bool flag);
+    void usrChangeBackgroundImage(background_image_display_mode mode);
 
     // Event handlers
     void OnIdle(wxIdleEvent& event);
@@ -89,6 +95,7 @@ private:
     void OnToggleUIOperationMode(wxCommandEvent& event);
     void OnToggleModellingConstraints(wxCommandEvent& event);
     void OnToggleSpineDrawingMode(wxCommandEvent& event);
+    void OnToggleImageDisplay(wxCommandEvent& event);
     void OnDisplayLocalFrames(wxCommandEvent& event);
     void OnDisplayWorldCoordinateFrame(wxCommandEvent& event);
     void OnDisplayVertexNormals(wxCommandEvent& event);

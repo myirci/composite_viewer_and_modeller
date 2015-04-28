@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <memory>
+#include "../image/algorithms/Algorithms.hpp"
 #include "components/GeneralizedCylinder.hpp"
 #include <osg/Geometry>
 #include <otbImage.h>
@@ -51,7 +52,7 @@ enum class spine_drawing_mode : unsigned char {
 
 class ImageModeller {
 public:
-    ImageModeller(const std::string& fpath, const std::shared_ptr<CoordinateTransformations>& ppp, OsgWxGLCanvas* canvas);
+    ImageModeller(const wxString& fpath, const std::shared_ptr<CoordinateTransformations>& ppp, OsgWxGLCanvas* canvas);
     ~ImageModeller();
 
     component_type comp_type;           // type of the component being modelled
@@ -62,13 +63,12 @@ public:
 private:
 
     // otb related data members
-    typedef otb::Image<unsigned char, 2> ImageType;
-    ImageType::Pointer m_image;                             // for binary image
+    OtbImageType::Pointer m_gimage;                         // for gradient image
+    OtbImageType::Pointer m_bimage;                         // for binary image
 
     // osg related data members
     OsgWxGLCanvas* m_canvas;
     osg::ref_ptr<GeneralizedCylinder> m_gcyl;               // for generalized cylinder modelling
-
     osg::ref_ptr<osg::Vec2dArray> m_vertices;               // for storing user clicks
 
     osg::Vec2d m_mouse;                                     // current position of the mouse updated by osgWxGLCanvas
@@ -86,7 +86,6 @@ private:
     std::unique_ptr<Ellipse2D> m_dynamic_profile;
     std::unique_ptr<Rectangle2D> m_rect;
     std::unique_ptr<ModelSolver> m_solver;
-    std::unique_ptr<Line2D> m_constraint_line;
     std::shared_ptr<CoordinateTransformations> m_ppp;
     std::unique_ptr<CircleEstimator> m_circle_estimator;
 
@@ -142,7 +141,9 @@ private:
     // selection of the estimated circles under perspective projection
     inline size_t select_first_3d_circle(const Circle3D* const circles);
     inline size_t select_parallel_circle(const Circle3D* const circles);
-    inline size_t select_planar_circle(const Circle3D* const circles);
+
+    // projection functions
+    void project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d);
 
     // inline void constrain_spine_point_in_piecewise_linear_mode();
     // inline void constrain_spine_point_in_continuous_mode();
