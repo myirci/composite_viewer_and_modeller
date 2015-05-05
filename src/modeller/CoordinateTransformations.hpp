@@ -2,6 +2,7 @@
 #define COORDINATE_TRANSFORMATIONS_HPP
 
 #include "../utility/Utility.hpp"
+#include <osg/Geode>
 #include <osg/Array>
 #include <ostream>
 

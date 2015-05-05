@@ -157,62 +157,17 @@ OtbImageType::Pointer RegionGrow(const wxImage& wxImg, const wxPoint& pt, int th
 // image is a binary image: pixel_values are either 255 or 0
 // returns true if the ray hits an occupied pixel (value = 0)
 // start: starting point for the ray segment
-// end: end point for the ray segement
-bool RayCast(const OtbImageType::Pointer& image, const OtbImageType::IndexType& start, const OtbImageType::IndexType& end, OtbImageType::IndexType& first_hit) {
-
-    int delta_x = end[0] - start[0];
-    int delta_y = end[1] - start[1];
-    int dx_1(0), dy_1(0), dx_2(0), dy_2(0);
-    if(delta_x < 0) dx_1 = -1; else if (delta_x > 0) dx_1 = 1;
-    if(delta_y < 0) dy_1 = -1; else if (delta_y > 0) dy_1 = 1;
-    dx_2 = dx_1;
-
-    int longest = std::abs(delta_x);
-    int shortest = std::abs(delta_y);
-    if(shortest > longest) {
-        std::swap(longest, shortest);
-        dy_2 = dy_1;
-        dx_2 = 0;
-    }
-
-    int numerator = longest >> 1;
-    OtbImageType::IndexType pixelIndex;
-    pixelIndex[0] = start[0];
-    pixelIndex[1] = start[1];
-
-    for(int i = 0; i < longest; i++) {
-        if(image->GetPixel(pixelIndex) == 0) {
-            first_hit[0] = pixelIndex[0];
-            first_hit[1] = pixelIndex[1];
-            return true;
-        }
-        numerator += shortest;
-        if(numerator >= longest) {
-            numerator -= longest;
-            pixelIndex[0] += dx_1;
-            pixelIndex[1] += dy_1;
-        } else {
-            pixelIndex[0] += dx_2;
-            pixelIndex[1] += dy_2;
-        }
-    }
-    return false;
-}
-
-bool RayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& first_hit) {
+// end  : end point for the ray segment
+bool BinaryImageRayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& first_hit) {
 
     int delta_x = end.x - start.x;
     int delta_y = end.y - start.y;
     int dx_1(0), dy_1(0), dx_2(0), dy_2(0);
 
-    if(delta_x < 0)
-        dx_1 = -1;
-    else if (delta_x > 0)
-        dx_1 = 1;
-    if(delta_y < 0)
-        dy_1 = -1;
-    else if (delta_y > 0)
-        dy_1 = 1;
+    if(delta_x < 0)         dx_1 = -1;
+    else if (delta_x > 0)   dx_1 = 1;
+    if(delta_y < 0)         dy_1 = -1;
+    else if (delta_y > 0)   dy_1 = 1;
     dx_2 = dx_1;
 
     // longest is the driving axis
@@ -254,6 +209,66 @@ bool RayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, cons
         }
     }
     return false;
+}
+
+// input    : gradient image
+// return   : maximim pixel value and corresponding pixel
+// start    : starting point for the ray segment
+// end      : end point for the ray segment
+OtbImageType::PixelType GradientImageRayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& hit) {
+
+    int delta_x = end.x - start.x;
+    int delta_y = end.y - start.y;
+    int dx_1(0), dy_1(0), dx_2(0), dy_2(0);
+
+    if(delta_x < 0)         dx_1 = -1;
+    else if (delta_x > 0)   dx_1 = 1;
+    if(delta_y < 0)         dy_1 = -1;
+    else if (delta_y > 0)   dy_1 = 1;
+    dx_2 = dx_1;
+
+    // longest is the driving axis
+    // shortest is the passive axis
+    int longest = std::abs(delta_x);
+    int shortest = std::abs(delta_y);
+
+    if(shortest > longest) {
+        std::swap(longest, shortest);
+        dy_2 = dy_1;
+        dx_2 = 0;
+    }
+
+    int numerator = longest >> 1;
+    OtbImageType::IndexType curr;
+    curr[0] = start.x;
+    curr[1] = start.y;
+
+    OtbImageType::PixelType max_val = 0;
+    OtbImageType::PixelType curr_val = 0;
+
+    for(int i = 0; i < longest; i++) {
+
+        curr_val = image->GetPixel(curr);
+        if(curr_val > max_val) {
+            curr_val = max_val;
+            hit.x = curr[0];
+            hit.y = curr[1];
+        }
+
+        numerator += shortest;
+        if(numerator >= longest) {
+            // increment/decrement passive and driving axis by 1
+            numerator -= longest;
+            curr[0] += dx_1;
+            curr[1] += dy_1;
+        } else {
+            // increment/decrement only driving axis
+            curr[0] += dx_2;
+            curr[1] += dy_2;
+        }
+    }
+
+    return max_val;
 }
 
 void GradientMagnitudeImage(OtbFloatVectorImageType::Pointer img, wxImage& gradImg) {

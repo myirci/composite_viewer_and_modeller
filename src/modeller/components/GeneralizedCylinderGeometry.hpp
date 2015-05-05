@@ -26,7 +26,6 @@ protected:
 public:
     GeneralizedCylinderGeometry(int num_points_per_section, const osg::Vec4& color);
     GeneralizedCylinderGeometry(const Circle3D& base_circle, int num_points_per_section, const osg::Vec4& color);
-
     void AddPlanarSection(const Circle3D& circle);
     void GetLastVertexNormals(osg::Geode* geode, const osg::Vec4& color);
     void ChangeRenderingType(rendering_type rtype);

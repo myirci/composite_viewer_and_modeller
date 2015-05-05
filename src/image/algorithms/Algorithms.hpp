@@ -22,8 +22,8 @@ typedef otb::VectorImage<PixelTypeFL,2>    OtbFloatVectorImageType;
 
 OtbImageType::Pointer RegionGrow(const wxImage& wxImg, const wxPoint& pt, int threshold);
 bool RegionGrowSegmentation(const wxImage& wxImg, wxImage& segImg, const wxPoint& pt, int threshold);
-bool RayCast(const OtbImageType::Pointer& image, const OtbImageType::IndexType& start, const OtbImageType::IndexType& end, OtbImageType::IndexType& first_hit);
-bool RayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& first_hit);
+bool BinaryImageRayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& first_hit);
+OtbImageType::PixelType GradientImageRayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& hit);
 void CopyToWxImageData(OtbImageType::Pointer image, unsigned char* data);
 void GradientMagnitudeImage(OtbFloatVectorImageType::Pointer img, wxImage& gradImg);
 OtbImageType::Pointer GradientMagnitudeImage(OtbFloatVectorImageType::Pointer image);
@@ -64,13 +64,16 @@ void SaveImage(typename ImType::Pointer image, const std::string& fpath) {
 
 
 template <typename ImType, typename Functor>
-void BresenhamLineAlgorithm(const typename ImType::Pointer image, typename ImType::IndexType start, typename ImType::IndexType end, Functor func) {
+void BresenhamLineAlgorithm(const typename ImType::Pointer image,
+                            typename ImType::IndexType start, typename ImType::IndexType end, Functor func) {
 
     int delta_x = end[0] - start[0];
     int delta_y = end[1] - start[1];
     int dx_1(0), dy_1(0), dx_2(0), dy_2(0);
-    if(delta_x < 0) dx_1 = -1; else if (delta_x > 0) dx_1 = 1;
-    if(delta_y < 0) dy_1 = -1; else if (delta_y > 0) dy_1 = 1;
+    if(delta_x < 0)         dx_1 = -1;
+    else if (delta_x > 0)   dx_1 = 1;
+    if(delta_y < 0)         dy_1 = -1;
+    else if (delta_y > 0)   dy_1 = 1;
     dx_2 = dx_1;
 
     int longest = std::abs(delta_x);  // longest is the driving axis

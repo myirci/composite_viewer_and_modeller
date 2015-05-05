@@ -41,10 +41,8 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Coordi
 
     std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
     std::ifstream infile(binary_img_path);
-    if(!infile.good()) {
-        std::cout << "INFO: No associated binary image file: " << std::endl;
-    }
-    else {
+    if(infile.good()) {
+        std::cout << "INFO: Binary image is loaded" << std::endl;
         otb::ImageFileReader<OtbImageType>::Pointer reader = otb::ImageFileReader<OtbImageType>::New();
         reader->SetFileName(binary_img_path);
         reader->Update();
@@ -52,6 +50,25 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Coordi
         m_bimg_exists = true;
         // binary image is ready for processing
         OtbImageType::SizeType size = m_bimage->GetLargestPossibleRegion().GetSize();
+        m_rect = std::unique_ptr<Rectangle2D>(new Rectangle2D(0, 0, size[0] - 1, size[1] - 1));
+    }
+    else {
+
+        std::cout << "INFO: No associated binary image file: " << std::endl;
+        std::string grad_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_grad"));
+        std::ifstream grad_file(grad_img_path);
+        if(grad_file.good()) {
+            m_gimage = LoadImage<OtbImageType>(grad_img_path);
+            std::cout << "INFO: Gradient image is loaded" << std::endl;
+        }
+        else {
+            OtbFloatVectorImageType::Pointer img = LoadImage<OtbFloatVectorImageType>(fpath.ToStdString());
+            m_gimage = GradientMagnitudeImage(img);
+            SaveImage<OtbImageType>(m_gimage, grad_img_path);
+            std::cout << "INFO: No gradient image! Gradient image is calculated and saved to the path: " << grad_img_path << std::endl;
+        }
+
+        OtbImageType::SizeType size = m_gimage->GetLargestPossibleRegion().GetSize();
         m_rect = std::unique_ptr<Rectangle2D>(new Rectangle2D(0, 0, size[0] - 1, size[1] - 1));
     }
 
@@ -262,6 +279,9 @@ void ImageModeller::model_update() {
                     // update_component_local_frame();
                     m_solver->AddComponent(m_gcyl.get());
                     Reset2DDrawingInterface();
+
+                    project_generalized_cylinder(*m_gcyl);
+
                 }
                 else if(m_left_click) {
                     // left click is a new spine point
@@ -423,13 +443,8 @@ void ImageModeller::initialize_spine_drawing_mode() {
     estimate_first_circle_under_persective_projection();
     // estimate_first_circle_under_orthographic_projection();
 
-    osg::Vec3d ctr(m_last_circle->center[0], m_last_circle->center[1], m_last_circle->center[2]);
-    osg::Vec2d ctr_proj;
-    project_point(ctr, ctr_proj);
-    std::vector<osg::Vec2d> pts;
-    pts.push_back(ctr_proj);
-    pts.push_back(osg::Vec2d(0,0));
-    m_uihelper->DisplayLineStrip(pts, osg::Vec4(0.5,0.7,0.9,1));
+    Ellipse2D elp;
+    project_circle(*m_last_circle, elp);
 
     m_gcyl = new GeneralizedCylinder(GenerateComponentId(), *m_last_circle);
     m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
@@ -531,7 +546,9 @@ void ImageModeller::generate_dynamic_profile() {
         m_dynamic_profile->translate(m_mouse - m_dynamic_profile->center);
     }
 
-    if(m_bimg_exists) ray_cast_for_profile_match();
+    if(m_bimg_exists) ray_cast_within_binary_image_for_profile_match();
+    else              ray_cast_within_gradient_image_for_profile_match();
+
 }
 
 int ImageModeller::estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius) {
@@ -614,19 +631,118 @@ size_t ImageModeller::select_parallel_circle(const Circle3D * const circles) {
     return std::abs(a) > std::abs(b) ? 0 : 1;
 }
 
-
-void ImageModeller::project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d) {
+void ImageModeller::project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d) const {
 
     osg::Vec4d pt4d(pt3d,1);
     const osg::Matrixd& Mproj = m_canvas->UsrGetMainCamera()->getProjectionMatrix();
-    osg::Vec4d pt_clip = pt4d * Mproj;
     osg::Matrixd Mvp = m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
-    osg::Vec4d pt_vp = pt_clip * Mvp;
+    osg::Vec4d pt_vp = pt4d * Mproj * Mvp;
     pt2d.x() = pt_vp.x() / pt_vp.w();
     pt2d.y() = pt_vp.y() / pt_vp.w();
 }
 
-void ImageModeller::ray_cast_for_profile_match() {
+void ImageModeller::project_points(const osg::Vec3dArray * const pt3darr, osg::Vec2dArray * const pt2darr) const {
+
+    osg::Matrixd M = m_canvas->UsrGetMainCamera()->getProjectionMatrix() *
+                     m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
+    osg::Vec4d pt4d;
+    for(auto it = pt3darr->begin(); it != pt3darr->end(); ++it) {
+        pt4d = osg::Vec4d(*it, 1) * M;
+        pt2darr->push_back(osg::Vec2d(pt4d.x()/pt4d.w(), pt4d.y()/pt4d.w()));
+    }
+}
+
+void ImageModeller::project_circle(const Circle3D& circle, Ellipse2D& ellipse) const {
+
+    osg::Matrixd M = m_canvas->UsrGetMainCamera()->getProjectionMatrix();
+    transpose(M,4);
+    Eigen::Matrix<double, 3, 4> Mprj;
+    for(size_t i = 0; i < 4; ++i) {
+        Mprj(0,i) = M(0,i);
+        Mprj(1,i) = M(1,i);
+        Mprj(2,i) = M(3,i);
+    }
+
+    Eigen::Matrix4d Qs;
+    circle.get_matrix_representation(Qs);
+    Eigen::Matrix3d dConic = Mprj * Qs * Mprj.transpose();
+
+    if(dConic.determinant() != 0) {
+        Eigen::Matrix3d conic = dConic.inverse();
+        conic /= conic(0,0);
+        ellipse.coeff[0] = conic(0,0);
+        ellipse.coeff[1] = 2*conic(0,1);
+        ellipse.coeff[2] = conic(1,1);
+        ellipse.coeff[3] = 2*conic(0,2);
+        ellipse.coeff[4] = 2*conic(1,2);
+        ellipse.coeff[5] = conic(2,2);
+        ellipse.calculate_parameters_from_coeffients();
+    }
+    else {
+        std::cout << "camera::project_camera_circle3d: dual conic is degenerate" << std::endl;
+    }
+
+    // Ellipse is in projected coordinatres. We need to convert it to the logical device coordinates
+    osg::Matrixd Mvp = m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
+
+    osg::Vec4d pt4d;
+    for(size_t i = 0; i < 4; ++i) {
+        pt4d = osg::Vec4d(ellipse.points[i].x(), ellipse.points[i].y(), -m_ppp->near, 1) * Mvp;
+        ellipse.points[i].x() = pt4d.x() / pt4d.w();
+        ellipse.points[i].y() = pt4d.y() / pt4d.w();
+    }
+
+    // calculate the remaining parameters and the coefficients
+    ellipse.center.x() = (ellipse.points[0].x() + ellipse.points[1].x())/2.0;
+    ellipse.center.y() = (ellipse.points[0].y() + ellipse.points[1].y())/2.0;
+    ellipse.smj_axis = (ellipse.points[0] - ellipse.center).length();
+    ellipse.smn_axis = (ellipse.points[2] - ellipse.center).length();
+    ellipse.calculate_coefficients_from_parameters();
+}
+
+void ImageModeller::project_generalized_cylinder(const GeneralizedCylinder& gcyl)  const {
+
+    std::vector<Ellipse2D> ellipses;
+    const std::vector<Circle3D>& circles =  gcyl.GetGeometry()->GetSections();
+    osg::ref_ptr<osg::Vec3dArray> main_axis = new osg::Vec3dArray;
+    Ellipse2D elp;
+    for(size_t i = 0; i < circles.size(); ++i) {
+        main_axis->push_back(osg::Vec3d(circles[i].center[0], circles[i].center[1], circles[i].center[2]));
+        project_circle(circles[i], elp);
+        ellipses.push_back(elp);
+    }
+
+    osg::ref_ptr<osg::Vec2dArray> main_axis_prj = new osg::Vec2dArray;
+    project_points(main_axis.get(), main_axis_prj.get());
+
+    osg::Vec2d left, right, dir;
+    std::vector<osg::Vec2d> left_silhouette;
+    std::vector<osg::Vec2d> right_silhouette;
+    for(int i = 0; i < main_axis_prj->size()-1; ++i) {
+        dir = main_axis_prj->at(i+1) - main_axis_prj->at(i);
+        ellipses[i].get_tangent_points(dir, left, right);
+        left_silhouette.push_back(left);
+        right_silhouette.push_back(right);
+    }
+    ellipses.back().get_tangent_points(dir,left, right);
+    left_silhouette.push_back(left);
+    right_silhouette.push_back(right);
+
+
+    // displat the silhouettes
+    m_uihelper->DisplayLineStrip(left_silhouette, osg::Vec4(0,1,0,1));
+    m_uihelper->DisplayLineStrip(right_silhouette, osg::Vec4(0,0,1,1));
+
+    // display feature curves
+    std::vector<osg::Vec2d> elp_pts;
+    for(int i = 0; i < ellipses.size(); ++ i) {
+        ellipses[i].generate_points_on_the_ellipse(elp_pts, 40);
+        m_uihelper->DisplayLineLoop(elp_pts, osg::Vec4(0.1,0.1,0.1,1));
+    }
+
+}
+
+void ImageModeller::ray_cast_within_binary_image_for_profile_match() {
 
     // 1) transform the point coordinates to pixel coordinates
     Point2D<int> p0(static_cast<int>(m_dynamic_profile->points[0].x()), static_cast<int>(m_dynamic_profile->points[0].y()));
@@ -634,7 +750,7 @@ void ImageModeller::ray_cast_for_profile_match() {
     m_canvas->UsrTransformCoordinates(p0);
     m_canvas->UsrTransformCoordinates(p1);
 
-    // 2) calculate the RayCast direction vector,the change in major-axis length is limited by a factor
+    // 2) calculate the casting direction vector,the change in major-axis length is limited by a factor
     Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
 
     // 3) perform ray casts and display shot rays variables for ray casting
@@ -643,19 +759,19 @@ void ImageModeller::ray_cast_for_profile_match() {
 
     // 3.1) ray cast from p0-center direction
     Point2D<int> end = p0 + dir_vec;
-    if(m_rect->intersect(p0, end)) hit_result[0] = RayCast(m_bimage, p0, end, hit[0]);
+    if(m_rect->intersect(p0, end)) hit_result[0] = BinaryImageRayCast(m_bimage, p0, end, hit[0]);
 
     // 3.2) ray cast from p0-outside direction
     end = p0 - dir_vec;
-    if(m_rect->intersect(p0, end)) hit_result[1] = RayCast(m_bimage, p0, end, hit[1]);
+    if(m_rect->intersect(p0, end)) hit_result[1] = BinaryImageRayCast(m_bimage, p0, end, hit[1]);
 
     // 3.3) ray cast from p1-center direction
     end = p1 - dir_vec;
-    if(m_rect->intersect(p1, end)) hit_result[2] = RayCast(m_bimage, p1, end, hit[2]);
+    if(m_rect->intersect(p1, end)) hit_result[2] = BinaryImageRayCast(m_bimage, p1, end, hit[2]);
 
     // 3.4) ray cast from p1-outside direction
     end = p1 + dir_vec;
-    if(m_rect->intersect(p1, end)) hit_result[3] = RayCast(m_bimage, p1, end, hit[3]);
+    if(m_rect->intersect(p1, end)) hit_result[3] = BinaryImageRayCast(m_bimage, p1, end, hit[3]);
 
     // 5) analyze the result of the ray casts
     Point2D<int> p0_hit = p0;
@@ -708,6 +824,144 @@ void ImageModeller::ray_cast_for_profile_match() {
     m_dynamic_profile->smj_axis = smj_new;
 }
 
+void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
+
+    // 1) transform the point coordinates to pixel coordinates
+    Point2D<int> p0(static_cast<int>(m_dynamic_profile->points[0].x()), static_cast<int>(m_dynamic_profile->points[0].y()));
+    Point2D<int> p1(static_cast<int>(m_dynamic_profile->points[1].x()), static_cast<int>(m_dynamic_profile->points[1].y()));
+    m_canvas->UsrTransformCoordinates(p0);
+    m_canvas->UsrTransformCoordinates(p1);
+
+    // 2) calculate the casting direction vector, the change in major-axis length is limited by a factor
+    Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
+
+    // 3) perform ray casts and display shot rays variables for ray casting
+    OtbImageType::PixelType hit_val[4];
+    Point2D<int> hit_idx[4];
+
+    // 3.1) ray cast from p0-center direction
+    Point2D<int> end = p0 + dir_vec;
+    if(m_rect->intersect(p0, end)) hit_val[0] = GradientImageRayCast(m_gimage, p0, end, hit_idx[0]);
+
+    // 3.2) ray cast from p0-outside direction
+    end = p0 - dir_vec;
+    if(m_rect->intersect(p0, end)) hit_val[1] = GradientImageRayCast(m_gimage, p0, end, hit_idx[1]);
+
+    // 3.3) ray cast from p1-center direction
+    end = p1 - dir_vec;
+    if(m_rect->intersect(p1, end)) hit_val[2] = GradientImageRayCast(m_gimage, p1, end, hit_idx[2]);
+
+    // 3.4) ray cast from p1-outside direction
+    end = p1 + dir_vec;
+    if(m_rect->intersect(p1, end)) hit_val[3] = GradientImageRayCast(m_gimage, p1, end, hit_idx[3]);
+
+    osg::Vec2d aa(p0.x + dir_vec.x, p0.y + dir_vec.y);
+    m_canvas->UsrLogicalToDevice(aa);
+    osg::Vec2d bb(p0.x - dir_vec.x, p0.y - dir_vec.y);
+    m_canvas->UsrLogicalToDevice(bb);
+    osg::Vec2d cc(p1.x - dir_vec.x, p1.y - dir_vec.y);
+    m_canvas->UsrLogicalToDevice(cc);
+    osg::Vec2d dd(p1.x + dir_vec.x, p1.y + dir_vec.y);
+    m_canvas->UsrLogicalToDevice(dd);
+    m_uihelper->DisplayRayCastLines(aa, bb, cc, dd);
+    m_uihelper->EnableRayCastDisplay();
+
+    // 5) analyze the result of the ray casts
+    OtbImageType::IndexType p0Idx, p1Idx;
+    p0Idx[0] = p0.x;
+    p0Idx[1] = p0.y;
+    OtbImageType::PixelType p0val = m_gimage->GetPixel(p0Idx);
+    p1Idx[0] = p1.x;
+    p1Idx[1] = p1.y;
+    OtbImageType::PixelType p1val = m_gimage->GetPixel(p1Idx);
+
+    std::cout << "p0val: " << (int)p0val << std::endl;
+    std::cout << "p1val: " << (int)p1val << std::endl;
+    std::cout << "p0_hit1: " <<(int)hit_val[0] << std::endl;
+    std::cout << "p0_hit1: " <<(int)hit_val[1] << std::endl;
+    std::cout << "p1_hit1: " <<(int)hit_val[2] << std::endl;
+    std::cout << "p1_hit2: " <<(int)hit_val[3] << std::endl;
+
+    bool p0_updated = false;
+    Point2D<int> p0_hit = p0;
+    if(hit_val[0] >= p0val && hit_val[1] >= p0val) {
+        std::cout << "p0 hit in both directions" << std::endl;
+        p0_hit = p0;
+    }
+    else if(hit_val[0] >= p0val) {
+        std::cout << "p0 hits to center-in direction" << std::endl;
+        p0_hit = hit_idx[0];
+        p0_updated = true;
+    }
+    else if(hit_val[1] >= p0val) {
+        std::cout << "p0 hits to center-out direction" << std::endl;
+        p0_hit = hit_idx[1];
+        p0_updated = true;
+    }
+    else {
+        std::cout << "p0 no-hit" << std::endl;
+    }
+    m_canvas->UsrTransformCoordinates(p0_hit);
+
+    bool p1_updated = false;
+    Point2D<int> p1_hit = p1;
+    if(hit_val[2] >= p1val && hit_val[3] >= p1val) {
+        std::cout << "p1 hit in both directions" << std::endl;
+        p1_hit = p1;
+    }
+    else if(hit_val[2] >= p1val) {
+        std::cout << "p1 hits to center-in direction" << std::endl;
+        p1_hit = hit_idx[2];
+        p1_updated = true;
+    }
+    else if(hit_val[3] >= p1val) {
+        std::cout << "p1 hits to center-out direction" << std::endl;
+        p1_hit = hit_idx[3];
+        p1_updated = true;
+    }
+    else {
+        std::cout << "p1 no-hit" << std::endl;
+    }
+
+    std::cout << "-------------------------------------" << std::endl;
+
+    m_canvas->UsrTransformCoordinates(p1_hit);
+
+    // if p0 and p1 hits
+    if(p0_updated && p1_updated) {
+        // update p0, p1 and center, semi-major and semi-minor
+        m_dynamic_profile->points[0] = osg::Vec2d(p0_hit.x, p0_hit.y);
+        m_dynamic_profile->points[1] = osg::Vec2d(p1_hit.x, p1_hit.y);
+        m_dynamic_profile->center = (m_dynamic_profile->points[0] + m_dynamic_profile->points[1]) / 2.0;
+    }
+    // only p0_hits
+    else if(p0_updated) {
+        // the second point is the mirror of the hit_point
+        osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+        m_dynamic_profile->points[1] = m_dynamic_profile->points[1] + (m_dynamic_profile->points[0] - new_p0);
+        m_dynamic_profile->points[0] = new_p0;
+    }
+    // only p1_hits
+    else if(p1_updated) {
+        // the second point is the mirror of the hit_point
+        osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
+        m_dynamic_profile->points[0] = m_dynamic_profile->points[0] + (m_dynamic_profile->points[1] - new_p1);
+        m_dynamic_profile->points[1] = new_p1;
+    }
+    // not hits
+    else {
+        return;
+    }
+
+    osg::Vec2d vec_mn(p0_hit.y - p1_hit.y, p1_hit.x - p0_hit.x);
+    vec_mn.normalize();
+    double smj_new = (m_dynamic_profile->points[0] - m_dynamic_profile->center).length();
+    m_dynamic_profile->smn_axis *= (smj_new / m_dynamic_profile->smj_axis);
+    m_dynamic_profile->points[2] = m_dynamic_profile->center - vec_mn * m_dynamic_profile->smn_axis;
+    m_dynamic_profile->points[3] = m_dynamic_profile->center + vec_mn * m_dynamic_profile->smn_axis;
+    m_dynamic_profile->smj_axis = smj_new;
+
+}
 
 void ImageModeller::constrain_mouse_point() {
 

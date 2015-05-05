@@ -110,6 +110,12 @@ void OsgWxGLCanvas::UsrLogicalToDevice(wxPoint& p) const {
     p.y = size.GetHeight() - p.y - 1;
 }
 
+void OsgWxGLCanvas::UsrLogicalToDevice(osg::Vec2d& p) const {
+
+    wxSize size = m_parent->GetClientSize();
+    p.y() = size.GetHeight() - p.y() - 1;
+}
+
 void OsgWxGLCanvas::UsrTransformCoordinates(Point2D<int>& pt) const {
 
     // DeviceToLogical and LogicalToDevice tranformation is same in both ways

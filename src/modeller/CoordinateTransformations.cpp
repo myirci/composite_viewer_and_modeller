@@ -68,10 +68,6 @@ void CoordinateTransformations::convert_from_logical_device_coordinates_to_proje
 
 void CoordinateTransformations::convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(const Ellipse2D& elp_dev, Ellipse2D& elp_prj) {
 
-    // if coefficient array has not been defined before, allocate memory
-    if(elp_prj.coeff == nullptr)
-        elp_prj.coeff = new double[6];
-
     // rot angle (angle between the major axis and the positive x-axis) does not change
     elp_prj.rot_angle = elp_dev.rot_angle;
 
@@ -110,7 +106,6 @@ void CoordinateTransformations::construct_viewport_mapping_matrix(osg::Matrixd& 
     vp_mat(2,2) = (fVal - nVal) / 2.0;
     vp_mat(2,3) = (fVal + nVal) / 2.0;
 }
-
 
 std::ostream& operator<<(std::ostream& out, const CoordinateTransformations& ppp) {
 

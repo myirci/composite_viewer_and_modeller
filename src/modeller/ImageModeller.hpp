@@ -115,7 +115,8 @@ private:
     void model_update();
     void calculate_ellipse();
     void generate_dynamic_profile();
-    void ray_cast_for_profile_match();
+    void ray_cast_within_binary_image_for_profile_match();     // based on binary images
+    void ray_cast_within_gradient_image_for_profile_match();   // based on gradient
     void initialize_spine_drawing_mode();
     void constrain_mouse_point();
 
@@ -143,7 +144,13 @@ private:
     inline size_t select_parallel_circle(const Circle3D* const circles);
 
     // projection functions
-    void project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d);
+    void project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d) const;
+    void project_points(const osg::Vec3dArray * const pt3darr, osg::Vec2dArray* const pt2darr) const;
+    void project_circle(const Circle3D& circle, Ellipse2D& ellipse) const;
+    void project_generalized_cylinder(const GeneralizedCylinder& gcyl) const;
+
+    // projection error calculators
+
 
     // inline void constrain_spine_point_in_piecewise_linear_mode();
     // inline void constrain_spine_point_in_continuous_mode();
