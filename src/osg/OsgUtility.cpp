@@ -113,7 +113,7 @@ void calculate_transformation_matrix(const Circle3D& circle1, const Circle3D& ci
     // 3) rotation
     Eigen::Vector3d rot_axis = circle1.normal.cross(circle2.normal);
     osg::Matrixd mat_rotate = osg::Matrixd::rotate(acos(circle1.normal.dot(circle2.normal)), rot_axis[0], rot_axis[1], rot_axis[2]);
-    transpose(mat_rotate); // since osg uses row vector format
+    transpose(mat_rotate, 4); // since osg uses row vector format
 
     // 4) translate to the position of the circle-2
     osg::Matrixd mat_trans = osg::Matrixd::identity();
@@ -129,38 +129,57 @@ double squared_distance(const osg::Vec3d& pt1, const osg::Vec3d& pt2) {
     return (pt2 - pt1).length2();
 }
 
-void transpose(const osg::Matrixd& mat, osg::Matrixd& mat_transposed) {
+void print_camera_calibration_matrix(const osg::Camera * const cam) {
 
-    for(int i = 0; i < 4; ++i)
-        for(int j = 0; j < 4; ++j)
-            mat_transposed(i,j) = mat(j,i);
+    std::cout << "Camera calibration matrix when column vector format is used:" << std::endl;
+    osg::Matrixd mat = cam->getProjectionMatrix();
+    transpose(mat, 4);
+    osg::Matrix3d mat_calib;
+    for(size_t i = 0; i < 3; ++i)
+        for(size_t j = 0; j < 3; ++j)
+            mat_calib(i,j) = mat(i,j);
+    print_matrix(mat_calib, 3, 3);
 }
 
-void transpose(osg::Matrixd& mat) {
+void print_3x4_camera_projection_matrix(const osg::Camera * const cam) {
 
-    osg::Matrixd mat_ori = mat;
-    transpose(mat_ori, mat);
+    std::cout << "3x4 camera  projection matrix when column vector format is used:" << std::endl;
+    osg::Matrixd mat = cam->getProjectionMatrix();
+    transpose(mat, 4);
+    osg::Matrix3x4d mat_proj;
+    for(size_t i = 0; i < 2; ++i)
+        for(size_t j = 0; j < 4; ++j)
+            mat_proj(i,j) = mat(i,j);
+    for(size_t j = 0; j < 4; ++j)
+        mat_proj(2,j) = mat(3,j);
+    print_matrix(mat_proj, 4, 3);
 }
 
-void print_projection_matrix(osg::Camera* cam) {
+void print_camera_projection_matrix(const osg::Camera* const cam) {
 
     std::cout << "Projection matrix when column vector format is used:" << std::endl;
-    print_transposed_osg_matrix(cam->getProjectionMatrix());
+    osg::Matrixd mat_transposed;
+    transpose(cam->getProjectionMatrix(), mat_transposed, 4);
+    print_matrix(mat_transposed, 4, 4);
 }
 
-void print_modelview_matrix(osg::Camera* cam) {
+void print_camera_modelview_matrix(const osg::Camera* const cam) {
 
     std::cout << "Model-view matrix when column vector format is used:" << std::endl;
-    print_transposed_osg_matrix(cam->getViewMatrix());
+    osg::Matrixd mat_transposed;
+    transpose(cam->getViewMatrix(), mat_transposed, 4);
+    print_matrix(mat_transposed, 4, 4);
 }
 
-void print_window_matrix(osg::Camera *cam) {
+void print_camera_viewport_mapping_matrix(const osg::Camera * const cam) {
 
     std::cout << "viewport mapping matrix when column vector format is used:" << std::endl;
-    print_transposed_osg_matrix(cam->getViewport()->computeWindowMatrix());
+    osg::Matrixd mat_transposed;
+    transpose(cam->getViewport()->computeWindowMatrix(), mat_transposed, 4);
+    print_matrix(mat_transposed, 4, 4);
 }
 
-void print_frustrum(osg::Camera* cam) {
+void print_camera_frustrum(const osg::Camera* const cam) {
 
     osg::Matrixd mat = cam->getProjectionMatrix();
     double left, right, bottom, top, near, far;
@@ -180,29 +199,21 @@ void print_frustrum(osg::Camera* cam) {
     }
 }
 
+void print_camera_orientation(const osg::Camera * const cam) {
+
+    std::cout << "Camera orientation: " << std::endl;
+    osg::Vec3d eye, center, up;
+    cam->getViewMatrixAsLookAt(eye, center, up);
+    std::cout << "eye: " << eye.x() << " " << eye.y() << " " << eye.z() << std::endl;
+    std::cout << "center: " << center.x() << " " << center.y() << " " << center.z() << std::endl;
+    std::cout << "up: " << up.x() << " " << up.y() << " " << up.z() << std::endl;
+}
 
 void print_camera_manipulator_matrix(osgGA::CameraManipulator* manipulator) {
 
     std::cout << "Camera manipulator matrix: " << std::endl;
-    print_transposed_osg_matrix(manipulator->getMatrix());
-}
-
-void print_transposed_osg_matrix(const osg::Matrixd& mat) {
-
     osg::Matrixd mat_transposed;
-    transpose(mat, mat_transposed);
-    for(int i = 0; i < 4; ++i) {
-        for(int j = 0; j < 4; ++j)
-            std::cout << mat_transposed(i, j) << "\t";
-        std::cout << std::endl;
-    }
+    transpose(manipulator->getMatrix(), mat_transposed, 4);
+    print_matrix(mat_transposed, 4, 4);
 }
 
-void print_osg_matrix(const osg::Matrixd &mat, std::ostream& out) {
-
-    for(int i = 0; i < 4; ++i) {
-        for(int j = 0; j < 4; ++j)
-            out << mat(i, j) << "\t";
-        out << std::endl;
-    }
-}

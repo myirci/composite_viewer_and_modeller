@@ -17,6 +17,7 @@ public:
     void SetSectionNormalsColor(const osg::Vec4& color);
     void SetVertexNormalsColor(const osg::Vec4& color);
     void Update();
+    const GeneralizedCylinderGeometry* const GetGeometry() const { return m_geometry.get(); }
 protected:
     osg::ref_ptr<GeneralizedCylinderGeometry> m_geometry;
     osg::ref_ptr<osg::Switch> m_snormals;

@@ -881,18 +881,24 @@ void OsgWxFrame::OnSolveModel(wxCommandEvent& event) {
 void OsgWxFrame::OnPrintProjectionMatrix(wxCommandEvent& event) {
 
     std::cout << "*********************************" << std::endl;
-    print_projection_matrix(m_viewer->getCamera());
+    print_camera_projection_matrix(m_viewer->getCamera());
     std::cout << "---------------------------------" << std::endl;
-    print_frustrum(m_viewer->getCamera());
+    print_camera_frustrum(m_viewer->getCamera());
     std::cout << "---------------------------------" << std::endl;
-    print_modelview_matrix(m_viewer->getCamera());
+    print_camera_modelview_matrix(m_viewer->getCamera());
     std::cout << "---------------------------------" << std::endl;
-    print_window_matrix(m_viewer->getCamera());
+    print_camera_viewport_mapping_matrix(m_viewer->getCamera());
+    std::cout << "---------------------------------" << std::endl;
+    print_camera_orientation(m_viewer->getCamera());
+    std::cout << "---------------------------------" << std::endl;
+    print_camera_calibration_matrix(m_viewer->getCamera());
+    std::cout << "---------------------------------" << std::endl;
+    print_3x4_camera_projection_matrix(m_viewer->getCamera());
     std::cout << "---------------------------------" << std::endl;
     osg::Matrixd mat_vpm;
     std::cout << "constructed viewport mapping matrix:" << std::endl;
     m_ppp->construct_viewport_mapping_matrix(mat_vpm);
-    print_osg_matrix(mat_vpm, std::cout);
+    print_matrix(mat_vpm, 4, 4);
     std::cout << "---------------------------------" << std::endl;
     std::cout << "perspective projection parameters:" << std::endl;
     std::cout << *m_ppp << std::endl;

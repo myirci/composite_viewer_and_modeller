@@ -11,6 +11,7 @@ UIHelper::UIHelper(osg::Geode* geode) : m_geode(geode), m_sweepline_vertices(nul
     m_geode->addDrawable(initialize_sweepline_display());
     m_geode->addDrawable(initialize_base_ellipse_display());
     m_geode->addDrawable(initialize_spine_display());
+    m_geode->addDrawable(initialize_ray_cast_display());
 
     // for smooth lines
     m_geode->getOrCreateStateSet()->setMode(GL_LINE_SMOOTH, osg::StateAttribute::ON);
@@ -109,6 +110,43 @@ osg::Geometry* UIHelper::initialize_spine_display() {
     return geom.release();
 }
 
+osg::Geometry* UIHelper::initialize_ray_cast_display() {
+
+    // for ray cast display
+    // 2 for rays shot from p0
+    // 2 for rays shot from p1
+    // 10 for p0 center-in hit
+    // 10 for p0 center-out hit
+    // 10 for p1 center-in hit
+    // 10 for p1 center-out hit
+
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
+    geom->setUseDisplayList(false);
+    geom->setUseVertexBufferObjects(true);
+    geom->setDataVariance(osg::Object::DYNAMIC);
+
+    m_ray_cast_vertices = new osg::Vec2dArray(44);
+    geom->setVertexArray(m_ray_cast_vertices);
+    for(int i = 0; i < 2; ++i) {
+        m_ray_cast_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
+        geom->addPrimitiveSet(m_ray_cast_arrays.back());
+    }
+    for(int i = 0; i < 4; ++i) {
+        m_ray_cast_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
+        geom->addPrimitiveSet(m_ray_cast_arrays.back());
+    }
+
+    osg::Vec4Array* colors = new osg::Vec4Array;
+    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f)); // Red
+    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f)); // Red
+    colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
+    colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
+    colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
+    colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
+    geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
+    return geom.release();
+}
+
 void UIHelper::Reset() {
 
     for(auto it = m_sweepline_arrays.begin(); it != m_sweepline_arrays.end(); ++it)
@@ -119,6 +157,11 @@ void UIHelper::Reset() {
         (*it)->setCount(0);
     m_base_elp_vertices->dirty();
 
+    for(auto it = m_ray_cast_arrays.begin(); it != m_base_elp_arrays.end(); ++it)
+        (*it)->setCount(0);
+    m_ray_cast_vertices->dirty();
+
+    /*
     for(auto it = m_proj_arrays.begin(); it != m_proj_arrays.end(); ++it)
         (*it)->setCount(0);
 
@@ -126,6 +169,7 @@ void UIHelper::Reset() {
         (*it)->clear();
         (*it)->dirty();
     }
+    */
 
     m_spine_array->setCount(0);
     m_spine_vertices->clear();
@@ -318,7 +362,25 @@ void UIHelper::DisplayLineLoop(const std::vector<osg::Vec2d>& pts, const osg::Ve
     vertices->dirty();
 }
 
+void UIHelper::EnableRayCastDisplay() {
 
+    m_ray_cast_arrays[0]->setFirst(0);
+    m_ray_cast_arrays[0]->setCount(2);
+    m_ray_cast_arrays[1]->setFirst(2);
+    m_ray_cast_arrays[1]->setCount(2);
+}
+
+void UIHelper::DisplayRayCastLines(const osg::Vec2d& p0_1, const osg::Vec2d& p0_2, const osg::Vec2d& p1_1, const osg::Vec2d& p1_2) {
+
+    m_ray_cast_vertices->at(0) = p0_1;
+    m_ray_cast_vertices->at(1) = p0_2;
+    m_ray_cast_vertices->at(2) = p1_1;
+    m_ray_cast_vertices->at(3) = p1_2;
+}
+
+void UIHelper::DisplayRayCastResults() {
+
+}
 
 
 

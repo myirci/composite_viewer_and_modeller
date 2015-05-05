@@ -6,15 +6,17 @@
 #include "../utility/Utility.hpp"
 #include "../osg/OsgUtility.hpp"
 
-#include <osg/Vec3d>
+#include <osg/Vec3>
 
 Circle3D::Circle3D(const Circle3D& rhs) {
+
     this->center = rhs.center;
     this->normal = rhs.normal;
     this->radius = rhs.radius;
 }
 
 Circle3D& Circle3D::operator =(const Circle3D& rhs) {
+
     if(this != &rhs) {
         this->center = rhs.center;
         this->normal = rhs.normal;
@@ -23,11 +25,28 @@ Circle3D& Circle3D::operator =(const Circle3D& rhs) {
     return *this;
 }
 
+void Circle3D::get_matrix_representation(Eigen::Matrix4d& mat) const {
+
+    Eigen::Matrix3d Nx3;
+    Eigen::Vector3d N = normal * radius; // scaled normal
+    Nx3 << 0, -N.z(), N.y(),
+          N.z(), 0, -N.x(),
+          -N.y(), N.x(), 0;
+    Eigen::Matrix3d Nx3_sq = Nx3 * Nx3;
+    Eigen::Matrix4d Nx4;
+    Nx4.block(0,0,3,3) << Nx3_sq;
+    Nx4.col(3) << 0,0,0,0;
+    Nx4.row(3) << 0,0,0,0;
+    Eigen::Vector4d C4;
+    C4 << center.x(), center.y(), center.z(), 1;
+    mat = Nx4 + C4*C4.transpose();
+}
+
 void Circle3D::generate_data(osg::ref_ptr<osg::Vec3Array>& vertices, osg::ref_ptr<osg::Vec3Array>& normals, int num_points, bool random) const {
 
     Eigen::Vector3d e1, e2;
     if(random) find_random_orthonomal_basis(e1, e2);
-    else find_orthonomal_basis(e1, e2);
+    else       find_orthonomal_basis(e1, e2);
 
     // Construct the data points for the given planar section
     const double step = TWO_PI/static_cast<double>(num_points);
@@ -88,9 +107,7 @@ void Circle3D::find_random_orthonomal_basis(Eigen::Vector3d& e1, Eigen::Vector3d
     // in the plane of the section and 1 vector along the direction of the normal
     RandomNumberGenerator gen;
     gen.initialize_uniform_double_distributor(-2.0, 2.0);
-    Eigen::Vector3d random_vec(gen.generate_double(),
-                               gen.generate_double(),
-                               gen.generate_double());
+    Eigen::Vector3d random_vec(gen.generate_double(), gen.generate_double(), gen.generate_double());
     e1 = normal.cross(random_vec);
     e1.normalize();
     e2 = normal.cross(e1);

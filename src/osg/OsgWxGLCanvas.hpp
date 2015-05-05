@@ -33,6 +33,7 @@ public:
     void UsrAddToBackgroundDisplay(osg::Geometry* geom);
     void UsrTransformCoordinates(Point2D<int>& pt) const;
     void UsrLogicalToDevice(wxPoint& p) const;
+    void UsrLogicalToDevice(osg::Vec2d& p) const;
     void UsrSaveModel(const wxString& path) const;
     void UsrLogErrorMessage(const std::string& str) const;
     void UsrSetRenderingType(rendering_type rtype);
