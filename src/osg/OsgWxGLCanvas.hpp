@@ -9,12 +9,13 @@
 
 class OsgWxFrame;
 class ImageModeller;
-class CoordinateTransformations;
+class ProjectionParameters;
 class OsgSelectionHandler;
 
 template <typename T> class Point2D;
 
 class OsgWxGLCanvas : public wxGLCanvas {
+
 private:
     osg::ref_ptr<osgViewer::GraphicsWindow> m_graphics_window;
     wxGLContext* m_context;
@@ -22,18 +23,22 @@ private:
     OsgWxFrame* m_parent;
     ImageModeller* m_modeller;
     std::unique_ptr<OsgSelectionHandler> m_selection_handler;
+
 public:
+
     OsgWxGLCanvas(wxWindow* parent, wxWindowID id = wxID_ANY, int* attributes = 0, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0, const wxString& name = wxT("wxOsgGLCanvas"));
     virtual ~OsgWxGLCanvas();
     void UsrSetGraphicsWindow(osgViewer::GraphicsWindow *gw) { m_graphics_window = gw; }
     void UsrUseCursor(bool value);
     void UsrMakeContextCurrent();
-    void UsrInitializeModeller(const std::shared_ptr<CoordinateTransformations>& ppp, const wxString& fpath);
+    void UsrInitializeModeller(const std::shared_ptr<ProjectionParameters>& pp, const wxString& fpath);
     void UsrAddSelectableNodeToDisplay(osg::Node* node, unsigned int component_id);
     void UsrAddToBackgroundDisplay(osg::Geometry* geom);
-    void UsrTransformCoordinates(Point2D<int>& pt) const;
-    void UsrLogicalToDevice(wxPoint& p) const;
-    void UsrLogicalToDevice(osg::Vec2d& p) const;
+
+    void UsrDeviceToLogical(Point2D<int>& pt) const;
+    void UsrDeviceToLogical(wxPoint& p) const;
+    void UsrDeviceToLogical(osg::Vec2d& p) const;
+
     void UsrSaveModel(const wxString& path) const;
     void UsrLogErrorMessage(const std::string& str) const;
     void UsrSetRenderingType(rendering_type rtype);
@@ -42,7 +47,7 @@ public:
     const osg::Camera* const UsrGetMainCamera() const;
 
 private:
-    // Private member functions
+
     inline wxPoint usrDeviceToLogical(const wxPoint& p) const;
 
     // Event handlers

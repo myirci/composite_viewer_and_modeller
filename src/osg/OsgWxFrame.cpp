@@ -9,7 +9,7 @@
 #include "../wx/WxUtility.hpp"
 #include "../wx/WxGuiId.hpp"
 #include "../modeller/ImageModeller.hpp"
-#include "../modeller/CoordinateTransformations.hpp"
+#include "../modeller/ProjectionParameters.hpp"
 #include "../modeller/gui/ComponentRelationsDialog.hpp"
 #include "../modeller/optimization/ModelSolver.hpp"
 
@@ -66,6 +66,7 @@ EVT_MENU(wxID_VIEW_DISPLAY_VERTEX_NORMALS, OsgWxFrame::OnDisplayVertexNormals)
 EVT_MENU(wxID_VIEW_DISPLAY_SECTION_NORMALS, OsgWxFrame::OnDisplaySectionNormals)
 EVT_MENU(wxID_VIEW_DISPLAY_IMAGE, OsgWxFrame::OnToggleImageDisplay)
 EVT_MENU(wxID_VIEW_DISPLAY_GRADIENT_IMAGE, OsgWxFrame::OnToggleImageDisplay)
+EVT_MENU(wxID_VIEW_DISPLAY_RAY_CAST, OsgWxFrame::OnEnableRayCastDisplay)
 EVT_MENU(wxID_WINDOWS_COMPONENT_RELATIONS, OsgWxFrame::OnDisplayComponentRelationsDialog)
 EVT_MENU(wxID_MODES_OPERATION_MODE_DISPLAY, OsgWxFrame::OnToggleUIOperationMode)
 EVT_MENU(wxID_MODES_OPERATION_MODE_MODELLING, OsgWxFrame::OnToggleUIOperationMode)
@@ -75,7 +76,7 @@ OsgWxFrame::OsgWxFrame(wxWindow* parent, const wxPoint& pos, const wxSize& size,
     wxFrame(parent, wxID_ANY, wxEmptyString, pos, size, wxDEFAULT_FRAME_STYLE, wxEmptyString),
     m_render_mode(osg::PolygonMode::FILL), m_render_face(osg::PolygonMode::FRONT_AND_BACK),
     m_uiopmode(md), m_component_relations_win(new ComponentRelationsDialog(this, wxT("Component Relations"))),
-    m_ppp(nullptr), m_bgcam(nullptr), m_bgeode(nullptr), m_model(nullptr), m_world_frame(nullptr), m_id(-1),
+    m_pp(nullptr), m_bgcam(nullptr), m_bgeode(nullptr), m_model(nullptr), m_world_frame(nullptr), m_id(-1),
     m_imgdisp_mode(background_image_display_mode::image){
 
     m_parent = dynamic_cast<MainFrame*>(parent);
@@ -309,15 +310,17 @@ void OsgWxFrame::usrInitMenubar() {
     edit->Append(wxID_EDIT_CLEAR_VIEW, wxT("Clear Models"));
     menubar->Append(edit, wxT("&Edit"));
 
-    wxMenu* view = new wxMenu;
-    view->AppendCheckItem(wxID_VIEW_DISPLAY_COORDINATE_FRAME, wxT("Display World Coordinate Frame"));
-    view->AppendCheckItem(wxID_VIEW_DISPLAY_LOCAL_FRAMES, wxT("Display Local Frames"));
-    view->AppendCheckItem(wxID_VIEW_DISPLAY_SECTION_NORMALS, wxT("Display Section Normals"));
-    view->AppendCheckItem(wxID_VIEW_DISPLAY_VERTEX_NORMALS, wxT("Display Vertex Normals"));
-    view->AppendSeparator();
-    view->AppendRadioItem(wxID_VIEW_DISPLAY_IMAGE, wxT("Image"));
-    view->AppendRadioItem(wxID_VIEW_DISPLAY_GRADIENT_IMAGE, wxT("Gradient Image"));
-    menubar->Append(view, wxT("&View"));
+    wxMenu* disp = new wxMenu;
+    disp->AppendCheckItem(wxID_VIEW_DISPLAY_COORDINATE_FRAME, wxT("Display World Coordinate Frame"));
+    disp->AppendCheckItem(wxID_VIEW_DISPLAY_LOCAL_FRAMES, wxT("Display Local Frames"));
+    disp->AppendCheckItem(wxID_VIEW_DISPLAY_SECTION_NORMALS, wxT("Display Section Normals"));
+    disp->AppendCheckItem(wxID_VIEW_DISPLAY_VERTEX_NORMALS, wxT("Display Vertex Normals"));
+    disp->AppendSeparator();
+    disp->AppendCheckItem(wxID_VIEW_DISPLAY_RAY_CAST, wxT("Enable Ray Cast Display"));
+    disp->AppendSeparator();
+    disp->AppendRadioItem(wxID_VIEW_DISPLAY_IMAGE, wxT("Image"));
+    disp->AppendRadioItem(wxID_VIEW_DISPLAY_GRADIENT_IMAGE, wxT("Gradient Image"));
+    menubar->Append(disp, wxT("&Display"));
 
     wxMenu* modes = new wxMenu;
     wxMenu* render_mode = new wxMenu;
@@ -480,17 +483,17 @@ bool OsgWxFrame::usrLoadImageFile(const wxString& fpath) {
     SetClientSize(img_size);
 
     // perspective projection parameters of the main camera
-    m_ppp = std::shared_ptr<CoordinateTransformations>(new CoordinateTransformations(45.0, img_size.x, img_size.y, 1.0, 100.0));
+    m_pp = std::shared_ptr<ProjectionParameters>(new ProjectionParameters(45.0, img_size.x, img_size.y, 1.0, 100.0));
 
     // set the properties of the main camera
 
     m_viewer->getCamera()->setViewport(0, 0, img_size.x, img_size.y);
     m_viewer->getCamera()->setComputeNearFarMode(osg::Camera::DO_NOT_COMPUTE_NEAR_FAR);
     m_viewer->getCamera()->setViewMatrix(osg::Matrixd::identity());
-    m_viewer->getCamera()->setProjectionMatrixAsPerspective(m_ppp->fovy, m_ppp->aspect, m_ppp->near, m_ppp->far);
+    m_viewer->getCamera()->setProjectionMatrixAsPerspective(m_pp->fovy, m_pp->aspect, m_pp->near, m_pp->far);
 
     // initialize the modeller: this must be executed after the initialization of the m_bgeode.
-    m_canvas->UsrInitializeModeller(m_ppp, fpath);
+    m_canvas->UsrInitializeModeller(m_pp, fpath);
 
     // create the model node and add it to the root node
     m_model = new osg::Group;
@@ -602,17 +605,17 @@ void OsgWxFrame::OnToggleProjectionMode(wxCommandEvent& event) {
 
     switch (event.GetId()) {
     case wxID_MODES_PERSPECTIVE_PROJECTION:
-        m_viewer->getCamera()->setProjectionMatrixAsPerspective(m_ppp->fovy, m_ppp->aspect, m_ppp->near, m_ppp->far);
+        m_viewer->getCamera()->setProjectionMatrixAsPerspective(m_pp->fovy, m_pp->aspect, m_pp->near, m_pp->far);
         std::cout << "\t-Projection mode is changed to perspective" << std::endl;
         break;
     case wxID_MODES_ORTHOGRAPHIC_PROJECTION:
 
-        double right = static_cast<double>(m_ppp->width) / 2.0;
+        double right = static_cast<double>(m_pp->width) / 2.0;
         double left = - right;
-        double top = static_cast<double>(m_ppp->height) / 2.0;
+        double top = static_cast<double>(m_pp->height) / 2.0;
         double bottom = -top;
 
-        m_viewer->getCamera()->setProjectionMatrixAsOrtho(left, right, bottom, top, m_ppp->near, m_ppp->far);
+        m_viewer->getCamera()->setProjectionMatrixAsOrtho(left, right, bottom, top, m_pp->near, m_pp->far);
         std::cout << "\t-Projection mode is changed to orthographic" << std::endl;
         break;
     }
@@ -744,6 +747,11 @@ void OsgWxFrame::OnToggleImageDisplay(wxCommandEvent& event) {
         }
         break;
     }
+}
+
+void OsgWxFrame::OnEnableRayCastDisplay(wxCommandEvent& event) {
+
+    m_canvas->UsrGetModeller()->EnableRayCastDisplay(GetMenuBar()->FindItem(event.GetId())->IsChecked());
 }
 
 void OsgWxFrame::usrChangeBackgroundImage(background_image_display_mode mode) {
@@ -897,11 +905,11 @@ void OsgWxFrame::OnPrintProjectionMatrix(wxCommandEvent& event) {
     std::cout << "---------------------------------" << std::endl;
     osg::Matrixd mat_vpm;
     std::cout << "constructed viewport mapping matrix:" << std::endl;
-    m_ppp->construct_viewport_mapping_matrix(mat_vpm);
+    m_pp->construct_viewport_mapping_matrix(mat_vpm);
     print_matrix(mat_vpm, 4, 4);
     std::cout << "---------------------------------" << std::endl;
     std::cout << "perspective projection parameters:" << std::endl;
-    std::cout << *m_ppp << std::endl;
+    std::cout << *m_pp << std::endl;
     std::cout << "*********************************" << std::endl;
 }
 

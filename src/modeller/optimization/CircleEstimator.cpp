@@ -2,19 +2,19 @@
 #include "../../geometry/Ellipse2D.hpp"
 #include "../../geometry/Circle3D.hpp"
 #include "ExtractPlaneNormals.hpp"
-#include "../CoordinateTransformations.hpp"
+#include "../ProjectionParameters.hpp"
 
 // PUBLIC METHODS
 
 /*
 // Method-1: Needed to solve a nonlinear optimization problem for estimating the orientation of the circles
-void CircleEstimator::estimate_3d_circles_with_fixed_depth_method1(const Ellipse2D& ellipse, Circle3D* circles, CoordinateTransformations const * const ppp, double desired_depth) {
+void CircleEstimator::estimate_3d_circles_with_fixed_depth_method1(const Ellipse2D& ellipse, Circle3D* circles, ProjectionParameters const * const pp, double desired_depth) {
 
-    if(desired_depth > -ppp->near || desired_depth < -ppp->far) {
-        std::cout << "ERROR: desired depth must be within [-near, -far]: [" << -ppp->near << ", " << -ppp->far << "]" << std::endl;
+    if(desired_depth > -pp->near || desired_depth < -pp->far) {
+        std::cout << "ERROR: desired depth must be within [-near, -far]: [" << -pp->near << ", " << -pp->far << "]" << std::endl;
     }
 
-    estimate_unit_3d_circles_method1(ellipse, circles, ppp);
+    estimate_unit_3d_circles_method1(ellipse, circles, pp);
     for(int i = 0; i < 2; ++i) {
         if(circles[i].center[2] > 0) {
             circles[i].center = - circles[i].center;
@@ -30,13 +30,13 @@ void CircleEstimator::estimate_3d_circles_with_fixed_depth_method1(const Ellipse
     }
 }
 
-void CircleEstimator::estimate_3d_circles_with_fixed_radius_method1(const Ellipse2D& ellipse, Circle3D* circles, CoordinateTransformations const * const ppp, double desired_radius) {
+void CircleEstimator::estimate_3d_circles_with_fixed_radius_method1(const Ellipse2D& ellipse, Circle3D* circles, ProjectionParameters const * const pp, double desired_radius) {
 
-    estimate_unit_3d_circles_method1(ellipse, circles, ppp);
+    estimate_unit_3d_circles_method1(ellipse, circles, pp);
     for(int i = 0; i < 2; ++i) {
         circles[i].center *= desired_radius;
         circles[i].radius = desired_radius;
-        if(circles[i].center[2] > -ppp->near) {
+        if(circles[i].center[2] > -pp->near) {
             circles[i].center = - circles[i].center;
             circles[i].normal = - circles[i].normal;
         }
@@ -45,12 +45,12 @@ void CircleEstimator::estimate_3d_circles_with_fixed_radius_method1(const Ellips
 */
 
 // Method-2: Based on analytical solution
-int CircleEstimator::estimate_3d_circles_with_fixed_depth(const Ellipse2D& ellipse, Circle3D* circles, const CoordinateTransformations* const ppp, double desired_depth) {
+int CircleEstimator::estimate_3d_circles_with_fixed_depth(const Ellipse2D& ellipse, Circle3D* circles, const ProjectionParameters* const pp, double desired_depth) {
 
-    if(desired_depth > -ppp->near || desired_depth < -ppp->far)
-        std::cout << "ERROR: desired depth must be within [-near, -far]: [" << -ppp->near << ", " << -ppp->far << "]" << std::endl;
+    if(desired_depth > -pp->near || desired_depth < -pp->far)
+        std::cout << "ERROR: desired depth must be within [-near, -far]: [" << -pp->near << ", " << -pp->far << "]" << std::endl;
 
-    int count = estimate_unit_3d_circles(ellipse, circles, ppp);
+    int count = estimate_unit_3d_circles(ellipse, circles, pp);
     for(int i = 0; i < count; ++i) {
         if(desired_depth != circles[i].center[2])
             circles[i].radius = desired_depth/circles[i].center[2];
@@ -62,12 +62,12 @@ int CircleEstimator::estimate_3d_circles_with_fixed_depth(const Ellipse2D& ellip
     return count;
 }
 
-int CircleEstimator::estimate_3d_circles_with_fixed_depth__(const Ellipse2D& ellipse, Circle3D* circles, const CoordinateTransformations* const ppp, double desired_depth) {
+int CircleEstimator::estimate_3d_circles_with_fixed_depth__(const Ellipse2D& ellipse, Circle3D* circles, const ProjectionParameters* const pp, double desired_depth) {
 
-    if(desired_depth > -ppp->near || desired_depth < -ppp->far)
-        std::cout << "ERROR: desired depth must be within [-near, -far]: [" << -ppp->near << ", " << -ppp->far << "]" << std::endl;
+    if(desired_depth > -pp->near || desired_depth < -pp->far)
+        std::cout << "ERROR: desired depth must be within [-near, -far]: [" << -pp->near << ", " << -pp->far << "]" << std::endl;
 
-    int count = estimate_unit_3d_circles(ellipse, circles, ppp);
+    int count = estimate_unit_3d_circles(ellipse, circles, pp);
     for(int i = 0; i < count; ++i) {
         if(desired_depth != circles[i].center[2])
             circles[i].radius = desired_depth/circles[i].center[2];
@@ -80,9 +80,9 @@ int CircleEstimator::estimate_3d_circles_with_fixed_depth__(const Ellipse2D& ell
 }
 
 
-int CircleEstimator::estimate_3d_circles_with_fixed_radius(const Ellipse2D& ellipse, Circle3D* circles, const CoordinateTransformations* const ppp, double desired_radius) {
+int CircleEstimator::estimate_3d_circles_with_fixed_radius(const Ellipse2D& ellipse, Circle3D* circles, const ProjectionParameters* const pp, double desired_radius) {
 
-    int count = estimate_unit_3d_circles(ellipse, circles, ppp);
+    int count = estimate_unit_3d_circles(ellipse, circles, pp);
     for(int i = 0; i < count; ++i) {
         circles[i].center *= desired_radius;
         circles[i].radius = desired_radius;
@@ -170,12 +170,12 @@ void CircleEstimator::estimate_3d_circles_under_orthographic_projection(const El
 
 // PRIVATE METHODS
 /*
-void CircleEstimator::estimate_unit_3d_circles_method1(const Ellipse2D& ellipse, Circle3D* circles, const CoordinateTransformations* const ppp) {
+void CircleEstimator::estimate_unit_3d_circles_method1(const Ellipse2D& ellipse, Circle3D* circles, const ProjectionParameters* const pp) {
 
     // we need to negate the near value, because in opengl near and far values are positive. We need the actual value
     // in mathemetical calculations.
 
-    double near = -ppp->near;
+    double near = -pp->near;
     Eigen::Matrix3d M;
     M << ellipse.coeff[0],          ellipse.coeff[1]/2.0,      ellipse.coeff[3]/(2*near),
          ellipse.coeff[1]/2.0,      ellipse.coeff[2],          ellipse.coeff[4]/(2*near),
@@ -245,7 +245,7 @@ void CircleEstimator::construct_change_of_basis_matrix(Eigen::Matrix3d& mat, con
 }
 */
 
-int CircleEstimator::estimate_unit_3d_circles(const Ellipse2D& ellipse, Circle3D* circles, const CoordinateTransformations *const ppp) {
+int CircleEstimator::estimate_unit_3d_circles(const Ellipse2D& ellipse, Circle3D* circles, const ProjectionParameters *const pp) {
 
     // Step-1: Construct the associated quadratic form matrix of the 3D cone.
     /*
@@ -256,7 +256,7 @@ int CircleEstimator::estimate_unit_3d_circles(const Ellipse2D& ellipse, Circle3D
      * The cone is constructed in XYZ coordinate frame.
      */
 
-    double near = -ppp->near;
+    double near = -pp->near;
     Eigen::Matrix3d Q;
     Q << ellipse.coeff[0],          ellipse.coeff[1]/2.0,      ellipse.coeff[3]/(2*near),
          ellipse.coeff[1]/2.0,      ellipse.coeff[2],          ellipse.coeff[4]/(2*near),
@@ -397,7 +397,7 @@ int CircleEstimator::estimate_unit_3d_circles(const Ellipse2D& ellipse, Circle3D
     return count;
 }
 
-void CircleEstimator::estimate_unit_3d_circles__(const Ellipse2D& ellipse, Circle3D& circle, const CoordinateTransformations *const ppp) {
+void CircleEstimator::estimate_unit_3d_circles__(const Ellipse2D& ellipse, Circle3D& circle, const ProjectionParameters *const pp) {
 
     // Step-1: Construct the associated quadratic form matrix of the 3D cone.
     /*
@@ -407,7 +407,7 @@ void CircleEstimator::estimate_unit_3d_circles__(const Ellipse2D& ellipse, Circl
      *
      * The cone is constructed in XYZ coordinate frame.
      */
-    double near = -ppp->near;
+    double near = -pp->near;
     Eigen::Matrix3d Q;
     Q << ellipse.coeff[0],          ellipse.coeff[1]/2.0,      ellipse.coeff[3]/(2*near),
          ellipse.coeff[1]/2.0,      ellipse.coeff[2],          ellipse.coeff[4]/(2*near),

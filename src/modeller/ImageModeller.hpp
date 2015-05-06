@@ -16,7 +16,7 @@ class Circle3D;
 class Ellipse2D;
 class ModelSolver;
 class GeneralizedCylinder;
-class CoordinateTransformations;
+class ProjectionParameters;
 class OsgWxGLCanvas;
 class CircleEstimator;
 
@@ -52,7 +52,7 @@ enum class spine_drawing_mode : unsigned char {
 
 class ImageModeller {
 public:
-    ImageModeller(const wxString& fpath, const std::shared_ptr<CoordinateTransformations>& ppp, OsgWxGLCanvas* canvas);
+    ImageModeller(const wxString& fpath, const std::shared_ptr<ProjectionParameters>& pp, OsgWxGLCanvas* canvas);
     ~ImageModeller();
 
     component_type comp_type;           // type of the component being modelled
@@ -86,11 +86,15 @@ private:
     std::unique_ptr<Ellipse2D> m_dynamic_profile;
     std::unique_ptr<Rectangle2D> m_rect;
     std::unique_ptr<ModelSolver> m_solver;
-    std::shared_ptr<CoordinateTransformations> m_ppp;
+    std::shared_ptr<ProjectionParameters> m_pp;
     std::unique_ptr<CircleEstimator> m_circle_estimator;
 
     double m_tilt_angle;
     double m_fixed_depth;
+
+    // for ray cast display
+    bool m_display_raycast;
+    osg::ref_ptr<osg::Vec2dArray> m_raycast;
 
 public:
 
@@ -105,6 +109,7 @@ public:
     void DeleteModel();
     void DeleteSelectedComopnents(std::vector<int>& index_vector);
     void SetRenderingType(rendering_type rtype);
+    void EnableRayCastDisplay(bool flag);
     osg::Geode* CreateLocalFramesNode();
     osg::Geode* CreateVertexNormalsNode();
     unsigned int GenerateComponentId();

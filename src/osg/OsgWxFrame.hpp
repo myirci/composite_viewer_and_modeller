@@ -10,7 +10,7 @@
 class MainFrame;
 class OsgWxGLCanvas;
 class OsgWxGraphicsWindow;
-class CoordinateTransformations;
+class ProjectionParameters;
 class ComponentRelationsDialog;
 class ModelSolver;
 
@@ -46,7 +46,7 @@ private:
     int m_id;
     operation_mode m_uiopmode;
     background_image_display_mode m_imgdisp_mode;
-    std::shared_ptr<CoordinateTransformations> m_ppp;
+    std::shared_ptr<ProjectionParameters> m_pp;
     std::unique_ptr<ComponentRelationsDialog> m_component_relations_win;
 
 public:
@@ -96,6 +96,7 @@ private:
     void OnToggleModellingConstraints(wxCommandEvent& event);
     void OnToggleSpineDrawingMode(wxCommandEvent& event);
     void OnToggleImageDisplay(wxCommandEvent& event);
+    void OnEnableRayCastDisplay(wxCommandEvent& event);
     void OnDisplayLocalFrames(wxCommandEvent& event);
     void OnDisplayWorldCoordinateFrame(wxCommandEvent& event);
     void OnDisplayVertexNormals(wxCommandEvent& event);

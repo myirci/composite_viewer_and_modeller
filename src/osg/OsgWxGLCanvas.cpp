@@ -3,7 +3,7 @@
 #include "OsgSelectionHandler.hpp"
 #include "../wx/WxUtility.hpp"
 #include "../modeller/ImageModeller.hpp"
-#include "../modeller/CoordinateTransformations.hpp"
+#include "../modeller/ProjectionParameters.hpp"
 #include "../geometry/Primitives.hpp"
 #include <wx/dcclient.h>
 #include <wx/image.h>
@@ -68,13 +68,13 @@ void OsgWxGLCanvas::UsrUseCursor(bool value) {
     }
 }
 
-void OsgWxGLCanvas::UsrInitializeModeller(const std::shared_ptr<CoordinateTransformations>& ppp, const wxString& fpath) {
+void OsgWxGLCanvas::UsrInitializeModeller(const std::shared_ptr<ProjectionParameters>& pp, const wxString& fpath) {
 
     if(m_modeller != nullptr) {
         delete m_modeller;
         m_modeller = nullptr;
     }
-    m_modeller = new ImageModeller(fpath, ppp, this);
+    m_modeller = new ImageModeller(fpath, pp, this);
     m_modeller->Initialize2DDrawingInterface(m_parent->UsrGetBackgroundNode());
 }
 
@@ -104,19 +104,19 @@ wxPoint OsgWxGLCanvas::usrDeviceToLogical(const wxPoint& p) const {
     return wxPoint(p.x, size.GetHeight() - p.y - 1);
 }
 
-void OsgWxGLCanvas::UsrLogicalToDevice(wxPoint& p) const {
+void OsgWxGLCanvas::UsrDeviceToLogical(wxPoint& p) const {
 
     wxSize size = m_parent->GetClientSize();
     p.y = size.GetHeight() - p.y - 1;
 }
 
-void OsgWxGLCanvas::UsrLogicalToDevice(osg::Vec2d& p) const {
+void OsgWxGLCanvas::UsrDeviceToLogical(osg::Vec2d& p) const {
 
     wxSize size = m_parent->GetClientSize();
     p.y() = size.GetHeight() - p.y() - 1;
 }
 
-void OsgWxGLCanvas::UsrTransformCoordinates(Point2D<int>& pt) const {
+void OsgWxGLCanvas::UsrDeviceToLogical(Point2D<int>& pt) const {
 
     // DeviceToLogical and LogicalToDevice tranformation is same in both ways
     wxSize size = m_parent->GetClientSize();

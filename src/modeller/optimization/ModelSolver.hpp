@@ -7,7 +7,7 @@
 #include <list>
 
 class ComponentBase;
-class CoordinateTransformations;
+class ProjectionParameters;
 
 class ModelSolver {
 public:
@@ -24,7 +24,7 @@ public:
 private:
     std::list<ComponentBase*> m_components;
     std::list<geosemcon> m_constraints;
-    std::shared_ptr<CoordinateTransformations> m_ppp;
+    std::shared_ptr<ProjectionParameters> m_pp;
 
     inline int num_constraints() const;
     void delete_constraints_with_id(unsigned int comp_id);

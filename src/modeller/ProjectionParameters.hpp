@@ -1,5 +1,5 @@
-#ifndef COORDINATE_TRANSFORMATIONS_HPP
-#define COORDINATE_TRANSFORMATIONS_HPP
+#ifndef PROJECTION_PARAMETERS_HPP
+#define PROJECTION_PARAMETERS_HPP
 
 #include "../utility/Utility.hpp"
 #include <osg/Geode>
@@ -9,7 +9,7 @@
 class Ellipse2D;
 
 
-struct CoordinateTransformations {
+struct ProjectionParameters {
 
     double fovy;        // vertical field of view
     double aspect;      // aspect ratio vp_width / vp_height
@@ -43,7 +43,7 @@ struct CoordinateTransformations {
      *    coordinates of the projected points in camera coordinate system are called projected coordinates.
     */
 
-    CoordinateTransformations(double fy, int w, int h, double n, double f);
+    ProjectionParameters(double fy, int w, int h, double n, double f);
 
     // logical device coordinates <<->> image coordinates
     inline void convert_from_image_coordinates_to_logical_device_coordinates(const osg::Vec2d& img_coord, osg::Vec2d& log_coord);
@@ -76,6 +76,6 @@ private:
 
 };
 
-std::ostream& operator<<(std::ostream& out, const CoordinateTransformations& ppp);
+std::ostream& operator<<(std::ostream& out, const ProjectionParameters& pp);
 
-#endif // COORDINATE_TRANSFORMATIONS_HPP
+#endif // PROJECTION_PARAMETERS_HPP

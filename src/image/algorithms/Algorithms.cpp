@@ -215,7 +215,8 @@ bool BinaryImageRayCast(const OtbImageType::Pointer& image, const Point2D<int>& 
 // return   : maximim pixel value and corresponding pixel
 // start    : starting point for the ray segment
 // end      : end point for the ray segment
-OtbImageType::PixelType GradientImageRayCast(const OtbImageType::Pointer& image, const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& hit) {
+OtbImageType::PixelType GradientImageRayCast(const OtbImageType::Pointer& image,
+                                             const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& hit) {
 
     int delta_x = end.x - start.x;
     int delta_y = end.y - start.y;
@@ -227,11 +228,8 @@ OtbImageType::PixelType GradientImageRayCast(const OtbImageType::Pointer& image,
     else if (delta_y > 0)   dy_1 = 1;
     dx_2 = dx_1;
 
-    // longest is the driving axis
-    // shortest is the passive axis
-    int longest = std::abs(delta_x);
-    int shortest = std::abs(delta_y);
-
+    int longest = std::abs(delta_x);  // driving axis
+    int shortest = std::abs(delta_y); // passive axis
     if(shortest > longest) {
         std::swap(longest, shortest);
         dy_2 = dy_1;
@@ -250,7 +248,7 @@ OtbImageType::PixelType GradientImageRayCast(const OtbImageType::Pointer& image,
 
         curr_val = image->GetPixel(curr);
         if(curr_val > max_val) {
-            curr_val = max_val;
+            max_val = curr_val;
             hit.x = curr[0];
             hit.y = curr[1];
         }
