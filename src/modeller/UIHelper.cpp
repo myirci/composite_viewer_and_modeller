@@ -6,12 +6,18 @@
 #include <osg/Geometry>
 
 UIHelper::UIHelper(osg::Geode* geode) : m_geode(geode), m_sweepline_vertices(nullptr), m_base_elp_vertices(nullptr),
-    m_spine_vertices(nullptr) {
+    m_spine_vertices(nullptr), m_sweep_type(sweep_curve_type::ellipse){
 
-    m_geode->addDrawable(initialize_sweepline_display());
     m_geode->addDrawable(initialize_base_ellipse_display());
     m_geode->addDrawable(initialize_spine_display());
     m_geode->addDrawable(initialize_ray_cast_display());
+
+    osg::Geometry* sweep_geom;
+    if(m_sweep_type == sweep_curve_type::line)
+        sweep_geom = initialize_sweepline_display();
+    else if(m_sweep_type == sweep_curve_type::ellipse)
+        sweep_geom = initialize_sweep_ellipse_display();
+    m_geode->addDrawable(sweep_geom);
 
     // for smooth lines
     m_geode->getOrCreateStateSet()->setMode(GL_LINE_SMOOTH, osg::StateAttribute::ON);
@@ -19,11 +25,11 @@ UIHelper::UIHelper(osg::Geode* geode) : m_geode(geode), m_sweepline_vertices(nul
 
 osg::Geometry* UIHelper::initialize_sweepline_display() {
 
-    // for dynamic ellipse display
-    // 2 for sweepline                  Line     : m_sweepline_arrays[0], Color: Red
-    // 10 for center                    Line Loop: m_sweepline_arrays[1], Color: Gray
-    // 10 for p0                        Line Loop: m_sweepline_arrays[2], Color: Light Blue
-    // 10 for p1                        Line Loop: m_sweepline_arrays[3], Color: Royal Blue
+    // for sweepline display
+    // 2 for sweepline      Lines    : m_sweepline_arrays[0], Color: Red
+    // 10 for center        Line Loop: m_sweepline_arrays[1], Color: Gray
+    // 10 for p0            Line Loop: m_sweepline_arrays[2], Color: Light Blue
+    // 10 for p1            Line Loop: m_sweepline_arrays[3], Color: Royal Blue
 
     osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
     geom->setUseDisplayList(false);
@@ -42,6 +48,42 @@ osg::Geometry* UIHelper::initialize_sweepline_display() {
 
     osg::Vec4Array* colors = new osg::Vec4Array;
     colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f));                   // Red
+    colors->push_back(osg::Vec4(0.2901961f, 0.2901961f, 0.2901961f, 1.0f)); // Gray
+    colors->push_back(osg::Vec4(0.749019608f, 0.937254902f, 1.0f, 1.0f));   // Light Blue
+    colors->push_back(osg::Vec4(0.2f, 0.2f, 1.0f, 1.0f));                   // Royal Blue
+    geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
+    return geom.release();
+}
+
+osg::Geometry* UIHelper::initialize_sweep_ellipse_display() {
+
+    // for sweep ellipse display
+    // 4 for major axis         Lines     : m_sweep_ellipse_arrays[0], Color: Red
+    // 40 for sweep ellipse     Line Loop : m_sweep_ellipse_arrays[2], Color: Cyan
+    // 10 for center            Line Loop : m_sweep_ellipse_arrays[3], Color: Gray
+    // 10 for p0                Line Loop : m_sweep_ellipse_arrays[4], Color: Light Blue
+    // 10 for p1                Line Loop : m_sweep_ellipse_arrays[5], Color: Royal Blue
+
+
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
+    geom->setUseDisplayList(false);
+    geom->setUseVertexBufferObjects(true);
+    geom->setDataVariance(osg::Object::DYNAMIC);
+
+    m_sweep_ellipse_vertices = new osg::Vec2dArray(74);
+    geom->setVertexArray(m_sweep_ellipse_vertices);
+
+
+    m_sweep_ellipse_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
+    geom->addPrimitiveSet(m_sweep_ellipse_arrays.back());
+    for(int i = 0; i < 4; ++i) {
+        m_sweep_ellipse_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
+        geom->addPrimitiveSet(m_sweep_ellipse_arrays.back());
+    }
+
+    osg::Vec4Array* colors = new osg::Vec4Array;
+    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f));                   // Red
+    colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f));                   // Cyan
     colors->push_back(osg::Vec4(0.2901961f, 0.2901961f, 0.2901961f, 1.0f)); // Gray
     colors->push_back(osg::Vec4(0.749019608f, 0.937254902f, 1.0f, 1.0f));   // Light Blue
     colors->push_back(osg::Vec4(0.2f, 0.2f, 1.0f, 1.0f));                   // Royal Blue
@@ -127,18 +169,20 @@ osg::Geometry* UIHelper::initialize_ray_cast_display() {
 
     m_ray_cast_vertices = new osg::Vec2dArray(44);
     geom->setVertexArray(m_ray_cast_vertices);
+
     for(int i = 0; i < 2; ++i) {
         m_ray_cast_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
         geom->addPrimitiveSet(m_ray_cast_arrays.back());
     }
+
     for(int i = 0; i < 4; ++i) {
         m_ray_cast_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
         geom->addPrimitiveSet(m_ray_cast_arrays.back());
     }
 
     osg::Vec4Array* colors = new osg::Vec4Array;
-    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f)); // Red
-    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f)); // Red
+    colors->push_back(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)); // yellow
+    colors->push_back(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)); // yellow
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
@@ -149,19 +193,25 @@ osg::Geometry* UIHelper::initialize_ray_cast_display() {
 
 void UIHelper::Reset() {
 
-    for(auto it = m_sweepline_arrays.begin(); it != m_sweepline_arrays.end(); ++it)
-        (*it)->setCount(0);
-    m_sweepline_vertices->dirty();
+    if(m_sweep_type == sweep_curve_type::line) {
+        for(auto it = m_sweepline_arrays.begin(); it != m_sweepline_arrays.end(); ++it)
+            (*it)->setCount(0);
+        m_sweepline_vertices->dirty();
+    }
+    else if(m_sweep_type == sweep_curve_type::ellipse) {
+        for(auto it = m_sweep_ellipse_arrays.begin(); it != m_sweep_ellipse_arrays.end(); ++it)
+            (*it)->setCount(0);
+        m_sweep_ellipse_vertices->dirty();
+    }
 
     for(auto it = m_base_elp_arrays.begin(); it != m_base_elp_arrays.end(); ++it)
         (*it)->setCount(0);
     m_base_elp_vertices->dirty();
 
-    for(auto it = m_ray_cast_arrays.begin(); it != m_base_elp_arrays.end(); ++it)
+    for(auto it = m_ray_cast_arrays.begin(); it != m_ray_cast_arrays.end(); ++it)
         (*it)->setCount(0);
     m_ray_cast_vertices->dirty();
 
-    /*
     for(auto it = m_proj_arrays.begin(); it != m_proj_arrays.end(); ++it)
         (*it)->setCount(0);
 
@@ -169,7 +219,9 @@ void UIHelper::Reset() {
         (*it)->clear();
         (*it)->dirty();
     }
-    */
+    m_proj_vertices.clear();
+    m_proj_arrays.clear();
+    m_geode->removeDrawables(4, m_geode->getNumDrawables() - 4);
 
     m_spine_array->setCount(0);
     m_spine_vertices->clear();
@@ -255,48 +307,112 @@ void UIHelper::InitializeSpineDrawing(const std::unique_ptr<Ellipse2D>& ellipse)
     m_spine_array->setCount(2);
     m_spine_vertices->dirty();
 
-    // initialize the major and minor axes display
-    m_sweepline_vertices->at(0) = ellipse->points[0];
-    m_sweepline_vertices->at(1) = ellipse->points[1];
-    m_sweepline_vertices->at(2) = ellipse->points[2];
-    m_sweepline_vertices->at(3) = ellipse->points[3];
-    m_sweepline_arrays[0]->setFirst(0);
-    m_sweepline_arrays[0]->setCount(2);
+    if(m_sweep_type == sweep_curve_type::line) {
 
-    // display the center
-    Ellipse2DLight tmp(3, 3, 0, ellipse->center);
-    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 2, 10);
-    m_sweepline_arrays[1]->setFirst(2);
-    m_sweepline_arrays[1]->setCount(10);
+        // initialize the major axis display
+        m_sweepline_vertices->at(0) = ellipse->points[0];
+        m_sweepline_vertices->at(1) = ellipse->points[1];
+        m_sweepline_arrays[0]->setFirst(0);
+        m_sweepline_arrays[0]->setCount(2);
 
-    // display p0
-    tmp.center = ellipse->points[0];
-    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 12, 10);
-    m_sweepline_arrays[2]->setFirst(12);
-    m_sweepline_arrays[2]->setCount(10);
+        // display the center
+        Ellipse2DLight tmp(3, 3, 0, ellipse->center);
+        tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 2, 10);
+        m_sweepline_arrays[1]->setFirst(2);
+        m_sweepline_arrays[1]->setCount(10);
 
-    // display p1
-    tmp.center = ellipse->points[1];
-    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 22, 10);
-    m_sweepline_arrays[3]->setFirst(22);
-    m_sweepline_arrays[3]->setCount(10);
+        // display p0
+        tmp.center = ellipse->points[0];
+        tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 12, 10);
+        m_sweepline_arrays[2]->setFirst(12);
+        m_sweepline_arrays[2]->setCount(10);
 
-    m_sweepline_vertices->dirty();
+        // display p1
+        tmp.center = ellipse->points[1];
+        tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 22, 10);
+        m_sweepline_arrays[3]->setFirst(22);
+        m_sweepline_arrays[3]->setCount(10);
+
+        m_sweepline_vertices->dirty();
+    }
+    else if(m_sweep_type == sweep_curve_type::ellipse) {
+
+        // display the major and minor axes
+        m_sweep_ellipse_vertices->at(0) = ellipse->points[0];
+        m_sweep_ellipse_vertices->at(1) = ellipse->points[1];
+        m_sweep_ellipse_vertices->at(2) = ellipse->points[2];
+        m_sweep_ellipse_vertices->at(3) = ellipse->points[3];
+        m_sweep_ellipse_arrays[0]->setFirst(0);
+        m_sweep_ellipse_arrays[0]->setCount(4);
+
+        // display the ellipse
+        ellipse->generate_points_on_the_ellipse(m_sweep_ellipse_vertices, 4, 40);
+        m_sweep_ellipse_arrays[1]->setFirst(4);
+        m_sweep_ellipse_arrays[1]->setCount(40);
+
+        // display the center
+        Ellipse2DLight tmp(3, 3, 0, ellipse->center);
+        tmp.generate_points_on_the_ellipse(m_sweep_ellipse_vertices, 44, 10);
+        m_sweep_ellipse_arrays[2]->setFirst(44);
+        m_sweep_ellipse_arrays[2]->setCount(10);
+
+        // display p0
+        tmp.center = ellipse->points[0];
+        tmp.generate_points_on_the_ellipse(m_sweep_ellipse_vertices, 54, 10);
+        m_sweep_ellipse_arrays[3]->setFirst(54);
+        m_sweep_ellipse_arrays[3]->setCount(10);
+
+        // display p1
+        tmp.center = ellipse->points[1];
+        tmp.generate_points_on_the_ellipse(m_sweep_ellipse_vertices, 64, 10);
+        m_sweep_ellipse_arrays[4]->setFirst(64);
+        m_sweep_ellipse_arrays[4]->setCount(10);
+
+        m_sweep_ellipse_vertices->dirty();
+    }
 }
 
-void UIHelper::UpdateSweepline(const std::unique_ptr<Ellipse2D>& ellipse) {
+void UIHelper::UpdateSweepCurve(const std::unique_ptr<Ellipse2D>& ellipse) {
 
-    m_sweepline_vertices->at(0) = ellipse->points[0];
-    m_sweepline_vertices->at(1) = ellipse->points[1];
+    if(m_sweep_type == sweep_curve_type::line) {
 
-    Ellipse2DLight tmp(3, 3, 0, ellipse->center);
-    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 2, 10);
-    tmp.center = ellipse->points[0];
-    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 12, 10);
-    tmp.center = ellipse->points[1];
-    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 22, 10);
+        m_sweepline_vertices->at(0) = ellipse->points[0];
+        m_sweepline_vertices->at(1) = ellipse->points[1];
 
-    m_sweepline_vertices->dirty();
+        Ellipse2DLight tmp(3, 3, 0, ellipse->center);
+        tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 2, 10);
+        tmp.center = ellipse->points[0];
+        tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 12, 10);
+        tmp.center = ellipse->points[1];
+        tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 22, 10);
+
+        m_sweepline_vertices->dirty();
+    }
+    else if(m_sweep_type == sweep_curve_type::ellipse) {
+
+        // display the major and minor axes
+        m_sweep_ellipse_vertices->at(0) = ellipse->points[0];
+        m_sweep_ellipse_vertices->at(1) = ellipse->points[1];
+        m_sweep_ellipse_vertices->at(2) = ellipse->points[2];
+        m_sweep_ellipse_vertices->at(3) = ellipse->points[3];
+
+        // display the ellipse
+        ellipse->generate_points_on_the_ellipse(m_sweep_ellipse_vertices, 4, 40);
+
+        // display the center
+        Ellipse2DLight tmp(3, 3, 0, ellipse->center);
+        tmp.generate_points_on_the_ellipse(m_sweep_ellipse_vertices, 44, 10);
+
+        // display p0
+        tmp.center = ellipse->points[0];
+        tmp.generate_points_on_the_ellipse(m_sweep_ellipse_vertices, 54, 10);
+
+        // display p1
+        tmp.center = ellipse->points[1];
+        tmp.generate_points_on_the_ellipse(m_sweep_ellipse_vertices, 64, 10);
+
+        m_sweep_ellipse_vertices->dirty();
+    }
 }
 
 void UIHelper::SpinePointCandidate(const osg::Vec2d& pt) {
@@ -362,25 +478,39 @@ void UIHelper::DisplayLineLoop(const std::vector<osg::Vec2d>& pts, const osg::Ve
     vertices->dirty();
 }
 
-void UIHelper::EnableRayCastDisplay() {
+void UIHelper::DisplayRayCast(const osg::ref_ptr<osg::Vec2dArray>& pts) {
+
+    for(size_t i = 0; i < 4; ++i)
+        m_ray_cast_vertices->at(i) = pts->at(i);
 
     m_ray_cast_arrays[0]->setFirst(0);
     m_ray_cast_arrays[0]->setCount(2);
     m_ray_cast_arrays[1]->setFirst(2);
     m_ray_cast_arrays[1]->setCount(2);
+
+    Ellipse2DLight tmp(3, 3, 0, pts->at(4));
+    tmp.generate_points_on_the_ellipse(m_ray_cast_vertices, 4, 10);
+    m_ray_cast_arrays[2]->setFirst(4);
+    m_ray_cast_arrays[2]->setCount(10);
+
+    tmp.center = pts->at(5);
+    tmp.generate_points_on_the_ellipse(m_ray_cast_vertices, 14, 10);
+    m_ray_cast_arrays[3]->setFirst(14);
+    m_ray_cast_arrays[3]->setCount(10);
+
+    tmp.center = pts->at(6);
+    tmp.generate_points_on_the_ellipse(m_ray_cast_vertices, 24, 10);
+    m_ray_cast_arrays[4]->setFirst(24);
+    m_ray_cast_arrays[4]->setCount(10);
+
+    tmp.center = pts->at(7);
+    tmp.generate_points_on_the_ellipse(m_ray_cast_vertices, 34, 10);
+    m_ray_cast_arrays[5]->setFirst(34);
+    m_ray_cast_arrays[5]->setCount(10);
+
+    m_ray_cast_vertices->dirty();
 }
 
-void UIHelper::DisplayRayCastLines(const osg::Vec2d& p0_1, const osg::Vec2d& p0_2, const osg::Vec2d& p1_1, const osg::Vec2d& p1_2) {
-
-    m_ray_cast_vertices->at(0) = p0_1;
-    m_ray_cast_vertices->at(1) = p0_2;
-    m_ray_cast_vertices->at(2) = p1_1;
-    m_ray_cast_vertices->at(3) = p1_2;
-}
-
-void UIHelper::DisplayRayCastResults() {
-
-}
 
 
 
