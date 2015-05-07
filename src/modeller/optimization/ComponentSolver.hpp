@@ -2,40 +2,42 @@
 #define COMPONENT_SOLVER_HPP
 
 #include <osg/Array>
-#include <memory>
+#include <ceres/ceres.h>
 
-class Circle3D;
-class ProjectionParameters;
+struct CostFunctor {
+
+    CostFunctor(double* c1_, double* c2_) : c1(c1_), c2(c2_) { }
+
+    template <typename T>
+    bool operator()(const T* const Z0, const T* const C1, const T* const C2, T* residual) const {
+        residual[0] = (T(c1[0]) * (*Z0) - C1[0]) * (T(c1[0]) * (*Z0) - C1[0]) +
+                      (T(c1[1]) * (*Z0) - C1[1]) * (T(c1[1]) * (*Z0) - C1[1]) +
+                      (T(c1[2]) * (*Z0) - C1[2]) * (T(c1[2]) * (*Z0) - C1[2]) +
+                      (T(c2[0]) * (*Z0) - C2[0]) * (T(c2[0]) * (*Z0) - C2[0]) +
+                      (T(c2[1]) * (*Z0) - C2[1]) * (T(c2[1]) * (*Z0) - C2[1]) +
+                      (T(c2[2]) * (*Z0) - C2[2]) * (T(c2[2]) * (*Z0) - C2[2]);
+        return true;
+    }
+    double* c1;
+    double* c2;
+};
 
 class ComponentSolver {
-
 public:
-    ComponentSolver(const std::shared_ptr<ProjectionParameters>& pp);
-    ~ComponentSolver();
-    Circle3D* GetBaseCircles();
-    void SolveDepthValues() const;
-
+    ComponentSolver(double near_);
+    void Solve(double& Z0, double* C1, double* C2);
 private:
-
-    Circle3D* base_circles;                             // possible base circles of a generalized cylinder
-    osg::ref_ptr<osg::Vec2dArray> m_lfpts;              // local frame end points
-    std::shared_ptr<ProjectionParameters> m_pp;         // perspective projection parameters
-
-    void calculate_bottom_center_point(osg::Vec3d& cbt, double z1, double z2) const;
-    void calculate_top_center_point(const osg::Vec3d& cbt, osg::Vec3d& ctp, double z0, double z3) const;
-
-    void calculate_P0(osg::Vec3d& P0, double z0) const;
-    void calculate_P1(osg::Vec3d& P1, double z1) const;
-    void calculate_P2(osg::Vec3d& P2, double z2) const;
-    void calculate_P3(osg::Vec3d& P3, double z3) const;
-
-    double test_orthogonality(const osg::Vec3d& P0, const osg::Vec3d& P1, const osg::Vec3d& P2, const osg::Vec3d& P3) const;
-    double test_orthogonality(const osg::Vec3d& cbt, const osg::Vec3d& ctp, int base) const;
-
-    inline double F(int i, int j) const;
-    inline std::pair<double, double> quadratic_root_finder_x(double x, double a1, double a2) const;
-    inline std::pair<double, double> quadratic_root_finder_y(double y, double a1, double a2) const;
-    inline std::pair<double, double> quadratic_root_finder_z(double z, double a1, double a2) const;
+    osg::ref_ptr<osg::Vec2dArray> m_lframe_proj;  // projection of the local frame points: P0: origin - third click,
+                                                  // P1: first click, P2: second click, P3: third click
+    double coeff[3];       // Z1 = coeff[0]*Z0, Z2 = coeff[1]*Z0,  Z3 = coeff[3]*Z0
+    double C1v[3];         // C1 = Z0*C1v
+    double C2v[3];         // C2 = Z0*C2v
+    double squared_near;
+    double near;
+    ceres::Solver::Options options;
+    ceres::Solver::Summary summary;
+    inline double func(int i, int j);
+    void calculate_coefficients();
 };
 
 #endif // COMPONENT_SOLVER_HPP

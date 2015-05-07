@@ -283,9 +283,9 @@ void ImageModeller::model_update() {
                     m_right_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_last_profile = *m_dynamic_profile;
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                    // add_planar_section_to_the_generalized_cylinder_constrained();
+                    add_planar_section_to_the_generalized_cylinder_constrained();
                     // update_component_local_frame();
                     m_solver->AddComponent(m_gcyl.get());
                     Reset2DDrawingInterface();
@@ -299,9 +299,9 @@ void ImageModeller::model_update() {
                     m_left_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_last_profile = *m_dynamic_profile;
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                    // add_planar_section_to_the_generalized_cylinder_constrained();
+                    add_planar_section_to_the_generalized_cylinder_constrained();
                 }
                 else {
                     m_uihelper->SpinePointCandidate(m_mouse);
@@ -334,10 +334,6 @@ void ImageModeller::estimate_first_circle_under_persective_projection() {
     if(m_tilt_angle > HALF_PI)
         m_tilt_angle = PI - m_tilt_angle;
 
-     std::cout << "tilt-angle: " << rad2deg(m_tilt_angle) << std::endl;
-
-     std::cout << *m_last_circle << std::endl;
-
 }
 
 void ImageModeller::estimate_first_circle_under_persective_projection__() {
@@ -361,17 +357,14 @@ void ImageModeller::estimate_first_circle_under_persective_projection__() {
     m_tilt_angle = acos(m_last_circle->normal[2]);
     if(m_tilt_angle > HALF_PI)
         m_tilt_angle -= HALF_PI;
-
-    std::cout << "tilt-angle: " << rad2deg(m_tilt_angle) << std::endl;
-
 }
 
 void ImageModeller::estimate_first_circle_under_orthographic_projection() {
 
     // 1) Estimate the 3D circles under orthographic projection
-    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
+    estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
     // estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
-    estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, m_fixed_depth);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, m_fixed_depth);
 
     // 2) Calculate the tilt angle
     m_tilt_angle = acos(m_ellipse->smn_axis / m_ellipse->smj_axis);
@@ -405,8 +398,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
     estimate_3d_circles_under_orthographic_projection(m_last_profile, *m_last_circle);
     // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_last_profile, *m_last_circle, m_fixed_depth);
 
-    std::cout << *m_last_circle << std::endl;
-
     // 2) Add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
@@ -423,7 +414,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained()
     m_last_circle->center[0] = ctr.x();
     m_last_circle->center[1] = ctr.y();
     m_last_circle->center[2] = -m_pp->near;
-    m_last_circle->center *=(m_fixed_depth / -m_pp->near);
+    m_last_circle->center *= (m_fixed_depth / -m_pp->near);
 
     // 3) set the normal : tilt angle (constant for a generalized cylinder) & bend angle (rot angle for the ellipse)
     m_last_circle->normal[0] = sin(m_tilt_angle) * sin(m_last_profile->rot_angle);
@@ -435,8 +426,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained()
         m_last_circle->normal[2] = cos(m_tilt_angle);
     else
         m_last_circle->normal[2] = -cos(m_tilt_angle);
-
-    std::cout << *m_last_circle << std::endl;
 
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
@@ -451,8 +440,8 @@ void ImageModeller::initialize_spine_drawing_mode() {
     if(m_gcyl.valid()) m_gcyl = nullptr;
 
     // estimate the first circle
-    estimate_first_circle_under_persective_projection();
-    // estimate_first_circle_under_orthographic_projection();
+    // estimate_first_circle_under_persective_projection();
+    estimate_first_circle_under_orthographic_projection();
 
     Ellipse2D elp;
     project_circle(*m_last_circle, elp);
