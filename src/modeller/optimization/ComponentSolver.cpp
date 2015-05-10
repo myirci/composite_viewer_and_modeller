@@ -3,14 +3,17 @@
 #include "ComponentSolver.hpp"
 
 
-ComponentSolver::ComponentSolver(double near_) : m_lframe_proj(new osg::Vec2dArray(4)), near(near_), squared_near(near_ * near_) {
+ComponentSolver::ComponentSolver(double near_) : m_lframe_proj(new osg::Vec2dArray(4)), near(near_) {
 
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
 }
 
 double ComponentSolver::func(int i, int j) {
-    return squared_near + m_lframe_proj->at(i).x() * m_lframe_proj->at(j).x() + m_lframe_proj->at(i).y() * m_lframe_proj->at(j).y();
+    // n^2 + xi*xj + yi*yj
+    return near*near +
+           m_lframe_proj->at(i).x() * m_lframe_proj->at(j).x() +
+           m_lframe_proj->at(i).y() * m_lframe_proj->at(j).y();
 }
 
 void ComponentSolver::calculate_coefficients() {
@@ -23,19 +26,20 @@ void ComponentSolver::calculate_coefficients() {
     double f13 = func(1,3);
     double f23 = func(2,3);
 
-    double a = f00*f12*f13 + f01*f01*f23 - f01*f02*f13 - f01*f03*f12;
-    double b = 2*f01*(f02*f03 - f00*f23);
-    double c = f00*(f00*f23 - f02*f03);
+    // a*Z1^2 + b*Z1*Z0 + c*Z0^2 = 0
+    double a = f01*f02*f13 + f01*f03*f12 - f00*f12*f13 - f01*f01*f23;
+    double b = 2*f01*(f00*f23 - f02*f03);
+    double c = f00*(f02*f03 - f00*f23);
 
+    // Z1 = k1*Z0
     double dlt = b*b - 4*a*c;
-    std::cout << "discriminant: " << dlt << std::endl;
-    double d1 = (-b + std::sqrt(dlt)) / (2*a);
-    double d2 = (-b - std::sqrt(dlt)) / (2*a);
-    std::cout << "d1: " << d1 << std::endl;
-    std::cout << "d2: " << d2 << std::endl;
-    coeff[0] = d1; // or d2
+    double k1_1 = (-b + std::sqrt(dlt)) / (2*a);
+    double k1_2 = (-b - std::sqrt(dlt)) / (2*a);
+    std::cout << "k11: " << k1_1 << std::endl;
+    std::cout << "k12: " << k1_2 << std::endl;
+    coeff[0] = k1_1; // or d2
+    coeff[1] = (coeff[0]*f01 - f00) / (coeff[0]*f12 - f02);
     coeff[2] = (coeff[0]*f01 - f00) / (coeff[0]*f13 - f03);
-    coeff[1] = (coeff[2]*f03 - f00) / (coeff[2]*f23 - f02);
 
     C1v[0] = (coeff[0] * m_lframe_proj->at(1).x() + coeff[1] * m_lframe_proj->at(2).x()) / 2*near;
     C1v[1] = (coeff[0] * m_lframe_proj->at(1).y() + coeff[1] * m_lframe_proj->at(2).y()) / 2*near;
