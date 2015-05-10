@@ -27,12 +27,15 @@ public:
     ComponentSolver(double near_);
     void Solve(double& Z0, double* C1, double* C2);
 private:
-    osg::ref_ptr<osg::Vec2dArray> m_lframe_proj;  // projection of the local frame points: P0: origin - third click,
-                                                  // P1: first click, P2: second click, P3: third click
+    osg::ref_ptr<osg::Vec2dArray> m_lframe_proj;  // projection of the local frame points:
+    // m_lframe_proj->at(0) = P0 : origin - third click,
+    // m_lframe_proj->at(1) = P1 : first click,
+    // m_lframe_proj->at(2) = P1 : second click,
+    // m_lframe_proj->at(3) = P3 : fourth click
+
     double coeff[3];       // Z1 = coeff[0]*Z0, Z2 = coeff[1]*Z0,  Z3 = coeff[3]*Z0
     double C1v[3];         // C1 = Z0*C1v
     double C2v[3];         // C2 = Z0*C2v
-    double squared_near;
     double near;
     ceres::Solver::Options options;
     ceres::Solver::Summary summary;
