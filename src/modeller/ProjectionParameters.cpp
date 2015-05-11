@@ -66,7 +66,7 @@ void ProjectionParameters::convert_from_logical_device_coordinates_to_projected_
     convert_from_normalized_device_coordinates_to_projected_coordinates(ndc_coord, prj_coord);
 }
 
-void ProjectionParameters::convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(const Ellipse2D& elp_dev, Ellipse2D& elp_prj) {
+void ProjectionParameters::convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(const Ellipse2D& elp_dev, Ellipse2D& elp_prj,  bool with_coeffs) {
 
     // rot angle (angle between the major axis and the positive x-axis) does not change
     elp_prj.rot_angle = elp_dev.rot_angle;
@@ -79,7 +79,9 @@ void ProjectionParameters::convert_ellipse_from_logical_device_coordinates_to_pr
     elp_prj.center.y() = (elp_prj.points[0].y() + elp_prj.points[1].y())/2.0;
     elp_prj.smj_axis = (elp_prj.points[0] - elp_prj.center).length();
     elp_prj.smn_axis = (elp_prj.points[2] - elp_prj.center).length();
-    elp_prj.calculate_coefficients_from_parameters();
+
+    if(with_coeffs)
+        elp_prj.calculate_coefficients_from_parameters();
 }
 
 void ProjectionParameters::construct_perpective_projection_matrix(osg::Matrixd& proj_mat) {

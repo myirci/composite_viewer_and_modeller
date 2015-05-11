@@ -20,8 +20,6 @@ aux_source_directory(./src/wx SOURCES)
 set(SOURCES ${SOURCES}
             src/geometry/Primitives.hpp
             src/modeller/optimization/ExtractPlaneNormals.hpp
-            src/modeller/optimization/SolveDepths_old.hpp
-            src/modeller/optimization/SolveDepths.hpp
             src/wx/WxGuiId.hpp
 )
 

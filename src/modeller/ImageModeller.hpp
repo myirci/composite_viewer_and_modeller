@@ -15,6 +15,7 @@ class Line2D;
 class Circle3D;
 class Ellipse2D;
 class ModelSolver;
+class ComponentSolver;
 class GeneralizedCylinder;
 class ProjectionParameters;
 class OsgWxGLCanvas;
@@ -79,6 +80,7 @@ private:
 
     rendering_type m_rtype;                                 // rendering type for generalized cylinders
 
+    Circle3D* m_first_circle;
     Circle3D* m_last_circle;
     std::unique_ptr<UIHelper> m_uihelper;
     std::unique_ptr<Ellipse2D> m_ellipse;
@@ -86,6 +88,7 @@ private:
     std::unique_ptr<Ellipse2D> m_dynamic_profile;
     std::unique_ptr<Rectangle2D> m_rect;
     std::unique_ptr<ModelSolver> m_solver;
+    std::unique_ptr<ComponentSolver> m_component_solver;
     std::shared_ptr<ProjectionParameters> m_pp;
     std::unique_ptr<CircleEstimator> m_circle_estimator;
 

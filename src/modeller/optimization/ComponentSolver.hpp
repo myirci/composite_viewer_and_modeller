@@ -10,22 +10,24 @@ struct CostFunctor {
 
     template <typename T>
     bool operator()(const T* const Z0, const T* const C1, const T* const C2, T* residual) const {
-        residual[0] = (T(c1[0]) * (*Z0) - C1[0]) * (T(c1[0]) * (*Z0) - C1[0]) +
-                      (T(c1[1]) * (*Z0) - C1[1]) * (T(c1[1]) * (*Z0) - C1[1]) +
-                      (T(c1[2]) * (*Z0) - C1[2]) * (T(c1[2]) * (*Z0) - C1[2]) +
-                      (T(c2[0]) * (*Z0) - C2[0]) * (T(c2[0]) * (*Z0) - C2[0]) +
-                      (T(c2[1]) * (*Z0) - C2[1]) * (T(c2[1]) * (*Z0) - C2[1]) +
-                      (T(c2[2]) * (*Z0) - C2[2]) * (T(c2[2]) * (*Z0) - C2[2]);
+        residual[0] = sqrt((C1[0] - T(c1[0]) * (*Z0)) * (C1[0] - T(c1[0]) * (*Z0))) +
+                      sqrt((C1[1] - T(c1[1]) * (*Z0)) * (C1[1] - T(c1[1]) * (*Z0))) +
+                      sqrt((C1[2] - T(c1[2]) * (*Z0)) * (C1[2] - T(c1[2]) * (*Z0)));
+        residual[1] = sqrt((C2[0] - T(c2[0]) * (*Z0)) * (C2[0] - T(c2[0]) * (*Z0))) +
+                      sqrt((C2[1] - T(c2[1]) * (*Z0)) * (C2[1] - T(c2[1]) * (*Z0))) +
+                      sqrt((C2[2] - T(c2[2]) * (*Z0)) * (C2[2] - T(c2[2]) * (*Z0)));
         return true;
     }
     double* c1;
     double* c2;
 };
 
+
 class ComponentSolver {
 public:
     ComponentSolver(double near_);
-    void Solve(double& Z0, double* C1, double* C2);
+    osg::Vec2dArray* GetLocalCoordinateFrameProjections();
+    double Solve(double& Z0, double* C1, double* C2);
 private:
     osg::ref_ptr<osg::Vec2dArray> m_lframe_proj;  // projection of the local frame points:
     // m_lframe_proj->at(0) = P0 : origin - third click,
