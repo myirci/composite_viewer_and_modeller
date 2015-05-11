@@ -1,5 +1,6 @@
 #include "ImageModeller.hpp"
 #include "optimization/CircleEstimator.hpp"
+#include "optimization/ComponentSolver.hpp"
 #include "optimization/ModelSolver.hpp"
 #include "ProjectionParameters.hpp"
 #include "UIHelper.hpp"
@@ -23,6 +24,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_rect(nullptr),
     m_rtype(rendering_type::triangle_strip),
     m_solver(new ModelSolver()),
+    m_component_solver(new ComponentSolver(-pp->near)),
     m_mode(drawing_mode::mode_0),
     m_left_click(false),
     m_right_click(false),
@@ -35,6 +37,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_last_profile(new Ellipse2D),
     m_dynamic_profile(new Ellipse2D),
     m_last_circle(new Circle3D),
+    m_first_circle(new Circle3D),
     m_uihelper(nullptr),
     m_tilt_angle(0.0),
     m_circle_estimator(new CircleEstimator),
@@ -286,7 +289,6 @@ void ImageModeller::model_update() {
                     // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                     add_planar_section_to_the_generalized_cylinder_constrained();
-                    // update_component_local_frame();
                     m_solver->AddComponent(m_gcyl.get());
                     Reset2DDrawingInterface();
 
@@ -362,13 +364,25 @@ void ImageModeller::estimate_first_circle_under_persective_projection__() {
 void ImageModeller::estimate_first_circle_under_orthographic_projection() {
 
     // 1) Estimate the 3D circles under orthographic projection
-    estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
-    // estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
+    estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_first_circle);
     // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, m_fixed_depth);
 
     // 2) Calculate the tilt angle
     m_tilt_angle = acos(m_ellipse->smn_axis / m_ellipse->smj_axis);
 }
+/*
+void ImageModeller::estimate_first_circle_under_orthographic_projection() {
+
+    // 1) Estimate the 3D circles under orthographic projection
+    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
+    estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
+    // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, m_fixed_depth);
+
+    // 2) Calculate the tilt angle
+    m_tilt_angle = acos(m_ellipse->smn_axis / m_ellipse->smj_axis);
+}
+*/
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
 
@@ -405,6 +419,75 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained() {
 
+    // transform m_last_profile to projected coordinates
+    Ellipse2D elp_prj;
+    m_pp->convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(*m_last_profile, elp_prj, false);
+
+    osg::Vec2dArray* arr = m_component_solver->GetLocalCoordinateFrameProjections();
+    arr->at(3) = elp_prj.center;
+
+    // 1) set the radius : length of the semi-major axis
+    m_last_circle->radius = elp_prj.smj_axis;
+
+    // 2) set the center
+    m_last_circle->center[0] = elp_prj.center.x();
+    m_last_circle->center[1] = elp_prj.center.y();
+    m_last_circle->center[2] = -m_pp->near;
+
+    // 3) set the normal : tilt angle (constant for a generalized cylinder) & bend angle (rot angle for the ellipse)
+    m_last_circle->normal[0] = sin(m_tilt_angle) * sin(m_last_profile->rot_angle);
+    m_last_circle->normal[1] = -sin(m_tilt_angle) * cos(m_last_profile->rot_angle);
+
+    osg::Vec2d smj_vec = elp_prj.points[1] - elp_prj.center;
+    osg::Vec2d smn_vec = elp_prj.points[2] - elp_prj.center;
+    if(smj_vec.x() * smn_vec.y() - smj_vec.y() * smn_vec.x() > 0)
+        m_last_circle->normal[2] = cos(m_tilt_angle);
+    else
+        m_last_circle->normal[2] = -cos(m_tilt_angle);
+
+    double calculated_depth = -m_pp->near;
+    double C1[3];
+    double C2[3];
+
+    C1[0] = m_first_circle->center[0];
+    C1[1] = m_first_circle->center[1];
+    C1[2] = m_first_circle->center[2];
+
+    C2[0] = m_last_circle->center[0];
+    C2[1] = m_last_circle->center[1];
+    C2[2] = m_last_circle->center[2];
+
+    double radius_1 = m_component_solver->Solve(calculated_depth, C1, C2);
+
+    m_first_circle->center[0] = C1[0];
+    m_first_circle->center[1] = C1[1];
+    m_first_circle->center[2] = C1[2];
+
+    m_last_circle->center[0] = C2[0];
+    m_last_circle->center[1] = C2[1];
+    m_last_circle->center[2] = C2[2];
+
+    osg::Vec3d nrm(C1[0] - C2[0], C1[1] - C2[1], C1[1] - C2[1]);
+    nrm.normalize();
+
+    m_last_circle->normal[0] = nrm.x();
+    m_last_circle->normal[1] = nrm.y();
+    m_last_circle->normal[2] = nrm.z();
+
+    m_first_circle->normal[0] = nrm.x();
+    m_first_circle->normal[1] = nrm.y();
+    m_first_circle->normal[2] = nrm.z();
+
+    m_first_circle->radius = radius_1;
+
+    m_gcyl->AddPlanarSection(*m_first_circle);
+    m_gcyl->AddPlanarSection(*m_last_circle);
+    m_gcyl->Update();
+}
+
+/*
+void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained() {
+
     // 1) set the radius : proportional to the length of the semi-major axis
     // m_last_circle->radius = m_last_profile->smj_axis * (m_fixed_depth / -m_pp->near);
 
@@ -431,6 +514,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained()
     m_gcyl->Update();
 }
 
+
 void ImageModeller::initialize_spine_drawing_mode() {
 
     // modify the user clicked point with its projection on the minor-axis guide line
@@ -446,45 +530,108 @@ void ImageModeller::initialize_spine_drawing_mode() {
     Ellipse2D elp;
     project_circle(*m_last_circle, elp);
 
+    // m_gcyl = new GeneralizedCylinder(GenerateComponentId(), *m_last_circle);
     m_gcyl = new GeneralizedCylinder(GenerateComponentId(), *m_last_circle);
     m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
 
     // initialize the constraint line if spine contraint is straight_planar
     if(sp_constraints == spine_constraints::straight_planar) {
-        /*
-        // let's define the constraint line in the opengl screen coordinate which is also
-        double a = m_last_circle->center[1] * m_last_circle->normal[2] - m_last_circle->center[2] * m_last_circle->normal[1];
-        double b = m_last_circle->center[2] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[2];
-        double c = (m_last_circle->center[1] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[1]) * m_pp->height / (2*tan(m_pp->fovy/2.0)) - a*(m_pp->width/2.0) - b*(m_pp->height/2.0);
-        m_constraint_line = std::unique_ptr<Line2D>(new Line2D(a,b,c));
 
-        // display the constraint line
-        std::vector<osg::Vec2d> intersection_pts;
-        double var = m_constraint_line->get_x_at_y(0);
-        if(var >= 0 && var < m_pp->width)
-            intersection_pts.push_back(osg::Vec2d(var, 0));
+//        // let's define the constraint line in the opengl screen coordinate which is also
+//        double a = m_last_circle->center[1] * m_last_circle->normal[2] - m_last_circle->center[2] * m_last_circle->normal[1];
+//        double b = m_last_circle->center[2] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[2];
+//        double c = (m_last_circle->center[1] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[1]) * m_pp->height / (2*tan(m_pp->fovy/2.0)) - a*(m_pp->width/2.0) - b*(m_pp->height/2.0);
+//        m_constraint_line = std::unique_ptr<Line2D>(new Line2D(a,b,c));
 
-        var = m_constraint_line->get_x_at_y(m_pp->height - 1);
-        if(var >= 0 && var < m_pp->width)
-            intersection_pts.push_back(osg::Vec2d(var, m_pp->height - 1));
+//        // display the constraint line
+//        std::vector<osg::Vec2d> intersection_pts;
+//        double var = m_constraint_line->get_x_at_y(0);
+//        if(var >= 0 && var < m_pp->width)
+//            intersection_pts.push_back(osg::Vec2d(var, 0));
 
-        var = m_constraint_line->get_y_at_x(0);
-        if(var >= 0 && var < m_pp->height)
-            intersection_pts.push_back(osg::Vec2d(0, var));
+//        var = m_constraint_line->get_x_at_y(m_pp->height - 1);
+//        if(var >= 0 && var < m_pp->width)
+//            intersection_pts.push_back(osg::Vec2d(var, m_pp->height - 1));
 
-        var = m_constraint_line->get_y_at_x(m_pp->width - 1);
-        if(var >= 0 && var < m_pp->height)
-            intersection_pts.push_back(osg::Vec2d(m_pp->width - 1, var));
+//        var = m_constraint_line->get_y_at_x(0);
+//        if(var >= 0 && var < m_pp->height)
+//            intersection_pts.push_back(osg::Vec2d(0, var));
 
-        if(intersection_pts.size() == 2)
-            m_uihelper->DisplayConstraintLine(intersection_pts);
-        else
-            std::cout << "ERROR: Number of intersections must be two!" << std::endl;
+//        var = m_constraint_line->get_y_at_x(m_pp->width - 1);
+//        if(var >= 0 && var < m_pp->height)
+//            intersection_pts.push_back(osg::Vec2d(m_pp->width - 1, var));
 
-        std::cout << "intersection points: \n";
-        for(auto it = intersection_pts.begin(); it != intersection_pts.end(); ++it)
-            std::cout << it->x() << " " << it->y() << std::endl;
-        */
+//        if(intersection_pts.size() == 2)
+//            m_uihelper->DisplayConstraintLine(intersection_pts);
+//        else
+//            std::cout << "ERROR: Number of intersections must be two!" << std::endl;
+
+//        std::cout << "intersection points: \n";
+//        for(auto it = intersection_pts.begin(); it != intersection_pts.end(); ++it)
+//            std::cout << it->x() << " " << it->y() << std::endl;
+
+    }
+
+    // Copy the base ellipse into the m_last_profile.
+    *m_last_profile = *m_ellipse;
+}
+
+*/
+
+void ImageModeller::initialize_spine_drawing_mode() {
+
+    // modify the user clicked point with its projection on the minor-axis guide line
+    m_vertices->at(2) = m_ellipse->points[2];
+
+    // initialize the generalized cylinder as a new node in the scene graph.
+    if(m_gcyl.valid()) m_gcyl = nullptr;
+
+    // estimate the first circle
+    // estimate_first_circle_under_persective_projection();
+    estimate_first_circle_under_orthographic_projection();
+
+    Ellipse2D elp;
+    project_circle(*m_first_circle, elp);
+
+    m_gcyl = new GeneralizedCylinder(GenerateComponentId());
+    m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
+
+    // initialize the constraint line if spine contraint is straight_planar
+    if(sp_constraints == spine_constraints::straight_planar) {
+
+//        // let's define the constraint line in the opengl screen coordinate which is also
+//        double a = m_last_circle->center[1] * m_last_circle->normal[2] - m_last_circle->center[2] * m_last_circle->normal[1];
+//        double b = m_last_circle->center[2] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[2];
+//        double c = (m_last_circle->center[1] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[1]) * m_pp->height / (2*tan(m_pp->fovy/2.0)) - a*(m_pp->width/2.0) - b*(m_pp->height/2.0);
+//        m_constraint_line = std::unique_ptr<Line2D>(new Line2D(a,b,c));
+
+//        // display the constraint line
+//        std::vector<osg::Vec2d> intersection_pts;
+//        double var = m_constraint_line->get_x_at_y(0);
+//        if(var >= 0 && var < m_pp->width)
+//            intersection_pts.push_back(osg::Vec2d(var, 0));
+
+//        var = m_constraint_line->get_x_at_y(m_pp->height - 1);
+//        if(var >= 0 && var < m_pp->width)
+//            intersection_pts.push_back(osg::Vec2d(var, m_pp->height - 1));
+
+//        var = m_constraint_line->get_y_at_x(0);
+//        if(var >= 0 && var < m_pp->height)
+//            intersection_pts.push_back(osg::Vec2d(0, var));
+
+//        var = m_constraint_line->get_y_at_x(m_pp->width - 1);
+//        if(var >= 0 && var < m_pp->height)
+//            intersection_pts.push_back(osg::Vec2d(m_pp->width - 1, var));
+
+//        if(intersection_pts.size() == 2)
+//            m_uihelper->DisplayConstraintLine(intersection_pts);
+//        else
+//            std::cout << "ERROR: Number of intersections must be two!" << std::endl;
+
+//        std::cout << "intersection points: \n";
+//        for(auto it = intersection_pts.begin(); it != intersection_pts.end(); ++it)
+//            std::cout << it->x() << " " << it->y() << std::endl;
+
     }
 
     // Copy the base ellipse into the m_last_profile.
@@ -583,6 +730,12 @@ void ImageModeller::estimate_3d_circles_under_orthographic_projection(std::uniqu
 
     Ellipse2D elp_prj;
     m_pp->convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(*ellipse, elp_prj);
+
+    osg::Vec2dArray* arr = m_component_solver->GetLocalCoordinateFrameProjections();
+    arr->at(0) = elp_prj.points[2]; // third clicked point
+    arr->at(1) = elp_prj.points[0]; // first clicked point
+    arr->at(2) = elp_prj.points[1]; // third clicked point
+
     m_circle_estimator->estimate_3d_circles_under_orthographic_projection(elp_prj, circle, m_pp->near);
 }
 

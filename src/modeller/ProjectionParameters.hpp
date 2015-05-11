@@ -8,7 +8,6 @@
 
 class Ellipse2D;
 
-
 struct ProjectionParameters {
 
     double fovy;        // vertical field of view
@@ -65,7 +64,7 @@ struct ProjectionParameters {
     void convert_from_logical_device_coordinates_to_projected_coordinates(const osg::Vec2d& log_coord, osg::Vec2d& prj_coord);
 
     // other conversions
-    void convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(const Ellipse2D& elp_dev, Ellipse2D& elp_prj);
+    void convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(const Ellipse2D& elp_dev, Ellipse2D& elp_prj, bool with_coeffs = true);
 
     // perspective projection related functions
     void construct_perpective_projection_matrix(osg::Matrixd& proj_mat);
