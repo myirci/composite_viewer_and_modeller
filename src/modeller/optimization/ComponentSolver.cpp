@@ -62,7 +62,7 @@ osg::Vec2dArray* ComponentSolver::GetLocalCoordinateFrameProjections() {
     return m_lframe_proj.get();
 }
 
-double ComponentSolver::Solve(double& Z0, double* C1, double* C2) {
+void ComponentSolver::Solve(double& Z0, double* C1, double* C2) {
 
     // print the initial values:
     std::cout << "Initial Z0: " << Z0 << std::endl;
@@ -81,10 +81,10 @@ double ComponentSolver::Solve(double& Z0, double* C1, double* C2) {
     std::cout << "Final C1: " << C1[0] << " " << C1[1] << " " << C1[2] << std::endl;
     std::cout << "Final C2: " << C2[0] << " " << C2[1] << " " << C2[2] << std::endl;
 
-    osg::Vec3d P0(Z0 * m_lframe_proj->at(0).x() / near, Z0 * m_lframe_proj->at(0).y() / near, Z0);
-    osg::Vec3d P1(coeff[0] * Z0 * m_lframe_proj->at(1).x() / near, coeff[0] * Z0 * m_lframe_proj->at(1).y() / near, coeff[0] * Z0);
-    osg::Vec3d P2(coeff[1] * Z0 * m_lframe_proj->at(2).x() / near, coeff[1] * Z0 * m_lframe_proj->at(2).y() / near, coeff[1] * Z0);
-    osg::Vec3d P3(coeff[2] * Z0 * m_lframe_proj->at(3).x() / near, coeff[2] * Z0 * m_lframe_proj->at(3).y() / near, coeff[2] * Z0);
+    P0 = osg::Vec3d(Z0 * m_lframe_proj->at(0).x() / near, Z0 * m_lframe_proj->at(0).y() / near, Z0);
+    P1 = osg::Vec3d(coeff[0] * Z0 * m_lframe_proj->at(1).x() / near, coeff[0] * Z0 * m_lframe_proj->at(1).y() / near, coeff[0] * Z0);
+    P2 = osg::Vec3d(coeff[1] * Z0 * m_lframe_proj->at(2).x() / near, coeff[1] * Z0 * m_lframe_proj->at(2).y() / near, coeff[1] * Z0);
+    P3 = osg::Vec3d(coeff[2] * Z0 * m_lframe_proj->at(3).x() / near, coeff[2] * Z0 * m_lframe_proj->at(3).y() / near, coeff[2] * Z0);
 
     std::cout << "P0: " << P0.x() << " " << P0.y() << " " << P0.z() << std::endl;
     std::cout << "P1: " << P1.x() << " " << P1.y() << " " << P1.z() << std::endl;
@@ -105,6 +105,4 @@ double ComponentSolver::Solve(double& Z0, double* C1, double* C2) {
     std::cout << "orthogonality constraint-1: " << (P1-P0) * (P2-P0) << std::endl;
     std::cout << "orthogonality constraint-2: " << (P2-P0) * (P3-P0) << std::endl;
     std::cout << "orthogonality constraint-3: " << (P1-P0) * (P3-P0) << std::endl;
-
-    return (P1-optimized_c1).length();
 }

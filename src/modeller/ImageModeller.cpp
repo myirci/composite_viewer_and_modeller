@@ -361,6 +361,7 @@ void ImageModeller::estimate_first_circle_under_persective_projection__() {
         m_tilt_angle -= HALF_PI;
 }
 
+/*
 void ImageModeller::estimate_first_circle_under_orthographic_projection() {
 
     // 1) Estimate the 3D circles under orthographic projection
@@ -371,18 +372,18 @@ void ImageModeller::estimate_first_circle_under_orthographic_projection() {
     // 2) Calculate the tilt angle
     m_tilt_angle = acos(m_ellipse->smn_axis / m_ellipse->smj_axis);
 }
-/*
+*/
 void ImageModeller::estimate_first_circle_under_orthographic_projection() {
 
     // 1) Estimate the 3D circles under orthographic projection
-    // estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
-    estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
+    estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(m_ellipse, *m_last_circle, m_fixed_depth);
+    // estimate_3d_circles_under_orthographic_projection(m_ellipse, *m_last_circle);
     // estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(m_ellipse, *m_last_circle, m_fixed_depth);
 
     // 2) Calculate the tilt angle
     m_tilt_angle = acos(m_ellipse->smn_axis / m_ellipse->smj_axis);
 }
-*/
+
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
 
@@ -417,6 +418,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
     m_gcyl->Update();
 }
 
+/*
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained() {
 
     // transform m_last_profile to projected coordinates
@@ -457,17 +459,20 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained()
     C2[1] = m_last_circle->center[1];
     C2[2] = m_last_circle->center[2];
 
-    double radius_1 = m_component_solver->Solve(calculated_depth, C1, C2);
+    m_component_solver->Solve(calculated_depth, C1, C2);
 
-    m_first_circle->center[0] = C1[0];
-    m_first_circle->center[1] = C1[1];
-    m_first_circle->center[2] = C1[2];
+    osg::Vec3d ctr_1 = (m_component_solver->P1 + m_component_solver->P2) / 2.0;
+    osg::Vec3d ctr_2 = ctr_1 + (m_component_solver->P3 - m_component_solver->P0);
 
-    m_last_circle->center[0] = C2[0];
-    m_last_circle->center[1] = C2[1];
-    m_last_circle->center[2] = C2[2];
+    m_first_circle->center[0] = ctr_1[0];
+    m_first_circle->center[1] = ctr_1[1];
+    m_first_circle->center[2] = ctr_1[2];
 
-    osg::Vec3d nrm(C1[0] - C2[0], C1[1] - C2[1], C1[1] - C2[1]);
+    m_last_circle->center[0] = ctr_2[0];
+    m_last_circle->center[1] = ctr_2[1];
+    m_last_circle->center[2] = ctr_2[2];
+
+    osg::Vec3d nrm = (m_component_solver->P1 - m_component_solver->P0) ^ (m_component_solver->P2 - m_component_solver->P0);
     nrm.normalize();
 
     m_last_circle->normal[0] = nrm.x();
@@ -478,14 +483,15 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained()
     m_first_circle->normal[1] = nrm.y();
     m_first_circle->normal[2] = nrm.z();
 
-    m_first_circle->radius = radius_1;
+    m_first_circle->radius = (ctr_1  - m_component_solver->P0).length();
+    m_last_circle->radius =  (m_last_profile->smj_axis / m_ellipse->smj_axis) * m_first_circle->radius;
 
     m_gcyl->AddPlanarSection(*m_first_circle);
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
-}
+}*/
 
-/*
+
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained() {
 
     // 1) set the radius : proportional to the length of the semi-major axis
@@ -524,8 +530,8 @@ void ImageModeller::initialize_spine_drawing_mode() {
     if(m_gcyl.valid()) m_gcyl = nullptr;
 
     // estimate the first circle
-    // estimate_first_circle_under_persective_projection();
-    estimate_first_circle_under_orthographic_projection();
+    estimate_first_circle_under_persective_projection();
+    // estimate_first_circle_under_orthographic_projection();
 
     Ellipse2D elp;
     project_circle(*m_last_circle, elp);
@@ -576,7 +582,7 @@ void ImageModeller::initialize_spine_drawing_mode() {
     *m_last_profile = *m_ellipse;
 }
 
-*/
+/*
 
 void ImageModeller::initialize_spine_drawing_mode() {
 
@@ -637,7 +643,7 @@ void ImageModeller::initialize_spine_drawing_mode() {
     // Copy the base ellipse into the m_last_profile.
     *m_last_profile = *m_ellipse;
 }
-
+*/
 void ImageModeller::calculate_ellipse() {
 
     // calculate the end points of the minor_axis guide line
