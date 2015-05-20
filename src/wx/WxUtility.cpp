@@ -27,6 +27,7 @@ void utilityShowMessageDialog(message_type mt, const wxString& message) {
 }
 
 bool utilityQuestionDialoag(const wxString& message) {
+
     return  wxMessageBox(message, wxT("Confirm"), wxICON_QUESTION | wxYES_NO) == wxYES;
 }
 
@@ -52,14 +53,17 @@ wxSize utilitySimplify(const wxSize& size) {
 }
 
 void utilityPrintSize(const wxSize& size) {
+
     std::cout << "w: " << size.GetWidth() << " h: " << size.GetHeight() << std::endl;
 }
 
 void utilityPrintSize(const std::string& str, const wxSize& size) {
+
     std::cout << str << " w: " << size.GetWidth() << " h: " << size.GetHeight() << std::endl;
 }
 
 void utilityPrintPoint(const wxPoint& p) {
+
     std::cout << "x: " << p.x << " y: " << p.y << std::endl;
 }
 
@@ -97,10 +101,8 @@ void utilityPrintRect(const wxRect& rect) {
 
 void utilityPrintDisplayMode(image_display_mode md) {
 
-    if(md == image_display_mode::FIXED)
-        std::cout << "FIXED" << std::endl;
-    else if(md == image_display_mode::VARYING)
-        std::cout << "VARYING" << std::endl;
+    if(md == image_display_mode::FIXED)        std::cout << "FIXED" << std::endl;
+    else if(md == image_display_mode::VARYING) std::cout << "VARYING" << std::endl;
 
 }
 

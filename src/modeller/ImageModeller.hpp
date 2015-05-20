@@ -135,7 +135,6 @@ private:
 
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
-    inline void estimate_first_circle_under_persective_projection__();
     inline void estimate_first_circle_under_orthographic_projection();
 
     // 3D circle estimation functions

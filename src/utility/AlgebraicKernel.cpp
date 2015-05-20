@@ -6,10 +6,7 @@ AlgebraicKernel::AlgebraicKernel() :
     solver(ak.solve_1_object()) {
 }
 
-void AlgebraicKernel::solve(const std::vector<double>& coefficients,
-                            std::vector<double>& roots,
-                            const error_type etype,
-                            int error_bound) {
+void AlgebraicKernel::solve(const std::vector<double>& coefficients, std::vector<double>& roots, const error_type etype, int error_bound) {
 
     // coefficients must be ordered from lower to higher degree for this
     // implementation. For client interface the order is from higher
@@ -25,16 +22,14 @@ void AlgebraicKernel::solve(const std::vector<double>& coefficients,
         Approximate_relative_1 approx_r = ak.approximate_relative_1_object();
         for(auto it = m_roots.begin(); it != m_roots.end(); ++it) {
             for(auto it = m_roots.begin(); it != m_roots.end(); ++it) {
-                roots.push_back(((approx_r(it->first, error_bound).first +
-                                  approx_r(it->first, error_bound).second)/2.0).to_double());
+                roots.push_back(((approx_r(it->first, error_bound).first + approx_r(it->first, error_bound).second)/2.0).to_double());
             }
         }
     }
     else if(etype == error_type::absolute) {
         Approximate_absolute_1 approx_a = ak.approximate_absolute_1_object();
         for(auto it = m_roots.begin(); it != m_roots.end(); ++it) {
-            roots.push_back(((approx_a(it->first, error_bound).first +
-                              approx_a(it->first, error_bound).second)/2.0).to_double());
+            roots.push_back(((approx_a(it->first, error_bound).first + approx_a(it->first, error_bound).second)/2.0).to_double());
         }
     }
     m_roots.clear();
