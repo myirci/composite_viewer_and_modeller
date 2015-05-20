@@ -1,52 +1,53 @@
 #ifndef COMPONENT_SOLVER_HPP
 #define COMPONENT_SOLVER_HPP
 
+#include "OptimizationUtility.hpp"
 #include <osg/Array>
 #include <ceres/ceres.h>
 
 struct CostFunctor {
+    CostFunctor(osg::Vec2dArray const * const projections, const osg::Vec3d& previous_ctr, double near) :
+        m_projections(new osg::Vec2dArray(projections->size())), m_center(previous_ctr)  {
 
-    CostFunctor(double* c1_, double* c2_) : c1(c1_), c2(c2_) { }
+        for(int i = 0; i < projections->size(); ++i)
+            m_projections->at(i) = projections->at(i) / near;
+    }
 
     template <typename T>
-    bool operator()(const T* const Z0, const T* const C1, const T* const C2, T* residual) const {
-        residual[0] = sqrt((C1[0] - T(c1[0]) * (*Z0)) * (C1[0] - T(c1[0]) * (*Z0)) +
-                           (C1[1] - T(c1[1]) * (*Z0)) * (C1[1] - T(c1[1]) * (*Z0)) +
-                           (C1[2] - T(c1[2]) * (*Z0)) * (C1[2] - T(c1[2]) * (*Z0)));
-        residual[1] = sqrt((C2[0] - T(c2[0]) * (*Z0)) * (C2[0] - T(c2[0]) * (*Z0)) +
-                           (C2[1] - T(c2[1]) * (*Z0)) * (C2[1] - T(c2[1]) * (*Z0)) +
-                           (C2[2] - T(c2[2]) * (*Z0)) * (C2[2] - T(c2[2]) * (*Z0)));
+    bool operator()(const T* const ctr, const T* const depths, T* residuals) const {
+
+        // depths[0]: depth of Pi1, depths[1]: depth of Ci', depths[2]: depth of Pi2
+        Vector3D<T> Cvec(ctr[0], ctr[1], ctr[2]);
+        Vector3D<T> P1vec(depths[0] * T(m_projections->at(0).x()), depths[0] * T(m_projections->at(0).y()), depths[0]);
+        Vector3D<T> Cpvec(depths[1] * T(m_projections->at(1).x()), depths[1] * T(m_projections->at(1).y()), depths[1]);
+        Vector3D<T> P2vec(depths[2] * T(m_projections->at(2).x()), depths[2] * T(m_projections->at(2).y()), depths[2]);
+        residuals[0] = (Cvec - Cpvec).squared_norm() + (P1vec - Cpvec).norm() * (P2vec - Cpvec).norm() - (P1vec - Cvec).norm() * (P2vec - Cvec).norm();
+
+        Vector3D<T> prev_ctr(T(m_center.x()), T(m_center.y()), T(m_center.z()));
+        residuals[1] = ((P1vec - Cvec).cross(P2vec - Cvec)).cross(Cvec - prev_ctr).norm();
+
         return true;
     }
-    double* c1;
-    double* c2;
-};
 
+    private:
+    // projections: m_projections->at(0): pi1, m_projections->at(1): ellipse center, m_projections->at(2): pi2
+    osg::ref_ptr<osg::Vec2dArray> m_projections;
+    // center of previous circle
+    osg::Vec3d m_center;
+};
 
 class ComponentSolver {
 public:
-    ComponentSolver(double near_);
-    osg::Vec2dArray* GetLocalCoordinateFrameProjections();
-    void Solve(double& Z0, double* C1, double* C2);
-    osg::Vec3d P0;
-    osg::Vec3d P1;
-    osg::Vec3d P2;
-    osg::Vec3d P3;
+    ComponentSolver(double near) : n(near) {
+        options.linear_solver_type = ceres::DENSE_QR;
+        options.minimizer_progress_to_stdout = true;
+    }
+    void SolveForSingleCircle(osg::Vec2dArray const * const projections, const osg::Vec3d& ctr_prev, osg::Vec3d& ctr, osg::Vec3d& depths);
+    void SolveForAllCircles();
 private:
-    osg::ref_ptr<osg::Vec2dArray> m_lframe_proj;  // projection of the local frame points:
-    // m_lframe_proj->at(0) = P0 : origin - third click,
-    // m_lframe_proj->at(1) = P1 : first click,
-    // m_lframe_proj->at(2) = P1 : second click,
-    // m_lframe_proj->at(3) = P3 : fourth click
-
-    double coeff[3];       // Z1 = coeff[0]*Z0, Z2 = coeff[1]*Z0,  Z3 = coeff[3]*Z0
-    double C1v[3];         // C1 = Z0*C1v
-    double C2v[3];         // C2 = Z0*C2v
-    double near;
     ceres::Solver::Options options;
     ceres::Solver::Summary summary;
-    inline double func(int i, int j);
-    void calculate_coefficients();
+    double n;
 };
 
 #endif // COMPONENT_SOLVER_HPP

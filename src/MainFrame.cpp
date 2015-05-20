@@ -25,6 +25,7 @@ END_EVENT_TABLE()
 const wxString MainFrame::frame_text = wxT("Frame Id: ");
 MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style, const wxString& name) :
     wxFrame(parent, id, title, pos, size, style, name), m_id(0) {
+
     SetTitle(wxT("Composite Viewer and Modeller"));
     UsrInitNotebook();
     UsrInitMenubar();
@@ -34,10 +35,12 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 }
 
 MainFrame::~MainFrame() {
+
     delete m_tdirector;
 }
 
 void MainFrame::OnOpenImage(wxCommandEvent& event) {
+
     ImageFrame* imgFrame = new ImageFrame(this, wxID_ANY, wxT(""), wxPoint(50, 50), wxSize(600, 450));
     imgFrame->UsrSetFrameId(++m_id);
     if(imgFrame->UsrOpenImageFile()) {
@@ -51,6 +54,7 @@ void MainFrame::OnOpenImage(wxCommandEvent& event) {
 }
 
 void MainFrame::OnOpenPointCloud(wxCommandEvent& event) {
+
     std::cout << "This menu has not been implemented yet!" << std::endl;
 }
 
@@ -258,14 +262,8 @@ void MainFrame::UsrFrameClosedMessage(int id) {
 
 void MainFrame::UsrSetLogMode(log_type ltype) {
 
-    if(ltype == log_type::DEFAULT) {
-        m_textctrl->SetDefaultStyle(m_default_style);
-    }
-    else if(ltype == log_type::ERROR) {
-        m_textctrl->SetDefaultStyle(wxTextAttr(*wxRED));
-    }
-    else if(ltype == log_type::WARNING) {
-        m_textctrl->SetDefaultStyle(wxTextAttr(*wxBLUE));
-    }
+    if(ltype == log_type::DEFAULT)      m_textctrl->SetDefaultStyle(m_default_style);
+    else if(ltype == log_type::ERROR)   m_textctrl->SetDefaultStyle(wxTextAttr(*wxRED));
+    else if(ltype == log_type::WARNING) m_textctrl->SetDefaultStyle(wxTextAttr(*wxBLUE));
 }
 

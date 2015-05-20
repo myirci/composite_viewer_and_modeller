@@ -48,9 +48,7 @@ void utilityPrintPoint(const wxPoint& p);
 wxString utilityToString(const wxPoint& p);
 wxString utilityToString(const wxSize& s);
 wxString utilityToString(const std::string& str, const wxSize& s);
-std::string utilityInsertAfter(const wxString& fpath,
-                               const wxUniChar& after,
-                               const wxString& str);
+std::string utilityInsertAfter(const wxString& fpath, const wxUniChar& after, const wxString& str);
 void utilityPrintDisplayMode(image_display_mode md);
 bool utilityIsXml(const wxString& fname);
 

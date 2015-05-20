@@ -23,17 +23,13 @@ public:
     };
 
     AlgebraicKernel();
-    void solve(const std::vector<double>& coefficients,
-               std::vector<double>& roots,
-               const error_type etype = error_type::relative,
-               int error_bound = 50);
+    void solve(const std::vector<double>& coefficients, std::vector<double>& roots, const error_type etype = error_type::relative, int error_bound = 50);
 private:
     AK ak;
     Solver_1 solver;
     Polynomial_1 x;
     std::vector<std::pair<Algebraic_real_1, Multiplicity_type> > m_roots;
-    void construct_polynomial(const std::vector<CGAL::Gmpq>& coefficients,
-                              Polynomial_1& poly) const;
+    void construct_polynomial(const std::vector<CGAL::Gmpq>& coefficients, Polynomial_1& poly) const;
     inline void initalize_approximator();
     // we do not want clients to copy an algeraic_kernel object.
     AlgebraicKernel(const AlgebraicKernel& rhs);

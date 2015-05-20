@@ -15,7 +15,6 @@ public:
     void Solve();
     void AddComponent(ComponentBase* component);
     void DeleteAllComponents();
-
     void DeleteSelectedComponents(std::vector<int>& id_vector);
     void UpdateOrCreateConstraints(const unsigned int cp1, const unsigned int cp2, const std::vector<geosemantic_constraints>& gsc);
     void GetConstraints(const unsigned int cp1, const unsigned int cp2, std::vector<geosemantic_constraints>& gsc) const;

@@ -16,6 +16,7 @@ class wxStreamToTextRedirector;
 class wxNotebook;
 
 class MainFrame : public wxFrame {
+
 private:
 
     std::map<int, ImageFrame*> m_img_frames;
@@ -30,6 +31,7 @@ private:
     int m_id;
 
 public:
+
     static const wxString frame_text;
     MainFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_FRAME_STYLE, const wxString& name = wxFrameNameStr);
     ~MainFrame();
