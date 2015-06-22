@@ -3,7 +3,7 @@ project(composite_viewer_and_modeller)
 
 set(CMAKE_BUILD_TYPE Debug)
 
-add_definitions(-std=c++0x)
+add_definitions(-std=c++11)
 
 aux_source_directory(./src SOURCES)
 aux_source_directory(./src/image/gui SOURCES)
@@ -82,7 +82,7 @@ set(LINK_LIBS ${LINK_LIBS} libosg.so libosgViewer.so libosgDB.so libosgGA.so lib
 find_package(OTB REQUIRED)
 if(OTB_FOUND)
     include(${OTB_USE_FILE})
-    set(LINK_LIBS ${LINK_LIBS} OTBCommon OTBIO)
+    set(LINK_LIBS ${LINK_LIBS} ${OTB_LIBRARIES})
 else(OTB_FOUND)
     message(FATAL_ERROR "OTB is not found!")
 endif(OTB_FOUND)
