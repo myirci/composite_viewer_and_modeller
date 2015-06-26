@@ -25,9 +25,13 @@ public:
     // data generators
     void generate_data(osg::ref_ptr<osg::Vec3Array>& vertices, osg::ref_ptr<osg::Vec3Array>& normals, int num_points, bool random = false) const;
     void generate_data(osg::ref_ptr<osg::Vec3Array>& vertices, int num_points, bool random = false) const;
+    void generate_aligned_data(osg::ref_ptr<osg::Vec3Array>& vertices, osg::ref_ptr<osg::Vec3Array>& normals, int num_points, const Circle3D& circle) const;
 
     // A 3D circle can be represented by a dual quadrics
     void get_matrix_representation(Eigen::Matrix4d& mat) const;
+
+    // Scaled normal
+    void get_scaled_normal(Eigen::Vector3d& vec) const;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 

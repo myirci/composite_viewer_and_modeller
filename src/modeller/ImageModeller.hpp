@@ -129,9 +129,14 @@ private:
     void constrain_mouse_point();
 
     // estimation of the other circles
-    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-    inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-    inline void add_planar_section_to_the_generalized_cylinder_constrained();
+    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
+    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2();
+    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
+    inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection_1();
+    inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection_2();
+    inline void add_planar_section_to_the_generalized_cylinder_constrained_1();
+    inline void add_planar_section_to_the_generalized_cylinder_constrained_2();
+    inline void add_planar_section_to_the_generalized_cylinder_constrained_3();
 
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
@@ -157,10 +162,10 @@ private:
     void project_generalized_cylinder(const GeneralizedCylinder& gcyl) const;
 
     // projection error calculators
-
-
     // inline void constrain_spine_point_in_piecewise_linear_mode();
     // inline void constrain_spine_point_in_continuous_mode();
+
+
 };
 
 #endif // IMAGE_MODELLER_HPP

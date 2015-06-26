@@ -7,9 +7,11 @@
 #include <osg/Depth>
 #include <osg/Texture2D>
 #include <osg/ShapeDrawable>
+#include <osg/LineWidth>
 
 #include <wx/gdicmn.h>
 
+#include <Eigen/Dense>
 
 osg::Camera* create_background_camera(int left, int right, int bottom, int top) {
 
@@ -93,6 +95,35 @@ osg::MatrixTransform* display_vector3d(const osg::Vec3d& pt, const osg::Vec3d& v
     return mtrans;
 }
 
+osg::Geode* display_lines(osg::Vec3Array* vertices, const osg::Vec4d& color) {
+
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array;
+    colors->push_back(color);
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
+    geom->setVertexArray(vertices);
+    geom->setColorArray(colors.get());
+    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINES, 0, vertices->size()));
+    geode->addDrawable(geom.release());
+    osg::LineWidth* linewidth = new osg::LineWidth();
+    linewidth->setWidth(0.3);
+    geode->getOrCreateStateSet()->setAttributeAndModes(linewidth, osg::StateAttribute::ON);
+    geode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    return geode.release();
+}
+
+osg::Geode* display_point(const osg::Vec3d& pt, const osg::Vec4d& color) {
+
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    osg::ref_ptr<osg::ShapeDrawable> sphere = new osg::ShapeDrawable;
+    sphere->setShape(new osg::Sphere(pt, 0.5));
+    sphere->setColor(color);
+    geode->addDrawable(sphere.release());
+    return geode.release();
+}
+
+
 // given two 3D circles, this function calculates the
 // transformation matrix that transforms circle1 to circle2.
 void calculate_transformation_matrix(const Circle3D& circle1, const Circle3D& circle2, osg::Matrixd& mat) {
@@ -125,20 +156,31 @@ void calculate_transformation_matrix(const Circle3D& circle1, const Circle3D& ci
     mat = mat_trans * mat_rotate * mat_scale * mat_org;
 }
 
-double squared_distance(const osg::Vec3d& pt1, const osg::Vec3d& pt2) {
-    return (pt2 - pt1).length2();
+void calculate_transformation_matrix_without_scale(const Circle3D& circle1, const Circle3D& circle2, osg::Matrixd& mat) {
+
+    // 1) translation matrix to translate circle-1 to the origin
+    osg::Matrixd mat_org = osg::Matrixd::identity();
+    mat_org(0,3) = -circle1.center[0];
+    mat_org(1,3) = -circle1.center[1];
+    mat_org(2,3) = -circle1.center[2];
+
+    // 2) rotation matrix to align circle-1 normal to circle-2 normal
+    Eigen::Vector3d rot_axis = circle1.normal.cross(circle2.normal);
+    osg::Matrixd mat_rotate = osg::Matrixd::rotate(acos(circle1.normal.dot(circle2.normal)), rot_axis[0], rot_axis[1], rot_axis[2]);
+    transpose(mat_rotate, 4);
+
+    // 3) translation ùatrix to transalte circle-1 to the center of circle-2
+    osg::Matrixd mat_trans = osg::Matrixd::identity();
+    mat_trans(0,3) = circle2.center[0];
+    mat_trans(1,3) = circle2.center[1];
+    mat_trans(2,3) = circle2.center[2];
+
+    // 4) combined transformation matrix
+    mat = mat_trans * mat_rotate * mat_org;
 }
 
-void print_camera_calibration_matrix(const osg::Camera * const cam) {
-
-    std::cout << "Camera calibration matrix when column vector format is used:" << std::endl;
-    osg::Matrixd mat = cam->getProjectionMatrix();
-    transpose(mat, 4);
-    osg::Matrix3d mat_calib;
-    for(size_t i = 0; i < 3; ++i)
-        for(size_t j = 0; j < 3; ++j)
-            mat_calib(i,j) = mat(i,j);
-    print_matrix(mat_calib, 3, 3);
+double squared_distance(const osg::Vec3d& pt1, const osg::Vec3d& pt2) {
+    return (pt2 - pt1).length2();
 }
 
 void print_3x4_camera_projection_matrix(const osg::Camera * const cam) {
@@ -150,9 +192,10 @@ void print_3x4_camera_projection_matrix(const osg::Camera * const cam) {
     for(size_t i = 0; i < 2; ++i)
         for(size_t j = 0; j < 4; ++j)
             mat_proj(i,j) = mat(i,j);
+
     for(size_t j = 0; j < 4; ++j)
         mat_proj(2,j) = mat(3,j);
-    print_matrix(mat_proj, 4, 3);
+    print_matrix(mat_proj, 3, 4);
 }
 
 void print_camera_projection_matrix(const osg::Camera* const cam) {

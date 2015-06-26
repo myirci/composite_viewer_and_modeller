@@ -25,6 +25,10 @@ Circle3D& Circle3D::operator =(const Circle3D& rhs) {
     return *this;
 }
 
+void Circle3D::get_scaled_normal(Eigen::Vector3d& vec) const {
+    vec = (normal * radius);
+}
+
 void Circle3D::get_matrix_representation(Eigen::Matrix4d& mat) const {
 
     Eigen::Matrix3d Nx3;
@@ -76,6 +80,22 @@ void Circle3D::generate_data(osg::ref_ptr<osg::Vec3Array>& vertices, int num_poi
     }
 }
 
+void Circle3D::generate_aligned_data(osg::ref_ptr<osg::Vec3Array>& vertices, osg::ref_ptr<osg::Vec3Array>& normals,
+                                     int num_points, const Circle3D& circle) const {
+    size_t start = vertices->size();
+    circle.generate_data(vertices, num_points);
+    osg::Matrixd mat;
+    calculate_transformation_matrix_without_scale(circle, *this, mat);
+    for(size_t i = start; i < vertices->size(); ++i)
+        vertices->at(i) = mat * vertices->at(i);
+    osg::Vec3 ctr(center[0],center[1],center[2]);
+    for(size_t i = start; i < vertices->size(); ++i) {
+        osg::Vec3 nrm = vertices->at(i) - ctr;
+        nrm.normalize();
+        normals->push_back(nrm);
+    }
+}
+
 void Circle3D::find_orthonomal_basis(Eigen::Vector3d& e1, Eigen::Vector3d& e2) const {
 
     // Find 3 othonormal basis vectors for the planar section: 2 vectors
@@ -87,7 +107,6 @@ void Circle3D::find_orthonomal_basis(Eigen::Vector3d& e1, Eigen::Vector3d& e2) c
     else {
         e1 = Eigen::Vector3d(1, 0, 0);
     }
-
     e2 = normal.cross(e1);
 
 #ifdef DEBUG

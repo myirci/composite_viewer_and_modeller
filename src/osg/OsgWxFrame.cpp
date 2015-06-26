@@ -899,8 +899,6 @@ void OsgWxFrame::OnPrintProjectionMatrix(wxCommandEvent& event) {
     std::cout << "---------------------------------" << std::endl;
     print_camera_orientation(m_viewer->getCamera());
     std::cout << "---------------------------------" << std::endl;
-    print_camera_calibration_matrix(m_viewer->getCamera());
-    std::cout << "---------------------------------" << std::endl;
     print_3x4_camera_projection_matrix(m_viewer->getCamera());
     std::cout << "---------------------------------" << std::endl;
     osg::Matrixd mat_vpm;
