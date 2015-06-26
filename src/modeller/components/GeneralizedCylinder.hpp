@@ -17,7 +17,10 @@ public:
     void SetSectionNormalsColor(const osg::Vec4& color);
     void SetVertexNormalsColor(const osg::Vec4& color);
     void Update();
+    void Clear(bool update_flag);
+    void Recalculate();
     const GeneralizedCylinderGeometry* const GetGeometry() const { return m_geometry.get(); }
+    GeneralizedCylinderGeometry* GetGeometry()                   { return m_geometry.get(); }
 protected:
     osg::ref_ptr<GeneralizedCylinderGeometry> m_geometry;
     osg::ref_ptr<osg::Switch> m_snormals;
@@ -27,7 +30,8 @@ protected:
     bool m_display_section_normals;
     bool m_display_vertex_normals;
 private:
-    inline void add_to_section_normals(const Circle3D& circle);
+    inline void add_to_section_normals(const Circle3D& circle, unsigned int scale = 1);
+    inline void add_to_vertex_normals(size_t section_index);
 };
 
 #endif // GENERALIZEDCYLINDER_HPP

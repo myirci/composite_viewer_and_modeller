@@ -40,7 +40,6 @@ void ModelSolver::DeleteSelectedComponents(std::vector<int>& id_vector) {
     }
 }
 
-
 void ModelSolver::Print() const {
 
     std::cout << "Num components: " << m_components.size() << std::endl;
