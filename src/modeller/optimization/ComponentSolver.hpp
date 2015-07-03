@@ -69,7 +69,7 @@ struct CostFunctor_2 {
         // residual-0
         residuals[0] = (get_normal<T>(1).cross(get_center<T>(0) - parameters[0][0]*get_center<T>(1))).norm();
 
-        // rest of thr residuals:
+        // rest of the residuals:
         for(int i = 2; i < sections.size(); ++i)
             residuals[i-1] = (get_normal<T>(i).cross(parameters[0][i-2]*get_center<T>(i-1) - parameters[0][i-1]*get_center<T>(i))).norm();
 
