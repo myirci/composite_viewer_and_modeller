@@ -21,8 +21,7 @@ set(SOURCES ${SOURCES}
             src/geometry/Primitives.hpp
             src/modeller/optimization/ExtractPlaneNormals.hpp
             src/modeller/optimization/OptimizationUtility.hpp
-            src/wx/WxGuiId.hpp
-)
+            src/wx/WxGuiId.hpp)
 
 include_directories(/usr/local/include/eigen3)
 

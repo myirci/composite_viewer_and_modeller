@@ -6,15 +6,10 @@
 class MainFrame;
 
 class CompositeViewerModeller: public wxApp {
-
 public:
-
     virtual bool OnInit();
-
 private:
-
     MainFrame* m_main_frame;
-
 };
 
 DECLARE_APP(CompositeViewerModeller)

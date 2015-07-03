@@ -256,7 +256,6 @@ void ImageModeller::model_update() {
                     *m_last_profile = *m_dynamic_profile;
                     add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-
                     m_solver->AddComponent(m_gcyl.get());
                     Reset2DDrawingInterface();
                 }
@@ -287,9 +286,9 @@ void ImageModeller::model_update() {
                     m_right_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_last_profile = *m_dynamic_profile;
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
+                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
                     // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2();
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection_1();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection_2();
                     // add_planar_section_to_the_generalized_cylinder_constrained_1();
@@ -306,9 +305,9 @@ void ImageModeller::model_update() {
                     m_left_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_last_profile = *m_dynamic_profile;
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
+                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
                     // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2();
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection_1();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection_2();
                     // add_planar_section_to_the_generalized_cylinder_constrained_1();
@@ -342,9 +341,6 @@ void ImageModeller::estimate_first_circle_under_persective_projection() {
     m_tilt_angle = acos(m_last_circle->normal[2]);
     if(m_tilt_angle > HALF_PI)  m_tilt_angle = PI - m_tilt_angle;
     m_tilt_angle = HALF_PI - m_tilt_angle;
-
-    std::cout << "First Circle: " << std::endl;
-    std::cout << *m_first_circle << std::endl;
 }
 
 void ImageModeller::estimate_first_circle_under_orthographic_projection() {
@@ -761,13 +757,6 @@ int ImageModeller::estimate_3d_circles_with_fixed_depth(std::unique_ptr<Ellipse2
     return m_circle_estimator->estimate_3d_circles_with_fixed_depth(elp_prj, circles, m_pp.get(), desired_depth);
 }
 
-int ImageModeller::estimate_3d_circles_with_fixed_depth__(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_depth) {
-
-    Ellipse2D elp_prj;
-    m_pp->convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(*ellipse, elp_prj);
-    return m_circle_estimator->estimate_3d_circles_with_fixed_depth(elp_prj, circles, m_pp.get(), desired_depth);
-}
-
 int ImageModeller::estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles) {
 
     Ellipse2D elp_prj;
@@ -946,7 +935,7 @@ void ImageModeller::ray_cast_within_binary_image_for_profile_match() {
     m_canvas->UsrDeviceToLogical(p1);
 
     // 2) calculate the casting direction vector,the change in major-axis length is limited by a factor
-    Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.2), static_cast<int>((p1.y - p0.y) * 0.2));
+    Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
 
     // 3) perform ray casts and display shot rays variables for ray casting
     bool hit_result[4] = { false, false, false, false };
@@ -1023,7 +1012,7 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
     m_canvas->UsrDeviceToLogical(p1);
 
     // 2) calculate the casting direction vector, the change in major-axis length is limited by a factor
-    Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.15), static_cast<int>((p1.y - p0.y) * 0.15));
+    Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
 
     // 3) perform ray casts and display shot rays variables for ray casting
     OtbImageType::PixelType hit_val[4];
