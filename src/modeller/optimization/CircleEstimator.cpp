@@ -52,11 +52,12 @@ int CircleEstimator::estimate_3d_circles_with_fixed_depth(const Ellipse2D& ellip
 
     int count = estimate_unit_3d_circles(ellipse, circles, pp);
     for(int i = 0; i < count; ++i) {
-        if(desired_depth != circles[i].center[2]) circles[i].radius = desired_depth/circles[i].center[2];
-        else                                      continue;
+        if(desired_depth != circles[i].center[2])
+            circles[i].radius = desired_depth / circles[i].center[2];
+        else
+            continue;
         circles[i].center *= circles[i].radius;
     }
-
     return count;
 }
 
@@ -68,39 +69,6 @@ int CircleEstimator::estimate_3d_circles_with_fixed_radius(const Ellipse2D& elli
         circles[i].radius = desired_radius;
     }
     return count;
-}
-
-void CircleEstimator::estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(const Ellipse2D& ellipse, Circle3D& circle, double near, double desired_depth) {
-
-    // estimate the circle on the near clipping plane (image plane)
-    estimate_3d_circles_under_orthographic_projection(ellipse, circle, near);
-
-    /* radius of the circle is equal to the length of the smj_vec_2d = smj_vec_3d = tilted_smn_vec_3d = ellipse.smj_axis on the
-     * near plane (image plane). On the near plane, depth = 0 w.r.t computer graphics and depth = -near w.r.t mathematical notion.
-     * Here we need to use the mathematical notion and take the depth = -near on the image plane. At the desired depth, the radius
-     * will be calculated as below from the similar triangles.
-     *
-     * radius_at_desired_depth = (desired_depth / depth_at_near_plane) * radius_on_near_plane
-     *                         = (desired_depth / -near) * length(smj_vec_2d)
-     *
-     */
-    circle.radius *= (desired_depth / -near);
-
-    /* center of the ellipse on the image plane is (ellipse.center.x(), ellipse.center.y(), -near)
-     * however circle is moved to the desired depth. We need to multiply the center with the ratio (new_radius / old_radius) or
-     * (new_depth / old_depth)
-    */
-    circle.center *= (desired_depth / -near);
-}
-
-void CircleEstimator::estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(const Ellipse2D& ellipse, Circle3D& circle, double near, double desired_depth) {
-
-    // estimate the circle on the near clipping plane (image plane)
-    estimate_3d_circles_under_orthographic_projection(ellipse, circle, near);
-
-    // radius and x,y components of the center coordinates does not change. Only the z coordinate of the circle needs to be updated
-    // with the desired depth
-    circle.center[2] = desired_depth;
 }
 
 void CircleEstimator::estimate_3d_circles_under_orthographic_projection(const Ellipse2D& ellipse, Circle3D& circle, double near) {
