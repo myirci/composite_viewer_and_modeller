@@ -93,7 +93,6 @@ void Ellipse2D::calculate_coefficients_from_parameters() {
     coeff[5] = center.x() * center.x() * coeff[0] + center.x() * center.y() * coeff[1] + center.y() * center.y() * coeff[2] - as * bs;
 }
 
-
 // the coefficents mmust be updated before calling this function
 void Ellipse2D::calculate_parameters_from_coeffients() {
 

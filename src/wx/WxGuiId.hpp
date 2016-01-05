@@ -12,7 +12,7 @@
 #define wxID_EDIT_ROTATE_CW              IMAGE_FRAME_FIRST_ID + 5
 #define wxID_EDIT_ROTATE_CCW             IMAGE_FRAME_FIRST_ID + 6
 #define wxID_MODE_DEFAULT                IMAGE_FRAME_FIRST_ID + 7
-#define wxID_MODE_RegionGrowING         IMAGE_FRAME_FIRST_ID + 8
+#define wxID_MODE_RegionGrowING          IMAGE_FRAME_FIRST_ID + 8
 #define wxID_VIEW_GRAIDENT_IMAGE         IMAGE_FRAME_FIRST_ID + 9
 // #define wxID_MODE_DRAWING                IMAGE_FRAME_FIRST_ID + 9
 // #define wxID_DRAWING_MODE_CUBOID         IMAGE_FRAME_FIRST_ID + 10

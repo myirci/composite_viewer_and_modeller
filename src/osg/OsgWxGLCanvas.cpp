@@ -246,11 +246,15 @@ void OsgWxGLCanvas::OnMouseMotion(wxMouseEvent& event) {
 }
 
 void OsgWxGLCanvas::OnMouseWheel(wxMouseEvent& event) {
-
     int delta = event.GetWheelRotation() / event.GetWheelDelta() * event.GetLinesPerAction();
-    if (m_graphics_window.valid())
-        m_graphics_window->getEventQueue()->mouseScroll(delta > 0 ? osgGA::GUIEventAdapter::SCROLL_UP : osgGA::GUIEventAdapter::SCROLL_DOWN);
-
+    if(m_parent->UsrGetUIOperationMode() == operation_mode::modelling) {
+        if(delta > 0) m_modeller->IncrementScaleFactor();
+        else m_modeller->DecrementScaleFactor();
+    }
+    else if(m_parent->UsrGetUIOperationMode() == operation_mode::displaying) {
+        if (m_graphics_window.valid())
+            m_graphics_window->getEventQueue()->mouseScroll(delta > 0 ? osgGA::GUIEventAdapter::SCROLL_UP : osgGA::GUIEventAdapter::SCROLL_DOWN);
+    }
 }
 
 void OsgWxGLCanvas::UsrLogErrorMessage(const std::string& str) const {

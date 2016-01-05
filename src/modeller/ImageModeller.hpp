@@ -51,6 +51,11 @@ enum class spine_drawing_mode : unsigned char {
     piecewise_linear
 };
 
+enum class projection_type : unsigned char {
+    perspective,
+    orthographic
+};
+
 class ImageModeller {
 public:
     ImageModeller(const wxString& fpath, const std::shared_ptr<ProjectionParameters>& pp, OsgWxGLCanvas* canvas);
@@ -82,18 +87,19 @@ private:
 
     Circle3D* m_first_circle;
     Circle3D* m_last_circle;
-    std::unique_ptr<UIHelper> m_uihelper;
-    std::unique_ptr<Ellipse2D> m_ellipse;
+    std::unique_ptr<Ellipse2D> m_first_ellipse;
     std::unique_ptr<Ellipse2D> m_last_profile;
     std::unique_ptr<Ellipse2D> m_dynamic_profile;
+
+    std::unique_ptr<UIHelper> m_uihelper;
     std::unique_ptr<Rectangle2D> m_rect;
     std::unique_ptr<ModelSolver> m_solver;
     std::unique_ptr<ComponentSolver> m_component_solver;
     std::shared_ptr<ProjectionParameters> m_pp;
     std::unique_ptr<CircleEstimator> m_circle_estimator;
 
-    double m_tilt_angle;
     double m_fixed_depth;
+    double m_scale_factor;
 
     // for ray cast display
     bool m_display_raycast;
@@ -113,6 +119,8 @@ public:
     void DeleteSelectedComopnents(std::vector<int>& index_vector);
     void SetRenderingType(rendering_type rtype);
     void EnableRayCastDisplay(bool flag);
+    void IncrementScaleFactor();
+    void DecrementScaleFactor();
     osg::Geode* CreateLocalFramesNode();
     osg::Geode* CreateVertexNormalsNode();
     unsigned int GenerateComponentId();
@@ -122,21 +130,17 @@ private:
 
     void model_update();
     void calculate_ellipse();
-    void generate_dynamic_profile();
+    void update_dynamic_profile();
     void ray_cast_within_binary_image_for_profile_match();     // based on binary images
     void ray_cast_within_gradient_image_for_profile_match();   // based on gradient
-    void initialize_spine_drawing_mode();
+    void initialize_spine_drawing_mode(projection_type pt);
     void constrain_mouse_point();
 
     // estimation of the other circles
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2();
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
-    inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection_1();
-    inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection_2();
-    inline void add_planar_section_to_the_generalized_cylinder_constrained_1();
-    inline void add_planar_section_to_the_generalized_cylinder_constrained_2();
-    inline void add_planar_section_to_the_generalized_cylinder_constrained_3();
+    inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
 
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
@@ -146,9 +150,7 @@ private:
     inline int estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius);
     inline int estimate_3d_circles_with_fixed_depth(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_depth);
     inline int estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles);
-    inline void estimate_3d_circles_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
-    inline void estimate_3d_circles_under_orthographic_projection_and_scale_orthographically(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle, double desired_depth);
-    inline void estimate_3d_circles_under_orthographic_projection_and_scale_perspectively(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle, double desired_depth);
+    inline void estimate_3d_circle_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
 
     // selection of the estimated circles under perspective projection
     inline size_t select_first_3d_circle(const Circle3D* const circles);
@@ -163,8 +165,6 @@ private:
     // projection error calculators
     // inline void constrain_spine_point_in_piecewise_linear_mode();
     // inline void constrain_spine_point_in_continuous_mode();
-
-
 };
 
 #endif // IMAGE_MODELLER_HPP
