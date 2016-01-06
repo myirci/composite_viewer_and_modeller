@@ -10,6 +10,7 @@
 #include <osg/Array>
 
 class Ellipse2D;
+class Segment2D;
 
 enum class sweep_curve_type : unsigned char {
     line,
@@ -28,6 +29,7 @@ public:
     void AddSpinePoint(const osg::Vec2d& pt);
     void Updatep1(const osg::Vec2d& pt);
     void UpdateSweepCurve(const std::unique_ptr<Ellipse2D>& ellipse);
+    void UpdateSweepCurve(const std::unique_ptr<Segment2D>& segment);
     void UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp);
     void DisplayLineStrip(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
     void DisplayLineLoop(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);

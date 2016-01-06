@@ -169,7 +169,7 @@ void calculate_transformation_matrix_without_scale(const Circle3D& circle1, cons
     osg::Matrixd mat_rotate = osg::Matrixd::rotate(acos(circle1.normal.dot(circle2.normal)), rot_axis[0], rot_axis[1], rot_axis[2]);
     transpose(mat_rotate, 4);
 
-    // 3) translation ùatrix to transalte circle-1 to the center of circle-2
+    // 3) translation matrix to transalte circle-1 to the center of circle-2
     osg::Matrixd mat_trans = osg::Matrixd::identity();
     mat_trans(0,3) = circle2.center[0];
     mat_trans(1,3) = circle2.center[1];

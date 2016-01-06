@@ -7,6 +7,7 @@
 #include <ostream>
 
 class Ellipse2D;
+class Segment2D;
 
 struct ProjectionParameters {
 
@@ -65,6 +66,7 @@ struct ProjectionParameters {
 
     // other conversions
     void convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(const Ellipse2D& elp_dev, Ellipse2D& elp_prj, bool with_coeffs = true);
+    void convert_segment_from_logical_device_coordinates_to_projected_coordinates(const Segment2D& seg_dev, Segment2D& seg_prj);
 
     // perspective projection related functions
     void construct_perpective_projection_matrix(osg::Matrixd& proj_mat);

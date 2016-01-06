@@ -7,16 +7,16 @@
 #include <osg/Geode>
 #include <osg/LineWidth>
 
-GeneralizedCylinderGeometry::GeneralizedCylinderGeometry(int num_points_per_section, const osg::Vec4& color) :
+GeneralizedCylinderGeometry::GeneralizedCylinderGeometry(int num_points_per_section, const osg::Vec4& color, rendering_type rtype) :
     ComponentGeometryBase(color),
     m_numpts(num_points_per_section),
-    m_rtype(rendering_type::triangle_strip) { }
+    m_rtype(rtype) { }
 
-GeneralizedCylinderGeometry::GeneralizedCylinderGeometry(const Circle3D& base_circle, int num_points_per_section, const osg::Vec4& color) :
+GeneralizedCylinderGeometry::GeneralizedCylinderGeometry(const Circle3D& base_circle, int num_points_per_section, const osg::Vec4& color, rendering_type rtype) :
     ComponentGeometryBase(color),
     m_sections {base_circle},
     m_numpts(num_points_per_section),
-    m_rtype(rendering_type::triangle_strip) {
+    m_rtype(rtype) {
 
     // update geometry (vertices and normals) and indices
     update_geometry_and_indices(0, base_circle);
@@ -210,20 +210,24 @@ void GeneralizedCylinderGeometry::update_geometry_and_indices(size_t section_ind
             m_normals->push_back(osg::Vec3(circle.normal[0], circle.normal[1], circle.normal[2]));
     }
     else {
-        if(section_index == 0) circle.generate_data(m_vertices, m_normals, m_numpts);
-        else circle.generate_aligned_data(m_vertices, m_normals, m_numpts, m_sections[section_index - 1]);
+        if(section_index == 0)
+            circle.generate_data(m_vertices, m_normals, m_numpts);
+        else
+            circle.generate_aligned_data(m_vertices, m_normals, m_numpts, m_sections[section_index - 1]);
     }
 
     // update indices
     switch(m_rtype) {
     case rendering_type::planar_sections: {
+
         m_hindices.push_back(new osg::DrawElementsUInt(GL_LINE_LOOP));
-        addPrimitiveSet(m_hindices[section_index].get());
         for(int i = 0; i < m_numpts; ++i)
             m_hindices[section_index]->push_back(i + section_index * m_numpts);
+        addPrimitiveSet(m_hindices[section_index].get());
         break;
     }
     case rendering_type::planar_and_vertical_sections: {
+
         m_hindices.push_back(new osg::DrawElementsUInt(GL_LINE_LOOP));
         addPrimitiveSet(m_hindices[section_index].get());
         if(section_index == 0) {
@@ -239,7 +243,8 @@ void GeneralizedCylinderGeometry::update_geometry_and_indices(size_t section_ind
         break;
     }
     case rendering_type::triangle_fan: {
-        m_tindices.push_back(new osg::DrawElementsUInt(GL_TRIANGLE_FAN));
+
+        m_tindices.push_back(new osg::DrawElementsUInt(GL_TRIANGLE_FAN)); 
         m_tindices[section_index]->push_back(section_index * m_numpts + section_index + m_numpts);
         for(int i = 0; i < m_numpts; ++i)
             m_tindices[section_index]->push_back(i + (m_numpts+1) * section_index);
@@ -248,7 +253,9 @@ void GeneralizedCylinderGeometry::update_geometry_and_indices(size_t section_ind
         break;
     }
     case rendering_type::triangle_strip: {
-        if(section_index == 0) break;
+
+        if(section_index == 0)
+            break;
         m_tindices.push_back(new osg::DrawElementsUInt(GL_TRIANGLE_STRIP));
         int start_index = (section_index-1)*m_numpts;
         for(int i = start_index; i < start_index + m_numpts; ++i) {

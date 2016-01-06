@@ -35,7 +35,6 @@ void Ellipse2DLight::generate_points_on_the_ellipse(osg::Vec2dArray* data, int s
     osg::Vec2d e2(-sin(rot_angle), cos(rot_angle));
     for(double d = 0.0; d < TWO_PI; d += step)
         (*data)[start++] = center + e1*smj_axis*cos(d) + e2*smn_axis*sin(d);
-
 }
 
 void Ellipse2DLight::generate_points_on_the_ellipse(std::vector<osg::Vec2d>& data, int num) const {
