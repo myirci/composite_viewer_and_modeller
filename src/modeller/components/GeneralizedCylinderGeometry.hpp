@@ -23,8 +23,8 @@ protected:
     std::vector<osg::ref_ptr<osg::DrawElementsUInt>> m_hindices;    // for horizontal sections
     std::vector<osg::ref_ptr<osg::DrawElementsUInt>> m_tindices;    // for triangle strip and triangle fan rendering
 public:
-    GeneralizedCylinderGeometry(int num_points_per_section, const osg::Vec4& color);
-    GeneralizedCylinderGeometry(const Circle3D& base_circle, int num_points_per_section, const osg::Vec4& color);
+    GeneralizedCylinderGeometry(int num_points_per_section, const osg::Vec4& color, rendering_type rtype);
+    GeneralizedCylinderGeometry(const Circle3D& base_circle, int num_points_per_section, const osg::Vec4& color, rendering_type rtype);
     void AddPlanarSection(const Circle3D& circle);
     void GetVertexNormals(size_t section_idx, osg::Vec3Array* vertices);
     void GetFirstCirclePoint(size_t section_idx, osg::Vec3d& pt);

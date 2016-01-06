@@ -8,8 +8,8 @@ class GeneralizedCylinder : public ComponentBase {
 public:
 
     // constructors
-    GeneralizedCylinder(unsigned int component_id, unsigned int numpoints_per_section = 40, const osg::Vec4& color = osg::Vec4(1.0f,1.0f,0.0f,1.0f));
-    GeneralizedCylinder(unsigned int component_id, const Circle3D& base_circle, unsigned int numpoints_per_section = 40, const osg::Vec4& color = osg::Vec4(1.0f,1.0f,0.0f,1.0f));
+    GeneralizedCylinder(unsigned int component_id, rendering_type rtype, unsigned int numpoints_per_section = 40, const osg::Vec4& color = osg::Vec4(1.0f,1.0f,0.0f,1.0f));
+    GeneralizedCylinder(unsigned int component_id, const Circle3D& base_circle, rendering_type rtype, unsigned int numpoints_per_section = 40, const osg::Vec4& color = osg::Vec4(1.0f,1.0f,0.0f,1.0f));
     void AddPlanarSection(const Circle3D& circle);
     void DisplaySectionNormals(bool flag);
     void DisplayVertexNormals(bool flag) override;

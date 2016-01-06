@@ -7,9 +7,9 @@
 #include <osg/Switch>
 #include <osg/MatrixTransform>
 
-GeneralizedCylinder::GeneralizedCylinder(unsigned int component_id, unsigned int numpoints_per_section, const osg::Vec4& color) :
+GeneralizedCylinder::GeneralizedCylinder(unsigned int component_id, rendering_type rtype, unsigned int numpoints_per_section, const osg::Vec4& color) :
     ComponentBase(component_id),
-    m_geometry(new GeneralizedCylinderGeometry(numpoints_per_section, color)),
+    m_geometry(new GeneralizedCylinderGeometry(numpoints_per_section, color, rtype)),
     m_snormals_color(osg::Vec4(1,1,0,1)),
     m_vnormals_color(osg::Vec4(1,1,1,1)),
     m_snormals(new osg::Switch),
@@ -25,9 +25,9 @@ GeneralizedCylinder::GeneralizedCylinder(unsigned int component_id, unsigned int
     addChild(m_vnormals.get());
 }
 
-GeneralizedCylinder::GeneralizedCylinder(unsigned int component_id, const Circle3D& base_circle, unsigned int numpoints_per_section, const osg::Vec4& color) :
+GeneralizedCylinder::GeneralizedCylinder(unsigned int component_id, const Circle3D& base_circle, rendering_type rtype, unsigned int numpoints_per_section, const osg::Vec4& color) :
     ComponentBase(component_id),
-    m_geometry(new GeneralizedCylinderGeometry(base_circle, numpoints_per_section, color)),
+    m_geometry(new GeneralizedCylinderGeometry(base_circle, numpoints_per_section, color, rtype)),
     m_snormals_color(osg::Vec4(1,1,0,1)),
     m_vnormals_color(osg::Vec4(1,1,1,1)),
     m_snormals(new osg::Switch),

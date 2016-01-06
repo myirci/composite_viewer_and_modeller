@@ -1,5 +1,6 @@
 #include "ProjectionParameters.hpp"
 #include "../geometry/Ellipse2D.hpp"
+#include "../geometry/Segment2D.hpp"
 
 ProjectionParameters::ProjectionParameters(double fy, int w, int h, double n, double f) : fovy(fy), width(w), height(h), near(n), far(f) {
 
@@ -82,6 +83,12 @@ void ProjectionParameters::convert_ellipse_from_logical_device_coordinates_to_pr
 
     if(with_coeffs)
         elp_prj.calculate_coefficients_from_parameters();
+}
+
+void ProjectionParameters::convert_segment_from_logical_device_coordinates_to_projected_coordinates(const Segment2D& seg_dev, Segment2D& seg_prj) {
+
+    convert_from_logical_device_coordinates_to_projected_coordinates(seg_dev.pt1, seg_prj.pt1);
+    convert_from_logical_device_coordinates_to_projected_coordinates(seg_dev.pt2, seg_prj.pt2);
 }
 
 void ProjectionParameters::construct_perpective_projection_matrix(osg::Matrixd& proj_mat) {

@@ -1,12 +1,13 @@
 #include "UIHelper.hpp"
 
 #include "../geometry/Ellipse2D.hpp"
+#include "../geometry/Segment2D.hpp"
 
 #include <memory>
 #include <osg/Geometry>
 
 UIHelper::UIHelper(osg::Geode* geode) : m_geode(geode), m_sweepline_vertices(nullptr), m_base_elp_vertices(nullptr),
-    m_spine_vertices(nullptr), m_sweep_type(sweep_curve_type::ellipse){
+    m_spine_vertices(nullptr), m_sweep_type(sweep_curve_type::line){
 
     m_geode->addDrawable(initialize_base_ellipse_display());
     m_geode->addDrawable(initialize_spine_display());
@@ -301,8 +302,8 @@ void UIHelper::UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp) {
 void UIHelper::InitializeSpineDrawing(const std::unique_ptr<Ellipse2D>& ellipse) {
 
     // initialize the spine drawing
-    m_spine_vertices->push_back(ellipse->points[2]);
-    m_spine_vertices->push_back(ellipse->points[2]);
+    m_spine_vertices->push_back(ellipse->center);
+    m_spine_vertices->push_back(ellipse->center);
     m_spine_array->setFirst(0);
     m_spine_array->setCount(2);
     m_spine_vertices->dirty();
@@ -370,6 +371,20 @@ void UIHelper::InitializeSpineDrawing(const std::unique_ptr<Ellipse2D>& ellipse)
 
         m_sweep_ellipse_vertices->dirty();
     }
+}
+
+void UIHelper::UpdateSweepCurve(const std::unique_ptr<Segment2D>& segment) {
+
+    m_sweepline_vertices->at(0) = segment->pt1;
+    m_sweepline_vertices->at(1) = segment->pt2;
+
+    Ellipse2DLight tmp(3, 3, 0, segment->mid_point());
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 2, 10);
+    tmp.center = segment->pt1;
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 12, 10);
+    tmp.center = segment->pt2;
+    tmp.generate_points_on_the_ellipse(m_sweepline_vertices, 22, 10);
+    m_sweepline_vertices->dirty();
 }
 
 void UIHelper::UpdateSweepCurve(const std::unique_ptr<Ellipse2D>& ellipse) {

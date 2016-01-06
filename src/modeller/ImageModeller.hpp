@@ -12,6 +12,7 @@
 class Rectangle2D;
 class UIHelper;
 class Line2D;
+class Segment2D;
 class Circle3D;
 class Ellipse2D;
 class ModelSolver;
@@ -88,8 +89,9 @@ private:
     Circle3D* m_first_circle;
     Circle3D* m_last_circle;
     std::unique_ptr<Ellipse2D> m_first_ellipse;
-    std::unique_ptr<Ellipse2D> m_last_profile;
-    std::unique_ptr<Ellipse2D> m_dynamic_profile;
+
+    std::unique_ptr<Segment2D> m_lsegment; // last segment
+    std::unique_ptr<Segment2D> m_dsegment; // dynamic segment
 
     std::unique_ptr<UIHelper> m_uihelper;
     std::unique_ptr<Rectangle2D> m_rect;
@@ -130,7 +132,8 @@ private:
 
     void model_update();
     void calculate_ellipse();
-    void update_dynamic_profile();
+    void update_dynamic_segment();
+    void update_dynamic_segment_with_mirror_point(const osg::Vec2d& pt, bool first);
     void ray_cast_within_binary_image_for_profile_match();     // based on binary images
     void ray_cast_within_gradient_image_for_profile_match();   // based on gradient
     void initialize_spine_drawing_mode(projection_type pt);

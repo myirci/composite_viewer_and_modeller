@@ -84,11 +84,15 @@ void Circle3D::generate_aligned_data(osg::ref_ptr<osg::Vec3Array>& vertices, osg
                                      int num_points, const Circle3D& circle) const {
     size_t start = vertices->size();
     circle.generate_data(vertices, num_points);
+
     osg::Matrixd mat;
-    calculate_transformation_matrix_without_scale(circle, *this, mat);
+    calculate_transformation_matrix(circle, *this, mat);
+
     for(size_t i = start; i < vertices->size(); ++i)
         vertices->at(i) = mat * vertices->at(i);
+
     osg::Vec3 ctr(center[0],center[1],center[2]);
+
     for(size_t i = start; i < vertices->size(); ++i) {
         osg::Vec3 nrm = vertices->at(i) - ctr;
         nrm.normalize();
@@ -148,6 +152,6 @@ std::ostream& operator<<(std::ostream& out, const Circle3D& circle) {
     out << "center: " << circle.center[0] << "\t" << circle.center[1] << "\t" << circle.center[2] << std::endl;
     out << "normal: " << circle.normal[0] << "\t" << circle.normal[1] << "\t" << circle.normal[2] << std::endl;
     out << "radius: " << circle.radius << std::endl;
-    out << "d: " << -(circle.center.dot(circle.normal)) << std::endl;
+    // out << "d: " << -(circle.center.dot(circle.normal)) << std::endl;
     return out;
 }
