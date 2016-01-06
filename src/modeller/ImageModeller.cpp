@@ -544,7 +544,13 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
 
     // update the circle normal
     const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-    m_last_circle->normal = (m_last_circle->center - sections.back().center).normalized();
+    Eigen::Vector3d nrm_1 = (m_last_circle->center - sections.back().center).normalized();
+    osg::Vec2d dir = m_lsegment->direction();
+    osg::Vec2d nrm_2(dir.y(), -dir.x());
+    nrm_2.normalize();
+    double dp = nrm_2.x() * nrm_1[0] +  nrm_2.y() * nrm_1[1];
+    if(dp > 0) m_last_circle->normal = Eigen::Vector3d(nrm_2.x(), nrm_2.y(), 0);
+    else       m_last_circle->normal = Eigen::Vector3d(-nrm_2.x(), -nrm_2.y(), 0);
 
     // add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
@@ -1196,7 +1202,7 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
         m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
         m_dsegment->pt2 = new_p1;
     }
-    // not hits
+    // no hits
     else {
         return;
     }

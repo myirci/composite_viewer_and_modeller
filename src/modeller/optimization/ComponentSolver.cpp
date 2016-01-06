@@ -11,7 +11,8 @@ void ComponentSolver::SolveForSingleCircle(osg::Vec2dArray const * const proj, C
     // initialize the optimization parameters
     double center[3] = { circle.center[0], circle.center[1], circle.center[2] };
     double depths[2];
-    Plane3D cplane(circle.normal, circle.center);
+    Plane3D cplane(osg::Vec3d(circle.normal[0], circle.normal[1], circle.normal[2]),
+                   osg::Vec3d(circle.center[0], circle.center[1], circle.center[2]));
     osg::Vec3d p;
     intersect_ray_and_plane(Ray3D(osg::Vec3d(proj->at(0), n)), cplane, p);
     depths[0] = p.z();

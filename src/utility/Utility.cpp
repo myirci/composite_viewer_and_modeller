@@ -1,7 +1,10 @@
 #include <iostream>
 #include "Utility.hpp"
+
 #include "../geometry/Ray3D.hpp"
 #include "../geometry/Plane3D.hpp"
+
+#include <Eigen/Dense>
 #include <osg/Vec2d>
 #include <osg/Vec3d>
 #include <osg/Vec4d>
