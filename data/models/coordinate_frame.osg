@@ -1,0 +1,130 @@
+Group {
+  nodeMask 0xffffffff
+  cullingActive TRUE
+  num_children 2
+  Geode {
+    UniqueID Geode_0
+    nodeMask 0xffffffff
+    cullingActive TRUE
+    num_drawables 1
+    ShapeDrawable {
+      Sphere {
+        Center 0 0 0
+        Radius 0.3
+      }
+      useDisplayList TRUE
+      useVertexBufferObjects FALSE
+      color 0 0 0 0
+    }
+  }
+  Group {
+    nodeMask 0xffffffff
+    cullingActive TRUE
+    num_children 3
+    Geode {
+      nodeMask 0xffffffff
+      cullingActive TRUE
+      num_drawables 2
+      ShapeDrawable {
+        Cylinder {
+          Center 0 0 5
+          Radius 0.15
+          Height 10
+          Rotation 0 0 0 1
+        }
+        useDisplayList TRUE
+        useVertexBufferObjects FALSE
+        color 0 0 1 1
+      }
+      ShapeDrawable {
+        Cone {
+          Center 0 0 10
+          Radius 0.3
+          Height 2
+          Rotation 0 0 0 1
+        }
+        useDisplayList TRUE
+        useVertexBufferObjects FALSE
+        color 0 0 1 1
+      }
+    }
+    MatrixTransform {
+      nodeMask 0xffffffff
+      cullingActive TRUE
+      referenceFrame RELATIVE
+      Matrix {
+        2.22045e-16 0 -1 0
+        0 1 0 0
+        1 0 2.22045e-16 0
+        0 0 0 1
+      }
+      num_children 1
+      Geode {
+        nodeMask 0xffffffff
+        cullingActive TRUE
+        num_drawables 2
+        ShapeDrawable {
+          Cylinder {
+            Center 0 0 5
+            Radius 0.15
+            Height 10
+            Rotation 0 0 0 1
+          }
+          useDisplayList TRUE
+          useVertexBufferObjects FALSE
+          color 1 0 0 1
+        }
+        ShapeDrawable {
+          Cone {
+            Center 0 0 10
+            Radius 0.3
+            Height 2
+            Rotation 0 0 0 1
+          }
+          useDisplayList TRUE
+          useVertexBufferObjects FALSE
+          color 1 0 0 1
+        }
+      }
+    }
+    MatrixTransform {
+      nodeMask 0xffffffff
+      cullingActive TRUE
+      referenceFrame RELATIVE
+      Matrix {
+        1 0 -0 0
+        -0 2.22045e-16 -1 0
+        0 1 2.22045e-16 0
+        0 0 0 1
+      }
+      num_children 1
+      Geode {
+        nodeMask 0xffffffff
+        cullingActive TRUE
+        num_drawables 2
+        ShapeDrawable {
+          Cylinder {
+            Center 0 0 5
+            Radius 0.15
+            Height 10
+            Rotation 0 0 0 1
+          }
+          useDisplayList TRUE
+          useVertexBufferObjects FALSE
+          color 0 1 0 1
+        }
+        ShapeDrawable {
+          Cone {
+            Center 0 0 10
+            Radius 0.3
+            Height 2
+            Rotation 0 0 0 1
+          }
+          useDisplayList TRUE
+          useVertexBufferObjects FALSE
+          color 0 1 0 1
+        }
+      }
+    }
+  }
+}
