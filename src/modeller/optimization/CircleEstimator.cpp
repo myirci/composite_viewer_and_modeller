@@ -1,6 +1,9 @@
 #include "CircleEstimator.hpp"
 #include "../../geometry/Ellipse2D.hpp"
 #include "../../geometry/Circle3D.hpp"
+#include "../../geometry/Segment2D.hpp"
+#include "../../geometry/Ray3D.hpp"
+#include "../../geometry/Plane3D.hpp"
 #include "ExtractPlaneNormals.hpp"
 #include "../ProjectionParameters.hpp"
 
@@ -357,3 +360,219 @@ bool CircleEstimator::check_eigenvalue_constraints(const Eigen::Vector3d& eigenv
     eigenvalues(2) > 0 ? ++pos : ++neg;
     return (pos == 2 && neg == 1) ? true : false;
 }
+
+/*
+ * The normal of the circle (circle.normal) has to be set in advance.
+ * The depth of the circle (circle.center[2]) has to be set to the desired depth in advance.
+*/
+void CircleEstimator::estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(const Segment2D& seg, double near, Circle3D& circle) {
+
+    osg::Vec3d v1(seg.pt1, near);
+    osg::Vec3d v2(seg.pt2, near);
+    osg::Vec3d diff = v2 - v1;
+
+    osg::Vec3d n0(circle.normal[0], circle.normal[1], circle.normal[2]);
+    osg::Vec3d n1 = n0 ^ (v2 ^ v1);
+    osg::Vec3d n2(-near*diff.x(), -near*diff.y(), v1 * diff);
+    osg::Vec3d n3(n2.x(), n2.y(), v2 * diff);
+
+    double par1 = n0 * v1;
+    double par2 = n0 * v2;
+    double par3 = n0 * n0;
+    double par4 = n0 * n2;
+    double par5 = n0 * n3;
+    double par6 = par2 / par1;
+    double par7 = 2 * near;
+
+    double k1 = (par2 * par2 * (v1 * v1) - par1 * par1 * (v2 * v2) ) / (2 * near * par1 );
+    double k2 = std::sqrt(par3 * (n2 * n2) - par4 * par4);
+    double k3 = std::sqrt(par3 * (n3 * n3) - par5 * par5);
+
+    osg::Vec3d cam_centre(0,0,0);
+    Ray3D ray1(cam_centre, v1);
+    Ray3D ray2(cam_centre, v2);
+    if(!is_intersecting(ray2, Plane3D(n2.x(), n2.y(), n2.z(), k2))) k2 *= -1;
+    if(!is_intersecting(ray1, Plane3D(n3.x(), n3.y(), n3.z(), k3))) k3 *= -1;
+
+    // Solve the plane equations parametrically
+    Eigen::Matrix3d mat0;
+    mat0 << n1.x(), n1.y(), n1.z(),
+            n2.x(), n2.y(), n2.z(),
+            n3.x(), n3.y(), n3.z();
+
+    Eigen::Matrix3d mat1;
+    mat1 << 0, n1.y(), n1.z(),
+            k2, n2.y(), n2.z(),
+            k3, n3.y(), n3.z();
+
+    Eigen::Matrix2d mat2;
+    mat2 << n2.y(), n2.z(),
+            n3.y(), n3.z();
+
+    Eigen::Matrix3d mat3;
+    mat3 << n1.x(), 0, n1.z(),
+            n2.x(), k2, n2.z(),
+            n3.x(), k3, n3.z();
+
+    Eigen::Matrix2d mat4;
+    mat4 << n2.x(), n2.z(),
+            n3.x(), n3.z();
+
+    Eigen::Matrix3d mat5;
+    mat5 << n1.x(), n1.y(), 0,
+            n2.x(), n2.y(), k2,
+            n3.x(), n3.y(), k3;
+
+    // X = s1*R + s2*Z2, Y = s3*R + s4*Z2, Z = s5*R
+    double D = mat0.determinant();
+    double s1 = -mat1.determinant() / D;
+    double s2 = -k1 * mat2.determinant() / D;
+    double s3 = -mat3.determinant() / D ;
+    double s4 = k1 * mat4.determinant() / D;
+    double s5 = -mat5.determinant() / D;
+
+    double t1 = (par6 * v1.x() + v2.x()) / par7;
+    double t2 = (par6 * v1.y() + v2.y()) / par7;
+    double t3 = (par6 + 1) / 2.0;
+    double t4 = (par6 * v1.x() - v2.x()) / par7;
+    double t5 = (par6 * v1.y() - v2.y()) / par7;
+    double t6 = (par6 - 1) / 2.0;
+    double m1 = s2 - t1;
+    double m2 = s4 - t2;
+    double q1 = m1 * m1 + m2 * m2 + t3 * t3 + t4 * t4 + t5 * t5 + t6 * t6;
+    double q2 = 2 * (s1 * m1 + s3 * m2 - s5 * t3);
+    double q3 = s1 * s1 + s3 * s3 + s5 * s5 - 1;
+    double disc = q2 * q2 - 4 * q1 * q3;
+    // std::cout << "discriminant-1: " << disc << std::endl;
+
+    double ratio = 0.0;
+    ratio = (-q2) / (2*q1);
+    /*
+    if(std::abs(disc) < 0.0000001) {
+        ratio = (-q2) / (2*q1);
+        // std::cout << "Z2 / R = " << ratio <<  std::endl;
+    }
+    else {
+        std::cout << "Two possible Z2 / R ratios!, one of them has to be selected" << std::endl;
+        std::cout << "Not implemented yet!!!" << std::endl;
+        std::cout.precision(16);
+        std::cout << " Z2 / R = " << (-q2 + std::sqrt(disc)) / (2*q1) <<  std::endl;
+        std::cout << " Z2 / R = " << (-q2 - std::sqrt(disc)) / (2*q1) <<  std::endl;
+    }
+    */
+
+    // compute the radius of the circle for the desired depth
+    circle.radius = circle.center[2] / s5;
+
+    // compute the x and y component of the center!
+    double Z2 = circle.radius * ratio;
+
+    circle.center[0] = s1 * circle.radius + s2 * Z2;
+    circle.center[1] = s3 * circle.radius + s4 * Z2;
+}
+
+/*
+ * The normal of the circle (circle.normal) has to be set in advance.
+ * The radius of the circle (circle.radius) has to be set to the desired radius in advance.
+*/
+void CircleEstimator::estimate_3d_circle_from_major_axis_when_circle_radius_is_fixed(const Segment2D& seg, double near, Circle3D& circle) {
+
+    osg::Vec3d v1(seg.pt1, near);
+    osg::Vec3d v2(seg.pt2, near);
+    osg::Vec3d diff = v2 - v1;
+
+    osg::Vec3d n0(circle.normal[0], circle.normal[1], circle.normal[2]);
+    osg::Vec3d n1 = n0 ^ (v2 ^ v1);
+    osg::Vec3d n2(-near*diff.x(), -near*diff.y(), v1 * diff);
+    osg::Vec3d n3(n2.x(), n2.y(), v2 * diff);
+
+    double par1 = n0 * v1;
+    double par2 = n0 * v2;
+    double par3 = n0 * n0;
+    double par4 = n0 * n2;
+    double par5 = n0 * n3;
+    double par6 = par2 / par1;
+    double par7 = 2 * near;
+
+    double k1 = (par2 * par2 * (v1 * v1) - par1 * par1 * (v2 * v2) ) / (2 * near * par1 );
+    double k2 = std::sqrt(par3 * (n2 * n2) - par4 * par4);
+    double k3 = std::sqrt(par3 * (n3 * n3) - par5 * par5);
+
+    osg::Vec3d cam_centre(0,0,0);
+    Ray3D ray1(cam_centre, v1);
+    Ray3D ray2(cam_centre, v2);
+    if(!is_intersecting(ray2, Plane3D(n2.x(), n2.y(), n2.z(), k2))) k2 *= -1;
+    if(!is_intersecting(ray1, Plane3D(n3.x(), n3.y(), n3.z(), k3))) k3 *= -1;
+
+    // Solve the plane equations parametrically
+    Eigen::Matrix3d mat0;
+    mat0 << n1.x(), n1.y(), n1.z(),
+            n2.x(), n2.y(), n2.z(),
+            n3.x(), n3.y(), n3.z();
+
+    Eigen::Matrix3d mat1;
+    mat1 << 0, n1.y(), n1.z(),
+            k2, n2.y(), n2.z(),
+            k3, n3.y(), n3.z();
+
+    Eigen::Matrix2d mat2;
+    mat2 << n2.y(), n2.z(),
+            n3.y(), n3.z();
+
+    Eigen::Matrix3d mat3;
+    mat3 << n1.x(), 0, n1.z(),
+            n2.x(), k2, n2.z(),
+            n3.x(), k3, n3.z();
+
+    Eigen::Matrix2d mat4;
+    mat4 << n2.x(), n2.z(),
+            n3.x(), n3.z();
+
+    Eigen::Matrix3d mat5;
+    mat5 << n1.x(), n1.y(), 0,
+            n2.x(), n2.y(), k2,
+            n3.x(), n3.y(), k3;
+
+    // X = s1*R + s2*Z2, Y = s3*R + s4*Z2, Z = s5*R
+    double D = mat0.determinant();
+    double s1 = -mat1.determinant() / D;
+    double s2 = -k1 * mat2.determinant() / D;
+    double s3 = -mat3.determinant() / D ;
+    double s4 = k1 * mat4.determinant() / D;
+    double s5 = -mat5.determinant() / D;
+
+    double t1 = (par6 * v1.x() + v2.x()) / par7;
+    double t2 = (par6 * v1.y() + v2.y()) / par7;
+    double t3 = (par6 + 1) / 2.0;
+    double t4 = (par6 * v1.x() - v2.x()) / par7;
+    double t5 = (par6 * v1.y() - v2.y()) / par7;
+    double t6 = (par6 - 1) / 2.0;
+    double m1 = s2 - t1;
+    double m2 = s4 - t2;
+    double q1 = m1 * m1 + m2 * m2 + t3 * t3 + t4 * t4 + t5 * t5 + t6 * t6;
+    double q2 = 2 * (s1 * m1 + s3 * m2 - s5 * t3);
+    double q3 = s1 * s1 + s3 * s3 + s5 * s5 - 1;
+    double disc = q2 * q2 - 4 * q1 * q3;
+    // std::cout << "discriminant-1: " << disc << std::endl;
+
+    double ratio = 0.0;
+    if(std::abs(disc) < 0.0000001) {
+        ratio = (-q2) / (2*q1);
+        // std::cout << "Z2 / R = " << ratio <<  std::endl;
+    }
+    else {
+        std::cout << "Two possible Z2 / R ratios!, one of them has to be selected" << std::endl;
+        std::cout << "Not implemented yet!!!" << std::endl;
+        std::cout << " Z2 / R = " << (-q2 + std::sqrt(disc)) / (2*q1) <<  std::endl;
+        std::cout << " Z2 / R = " << (-q2 - std::sqrt(disc)) / (2*q1) <<  std::endl;
+    }
+
+    // compute the center
+    double Z2 = circle.radius * ((-q2) / (2*q1));
+
+    circle.center[0] = s1 * circle.radius + s2 * Z2;
+    circle.center[1] = s3 * circle.radius + s4 * Z2;
+    circle.center[2] = s5 * circle.radius;
+}
+
+

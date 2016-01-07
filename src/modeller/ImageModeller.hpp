@@ -103,6 +103,8 @@ private:
     double m_fixed_depth;
     double m_scale_factor;
 
+    osg::Vec2d m_tvec;
+
     // for ray cast display
     bool m_display_raycast;
     osg::ref_ptr<osg::Vec2dArray> m_raycast;
@@ -140,9 +142,7 @@ private:
     void constrain_mouse_point();
 
     // estimation of the other circles
-    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
-    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2();
-    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
+    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
 
     // estimation of the first circle
@@ -164,6 +164,10 @@ private:
     void project_points(const osg::Vec3dArray * const pt3darr, osg::Vec2dArray* const pt2darr) const;
     void project_circle(const Circle3D& circle, Ellipse2D& ellipse) const;
     void project_generalized_cylinder(const GeneralizedCylinder& gcyl) const;
+
+    // test
+    void test_circle_estimation_from_major_axis(const Segment2D& seg);
+    void test_circle_estimation_from_major_axis();
 
     // projection error calculators
     // inline void constrain_spine_point_in_piecewise_linear_mode();
