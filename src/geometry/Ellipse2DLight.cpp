@@ -54,6 +54,14 @@ void Ellipse2DLight::generate_points_on_the_ellipse(std::vector<osg::Vec2d>& dat
     }
 }
 
+void Ellipse2DLight::get_major_axis_end_points(osg::Vec2d& p1, osg::Vec2d& p2) const {
+
+    osg::Vec2d dir = osg::Vec2d(cos(rot_angle), sin(rot_angle));
+    dir *= smj_axis;
+    p1 = osg::Vec2d(center.x(), center.y()) + dir;
+    p2 = osg::Vec2d(center.x(), center.y()) - dir;
+}
+
 std::ostream& operator<<(std::ostream& out, const Ellipse2DLight& ellipse) {
 
     out << "center  : " << ellipse.center.x() << " " << ellipse.center.y() << std::endl;
