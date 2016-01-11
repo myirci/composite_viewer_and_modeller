@@ -11,6 +11,7 @@ public:
     virtual ~Ellipse2DLight() { }
     Ellipse2DLight(const Ellipse2DLight& other);
     Ellipse2DLight& operator=(const Ellipse2DLight& rhs);
+    void get_major_axis_end_points(osg::Vec2d& p1, osg::Vec2d& p2) const;
     void generate_points_on_the_ellipse(osg::Vec2dArray* data, int num) const;
     void generate_points_on_the_ellipse(osg::Vec2dArray* data, int start, int num) const;
     void generate_points_on_the_ellipse(std::vector<osg::Vec2d>& data, int num) const;
