@@ -444,23 +444,20 @@ void CircleEstimator::estimate_3d_circle_from_major_axis_when_circle_depth_is_fi
     double q2 = 2 * (s1 * m1 + s3 * m2 - s5 * t3);
     double q3 = s1 * s1 + s3 * s3 + s5 * s5 - 1;
     double disc = q2 * q2 - 4 * q1 * q3;
-    // std::cout << "discriminant-1: " << disc << std::endl;
+
+    std::cout.precision(16);
+    std::cout << "D: " << D << std::endl;
+    std::cout << "discriminant-1: " << disc << std::endl;
 
     double ratio = 0.0;
     ratio = (-q2) / (2*q1);
-    /*
-    if(std::abs(disc) < 0.0000001) {
+    if(std::abs(disc) < 0.0000001 || disc < 0) {
         ratio = (-q2) / (2*q1);
-        // std::cout << "Z2 / R = " << ratio <<  std::endl;
     }
     else {
-        std::cout << "Two possible Z2 / R ratios!, one of them has to be selected" << std::endl;
-        std::cout << "Not implemented yet!!!" << std::endl;
-        std::cout.precision(16);
-        std::cout << " Z2 / R = " << (-q2 + std::sqrt(disc)) / (2*q1) <<  std::endl;
-        std::cout << " Z2 / R = " << (-q2 - std::sqrt(disc)) / (2*q1) <<  std::endl;
+        ratio = (-q2 + std::sqrt(disc)) / (2*q1);
+         // (-q2 - std::sqrt(disc)) / (2*q1)
     }
-    */
 
     // compute the radius of the circle for the desired depth
     circle.radius = circle.center[2] / s5;
@@ -470,6 +467,7 @@ void CircleEstimator::estimate_3d_circle_from_major_axis_when_circle_depth_is_fi
 
     circle.center[0] = s1 * circle.radius + s2 * Z2;
     circle.center[1] = s3 * circle.radius + s4 * Z2;
+
 }
 
 /*

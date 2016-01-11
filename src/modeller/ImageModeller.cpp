@@ -180,6 +180,15 @@ void ImageModeller::Reset2DDrawingInterface() {
     m_uihelper->Reset();
 }
 
+void ImageModeller::DeleteLastSection() {
+
+    if(m_gcyl.valid()) {
+        m_gcyl->DeleteLastSection();
+        m_uihelper->DeleteLastSpinePoint();
+        // think a method to update the last circle,  m_lsegmet, etc..
+    }
+}
+
 void ImageModeller::OnLeftClick(double x, double y) {
 
     m_left_click = true;
@@ -382,17 +391,12 @@ void ImageModeller::estimate_first_circle_under_orthogonality_constraint() {
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
 
     // 1) Estimate the normal of the circle
+    m_tvec.normalize();
+    m_last_circle->normal[0] = m_tvec.x();
+    m_last_circle->normal[1] = m_tvec.y();
+    m_last_circle->normal[2] = 0;
     const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-    if(sections.size() == 1) {
-        m_last_circle->normal = m_first_circle->normal;
-    }
-    else {
-        m_tvec.normalize();
-        m_last_circle->normal[0] = m_tvec.x();
-        m_last_circle->normal[1] = m_tvec.y();
-        m_last_circle->normal[2] = 0;
-        if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
-    }
+    if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
 
     // 2) Set the depth of the last circle
     m_last_circle->center[2] = m_fixed_depth;
@@ -401,6 +405,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     Segment2D seg;
     m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, *m_last_circle);
+
 
     // 4) Add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);

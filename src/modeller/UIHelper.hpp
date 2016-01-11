@@ -34,6 +34,7 @@ public:
     void DisplayLineStrip(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
     void DisplayLineLoop(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
     void DisplayRayCast(const osg::ref_ptr<osg::Vec2dArray>& pts);
+    void DeleteLastSpinePoint();
 
 private:
 

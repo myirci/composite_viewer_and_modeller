@@ -445,6 +445,14 @@ void UIHelper::AddSpinePoint(const osg::Vec2d& pt) {
     m_spine_vertices->dirty();
 }
 
+void UIHelper::DeleteLastSpinePoint() {
+
+    m_spine_vertices->pop_back();
+    m_spine_array->setFirst(0);
+    m_spine_array->setCount(m_spine_vertices->size());
+    m_spine_vertices->dirty();
+}
+
 void UIHelper::DisplayLineStrip(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color) {
 
     osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;

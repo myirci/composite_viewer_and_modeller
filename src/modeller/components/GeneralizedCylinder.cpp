@@ -79,6 +79,14 @@ void GeneralizedCylinder::Recalculate() {
     }
 }
 
+void GeneralizedCylinder::DeleteLastSection() {
+
+    // need a far better implementation but for now all the generalized cylinder is
+    // recalculated.
+    m_geometry->GetSections().pop_back();
+    Recalculate();
+}
+
 void GeneralizedCylinder::Clear(bool update_flag) {
 
     m_snormals->removeChildren(0, m_snormals->getNumChildren());

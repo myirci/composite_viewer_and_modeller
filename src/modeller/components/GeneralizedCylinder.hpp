@@ -19,6 +19,7 @@ public:
     void Update();
     void Clear(bool update_flag);
     void Recalculate();
+    void DeleteLastSection();
     const GeneralizedCylinderGeometry* const GetGeometry() const { return m_geometry.get(); }
     GeneralizedCylinderGeometry* GetGeometry()                   { return m_geometry.get(); }
 protected:
