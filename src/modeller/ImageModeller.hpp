@@ -126,6 +126,7 @@ public:
     void EnableRayCastDisplay(bool flag);
     void IncrementScaleFactor();
     void DecrementScaleFactor();
+    void DeleteLastSection();
     osg::Geode* CreateLocalFramesNode();
     osg::Geode* CreateVertexNormalsNode();
     unsigned int GenerateComponentId();

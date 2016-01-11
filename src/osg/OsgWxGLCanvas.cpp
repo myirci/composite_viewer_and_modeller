@@ -152,9 +152,12 @@ void OsgWxGLCanvas::OnChar(wxKeyEvent &event) {
     int key = event.GetKeyCode();
 #endif
 
-    if(m_parent->UsrGetUIOperationMode() == operation_mode::modelling)
+    if(m_parent->UsrGetUIOperationMode() == operation_mode::modelling) {
         if(key == WXK_ESCAPE)
             m_modeller->Reset2DDrawingInterface();
+        else if (key == WXK_SPACE)
+            m_modeller->DeleteLastSection();
+    }
 
     if(key == 't' || key == 'T') {
         if(m_parent->UsrGetUIOperationMode() == operation_mode::modelling)
