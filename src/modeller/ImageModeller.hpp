@@ -54,7 +54,8 @@ enum class spine_drawing_mode : unsigned char {
 
 enum class projection_type : unsigned char {
     perspective,
-    orthographic
+    orthographic,
+    orthogonality_constraint
 };
 
 class ImageModeller {
@@ -144,16 +145,19 @@ private:
     // estimation of the other circles
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+    inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
 
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
     inline void estimate_first_circle_under_orthographic_projection();
+    inline void estimate_first_circle_under_orthogonality_constraint();
 
     // 3D circle estimation functions
     inline int estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius);
     inline int estimate_3d_circles_with_fixed_depth(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_depth);
     inline int estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles);
     inline void estimate_3d_circle_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
+
 
     // selection of the estimated circles under perspective projection
     inline size_t select_first_3d_circle(const Circle3D* const circles);

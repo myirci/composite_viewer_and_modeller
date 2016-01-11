@@ -6,6 +6,7 @@
 #include "../../geometry/Plane3D.hpp"
 #include "ExtractPlaneNormals.hpp"
 #include "../ProjectionParameters.hpp"
+#include "../../osg/OsgUtility.hpp"
 
 // PUBLIC METHODS
 
@@ -112,10 +113,10 @@ void CircleEstimator::estimate_3d_circles_under_orthographic_projection(const El
     // near plane (image plane).
     circle.radius =  ellipse.smj_axis;
 
-    // center of the ellipse on the image plane is (ellipse.center.x(), ellipse.center.y(), -near)
+    // center of the ellipse on the image plane is (ellipse.center.x(), ellipse.center.y(), near)
     circle.center[0] = ellipse.center.x();
     circle.center[1] = ellipse.center.y();
-    circle.center[2] = -near;
+    circle.center[2] = near;
 }
 
 
@@ -575,4 +576,83 @@ void CircleEstimator::estimate_3d_circle_from_major_axis_when_circle_radius_is_f
     circle.center[2] = s5 * circle.radius;
 }
 
+void CircleEstimator::estimate_3d_circles_using_orthogonality_constraint(const Ellipse2D& ellipse, double near, Circle3D* circles, bool use_forth_pt) {
 
+    osg::Vec2d pt4 = ellipse.points[2] - ellipse.points[3];
+    pt4.normalize();
+    std::vector<osg::Vec3d> lframe3d {osg::Vec3d(ellipse.points[2], near),
+                                      osg::Vec3d(ellipse.points[0], near),
+                                      osg::Vec3d(ellipse.points[1], near)};
+    if(use_forth_pt) {
+        lframe3d.push_back(osg::Vec3d(ellipse.points[3], near));
+    }
+    else {
+        lframe3d.push_back(osg::Vec3d(ellipse.points[2] +  pt4, near));
+    }
+
+    double f00 = lframe3d[0] * lframe3d[0];
+    double f01 = lframe3d[0] * lframe3d[1];
+    double f02 = lframe3d[0] * lframe3d[2];
+    double f03 = lframe3d[0] * lframe3d[3];
+    double f12 = lframe3d[1] * lframe3d[2];
+    double f13 = lframe3d[1] * lframe3d[3];
+    double f23 = lframe3d[2] * lframe3d[3];
+
+    double a = f01*f02*f13 + f01*f03*f12 - f00*f12*f13 - f01*f01*f23;
+    double b = 2*f01*(f00*f23 - f02*f03);
+    double c = f00*(f02*f03 - f00*f23);
+
+    // Z1 = k1*Z0, Z2 = k2*Z0, Z3 = k3*Z0
+    double dlt = b*b - 4*a*c;
+    double k1_1 = (-b + std::sqrt(dlt)) / (2*a);
+    double k2_1 = (k1_1*f01 - f00) / (k1_1*f12 - f02);
+    double k3_1 = (k1_1*f01 - f00) / (k1_1*f13 - f03);
+    double k1_2 = (-b - std::sqrt(dlt)) / (2*a);
+    double k2_2 = (k1_2*f01 - f00) / (k1_2*f12 - f02);
+    double k3_2 = (k1_2*f01 - f00) / (k1_2*f13 - f03);
+
+    double Z0 = near;
+
+    osg::Vec3d P0(Z0 * lframe3d[0].x() / near, Z0 * lframe3d[0].y() / near, Z0);
+
+    double Z1_1 = k1_1 * Z0;
+    osg::Vec3d P1_1(Z1_1 * lframe3d[1].x() / near, Z1_1 * lframe3d[1].y() / near, Z1_1);
+    double Z1_2 = k1_2 * Z0;
+    osg::Vec3d P1_2(Z1_2 * lframe3d[1].x() / near, Z1_2 * lframe3d[1].y() / near, Z1_2);
+
+    double Z2_1 = k2_1 * Z0;
+    osg::Vec3d P2_1(Z2_1 * lframe3d[2].x() / near, Z2_1 * lframe3d[2].y() / near, Z2_1);
+    double Z2_2 = k2_2 * Z0;
+    osg::Vec3d P2_2(Z2_2 * lframe3d[2].x() / near, Z2_2 * lframe3d[2].y() / near, Z2_2);
+
+    double Z3_1 = k3_1 * Z0;
+    osg::Vec3d P3_1(Z3_1 * lframe3d[3].x() / near, Z3_1 * lframe3d[3].y() / near, Z3_1);
+    double Z3_2 = k3_2 * Z0;
+    osg::Vec3d P3_2(Z3_2 * lframe3d[3].x() / near, Z3_2 * lframe3d[3].y() / near, Z3_2);
+
+    osg::Vec3d ctr = (P1_1 + P2_1) / 2.0;
+    circles[0].center[0] = ctr.x();
+    circles[0].center[1] = ctr.y();
+    circles[0].center[2] = ctr.z();
+
+    osg::Vec3d nrm = (P3_1 - P0);
+    nrm.normalize();
+    circles[0].normal[0] = nrm.x();
+    circles[0].normal[1] = nrm.y();
+    circles[0].normal[2] = nrm.z();
+
+    circles[0].radius = (ctr - P0).length();
+
+    ctr = (P1_2 + P2_2) / 2.0;
+    circles[1].center[0] = ctr.x();
+    circles[1].center[1] = ctr.y();
+    circles[1].center[2] = ctr.z();
+
+    nrm = (P3_2 - P0);
+    nrm.normalize();
+    circles[1].normal[0] = nrm.x();
+    circles[1].normal[1] = nrm.y();
+    circles[1].normal[2] = nrm.z();
+    circles[1].radius = (ctr - P0).length();
+
+}
