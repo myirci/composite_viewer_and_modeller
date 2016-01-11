@@ -255,9 +255,17 @@ void ImageModeller::model_update() {
             if(m_left_click) {
                 // third click: base ellipse (m_first_ellipse) has been determined.
                 m_left_click = false;
-                initialize_spine_drawing_mode(projection_type::orthographic);
+                initialize_spine_drawing_mode(projection_type::perspective);
                 m_uihelper->InitializeSpineDrawing(m_first_ellipse);
                 m_mode = drawing_mode::mode_3;
+
+                // Dynamic test
+                // Segment2D seg;
+                // m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+                // test_circle_estimation_from_major_axis(seg);
+
+                // Static test
+                // test_circle_estimation_from_major_axis();
             }
         }
         else if(m_mode == drawing_mode::mode_3) {
@@ -303,10 +311,9 @@ void ImageModeller::model_update() {
                     m_right_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_lsegment = *m_dsegment;
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2();
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
-                    add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
                     Reset2DDrawingInterface();
                     // m_component_solver->SolveGeneralizedCylinder(m_gcyl.get());
                     // m_solver->AddComponent(m_gcyl.get());
@@ -318,10 +325,9 @@ void ImageModeller::model_update() {
                     m_left_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
                     *m_lsegment = *m_dsegment;
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2();
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
-                    add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
                 }
                 else {
                     m_uihelper->UpdateSweepCurve(m_dsegment);
@@ -356,176 +362,49 @@ void ImageModeller::estimate_first_circle_under_orthographic_projection() {
     *m_last_circle = *m_first_circle;
 }
 
-/*
- * The minor axis of the proceeding 2D elliptic profiles are estimated depending on the update of the
- * major axis of the profile. For instance, if the major axis is extended 10%, then the minor axis is
- * also extended 10%. The 3D section is estimated based on this 2D elliptic profile.
-*/
-void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1() {
+void ImageModeller::estimate_first_circle_under_orthogonality_constraint() {
 
-    /*
-    // 1) Estimate the 3D circles for the current profile and add it to the generalized cylinder.
     Circle3D circles[2];
-    int count = estimate_3d_circles_with_fixed_depth(m_last_profile, circles, m_fixed_depth);
+    Ellipse2D elp_prj;
+    m_pp->convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(*m_first_ellipse, elp_prj);
+    m_circle_estimator->estimate_3d_circles_using_orthogonality_constraint(elp_prj, -m_pp->near, circles, false);
 
-    // 2) Select one of the two estimated circles based on the angle between the normals
-    if(count == 2)       *m_last_circle = circles[select_parallel_circle(circles)];
-    else if (count == 1) *m_last_circle = circles[0];
-    else                  std::cout << "ERROR: Perspective 3D circle estimation error "  << std::endl;
+    *m_first_circle = circles[0]; // for now! Select the one that fits better!
+    double ratio = (m_fixed_depth / m_first_circle->center[2]);
 
-    // 3) Add estimated 3D circle to the generalized cylinder
-    m_gcyl->AddPlanarSection(*m_last_circle);
-    m_gcyl->Update();
-    */
+    m_first_circle->radius *= ratio;
+    m_first_circle->center *= ratio;
+
+    // copy the first circle to the last circle
+    *m_last_circle = *m_first_circle;
 }
 
-/*
- * The minor axis of the proceeding 2D elliptic profiles are estimated depending on the update of the
- * major axis of the profile. For instance, if the major axis is extended 10%, then the minor axis is
- * also extended 10%. The 3D section is estimated based on this 2D elliptic profile. The normal of the
- * estimated circle is changed such that it becomes parallel to the main axis of the generalized cylinder
-*/
-void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2() {
-/*
-    // 1) Estimate the 3D circles for the current profile and add it to the generalized cylinder.
-    Circle3D circles[2];
-    int count = estimate_3d_circles_with_fixed_depth(m_last_profile, circles, m_fixed_depth);
+void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
 
-    // 2) Select one of the two estimated circles based on the angle between the normals
-    if(count == 2)       *m_last_circle = circles[select_parallel_circle(circles)];
-    else if (count == 1) *m_last_circle = circles[0];
-    else                  std::cout << "ERROR: Perspective 3D circle estimation error "  << std::endl;
-
+    // 1) Estimate the normal of the circle
     const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-    m_last_circle->normal = (sections.back().center - m_last_circle->center).normalized();
-    if(m_first_circle->normal.dot(m_last_circle->normal))
-        m_last_circle->normal *= -1;
+    if(sections.size() == 1) {
+        m_last_circle->normal = m_first_circle->normal;
+    }
+    else {
+        m_tvec.normalize();
+        m_last_circle->normal[0] = m_tvec.x();
+        m_last_circle->normal[1] = m_tvec.y();
+        m_last_circle->normal[2] = 0;
+        if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
+    }
 
-    // 3) Add estimated 3D circle to the generalized cylinder
-    m_gcyl->AddPlanarSection(*m_last_circle);
-    m_gcyl->Update();
-    */
-}
+    // 2) Set the depth of the last circle
+    m_last_circle->center[2] = m_fixed_depth;
 
-void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3() {
-/*
-    // 1) radius : proportional to the length of the semi-major axis
-    m_last_circle->radius = m_first_circle->radius * (m_last_profile->smj_axis / m_first_ellipse->smj_axis);
-
-    m_last_circle->normal = m_first_circle->normal;
-
-    // 3) calculate the center
-
-    // find the points on the projection plane
-    osg::Vec2d p1, p2, ctr;
-    m_pp->convert_from_logical_device_coordinates_to_projected_coordinates(m_last_profile->points[0], p1);
-    m_pp->convert_from_logical_device_coordinates_to_projected_coordinates(m_last_profile->points[1], p2);
-    m_pp->convert_from_logical_device_coordinates_to_projected_coordinates(m_last_profile->center, ctr);
-
-    // calculate the tangent vectors
-    osg::Vec3d p1vec(p1, -m_pp->near);
-    osg::Vec3d p2vec(p2, -m_pp->near);
-    osg::Vec3d direction_vec(p2vec.y() - p1vec.y(), p1vec.x() - p2vec.x(), 0);
-    osg::Vec3d W1_ = direction_vec ^ p1vec;
-    osg::Vec3d W2_ = direction_vec ^ p2vec;
-    Eigen::Vector3d W1(W1_.x(), W1_.y(), W1_.z());
-    Eigen::Vector3d W2(W2_.x(), W2_.y(), W2_.z());
-
-    // calculate the offset planes
-    Ray3D ray1(osg::Vec3d(0,0,0), p1vec);
-    Ray3D ray2(osg::Vec3d(0,0,0), p2vec);
-    Eigen::Vector3d N;
-    m_last_circle->get_scaled_normal(N);
-    Eigen::Matrix3d Nx3;
-    Nx3 << 0, -N[2], N[1], N[2], 0, -N[0], -N[1], N[0], 0;
-    Eigen::Matrix3d Nx3_sq = Nx3 * Nx3;
-    Plane3D offset_pl1(W1[0], W1[1], W1[2], std::sqrt(-W1.transpose() * Nx3_sq * W1));
-    if(!is_intersecting(ray2, offset_pl1))
-        offset_pl1.get_plane().w() *= -1;
-
-    Plane3D offset_pl2(W2[0], W2[1], W2[2], std::sqrt(-W2.transpose() * Nx3_sq * W2));
-    if(!is_intersecting(ray1, offset_pl2))
-        offset_pl2.get_plane().w() *= -1;
-
-    // intersect two offset planes:
-    osg::Vec3d start_pt;
-    osg::Vec3d dir_vec;
-    intersect_two_planes(offset_pl1, offset_pl2, start_pt, dir_vec);
-
-    // calculate the center
-    double coeff1[18];
-    coeff1[0] = dir_vec.x() * dir_vec.x();
-    coeff1[1] = 2 * dir_vec.x() * start_pt.x();
-    coeff1[2] = start_pt.x() * start_pt.x() - N[1]*N[1] - N[2]*N[2];
-    coeff1[3] = dir_vec.x() * dir_vec.y();
-    coeff1[4] = dir_vec.x() * start_pt.y() + dir_vec.y() * start_pt.x();
-    coeff1[5] = N[0]*N[1] + start_pt.x() * start_pt.y();
-    coeff1[6] = dir_vec.x() * dir_vec.z();
-    coeff1[7] = dir_vec.x() * start_pt.z() + dir_vec.z() * start_pt.x();
-    coeff1[8] = N[0]*N[2] + start_pt.x() * start_pt.z();
-    coeff1[9] = dir_vec.y() * dir_vec.y();
-    coeff1[10] = 2 * dir_vec.y() * start_pt.y() ;
-    coeff1[11] = start_pt.y() * start_pt.y() - N[0]*N[0] - N[2]*N[2];
-    coeff1[12] = dir_vec.y() * dir_vec.z();
-    coeff1[13] = dir_vec.y() * start_pt.z() + dir_vec.z() * start_pt.y();
-    coeff1[14] = N[1]*N[2] + start_pt.y() * start_pt.z();
-    coeff1[15] = dir_vec.z() * dir_vec.z();
-    coeff1[16] = 2 * dir_vec.z() * start_pt.z();
-    coeff1[17] = start_pt.z() * start_pt.z() - N[0]*N[0] - N[1]*N[1];
-
-    double coeff2[17];
-    coeff2[0] = coeff1[9]*coeff1[17] + coeff1[10]*coeff1[16] + coeff1[11]*coeff1[15] - 2*coeff1[12]*coeff1[14] - coeff1[13]*coeff1[13];
-    coeff2[1] = coeff1[10]*coeff1[17] + coeff1[11]*coeff1[16] - 2*coeff1[13]*coeff1[14];
-    coeff2[2] = coeff1[11]*coeff1[17] - coeff1[14]*coeff1[14];
-    coeff2[3] = coeff1[6]*coeff1[14] + coeff1[7]*coeff1[13] + coeff1[8]*coeff1[12] - coeff1[3]*coeff1[17] - coeff1[4]*coeff1[16] - coeff1[5]*coeff1[15];
-    coeff2[4] = coeff1[7]*coeff1[14] + coeff1[8]*coeff1[13] - coeff1[4]*coeff1[17] - coeff1[5]*coeff1[16];
-    coeff2[5] = coeff1[8]*coeff1[14] - coeff1[5]*coeff1[17];
-    coeff2[6] = coeff1[3]*coeff1[14] + coeff1[4]*coeff1[13] + coeff1[5]*coeff1[12] - coeff1[6]*coeff1[11] - coeff1[7]*coeff1[10] - coeff1[8]*coeff1[9];
-    coeff2[7] = coeff1[4]*coeff1[14] + coeff1[5]*coeff1[13] - coeff1[7]*coeff1[11] - coeff1[8]*coeff1[10];
-    coeff2[8] = coeff1[5]*coeff1[14] - coeff1[8]*coeff1[11];
-    coeff2[9] = coeff1[0]*coeff1[17] + coeff1[1]*coeff1[16] + coeff1[2]*coeff1[15] - 2*coeff1[6]*coeff1[8] - coeff1[7]*coeff1[7];
-    coeff2[10] = coeff1[1]*coeff1[17] + coeff1[2]*coeff1[16] - 2*coeff1[7]*coeff1[8];
-    coeff2[11] = coeff1[2]*coeff1[17] - coeff1[8]*coeff1[8];
-    coeff2[12] = coeff1[3]*coeff1[8] + coeff1[4]*coeff1[7] + coeff1[5]*coeff1[6] - coeff1[0]*coeff1[14] - coeff1[1]*coeff1[13] - coeff1[2]*coeff1[12];
-    coeff2[13] = coeff1[4]*coeff1[8] + coeff1[5]*coeff1[7] - coeff1[1]*coeff1[14] - coeff1[2]*coeff1[13];
-    coeff2[14] = coeff1[5]*coeff1[8] - coeff1[2]*coeff1[14];
-    coeff2[15] = coeff1[0]*coeff1[11] + coeff1[1]*coeff1[10] + coeff1[2]*coeff1[9] - 2*coeff1[3]*coeff1[5] - coeff1[4]*coeff1[4];
-    coeff2[16] = coeff1[1]*coeff1[11] + coeff1[2]*coeff1[10] - 2*coeff1[4]*coeff1[5];
-    coeff2[17] = coeff1[2]*coeff1[11] - coeff1[5]*coeff1[5];
-
-    Eigen::Matrix3d A;
-    A << 1/m_pp->near, 0, 0, 0, 1/m_pp->near, 0, 0, 0, -1;
-
-    Eigen::Vector3d vec(ctr.x(), ctr.y(), 1);
-    double k0 = A.row(0).dot(vec);
-    double k1 = A.row(1).dot(vec);
-    double k2 = A.row(2).dot(vec);
-
-    double coeff3[9];
-    coeff3[0] = coeff2[0] *  k0*A(0,0) + coeff2[3] * (k1*A(0,0) + k0*A(1,0)) + coeff2[6] * (k2*A(0,0) + k0*A(2,0)) + coeff2[9] * k1*A(1,0) + coeff2[12] *(k2*A(1,0) + k1*A(2,0)) + coeff2[15] * k2*A(2,0);
-    coeff3[1] = coeff2[1] *  k0*A(0,0) + coeff2[4] * (k1*A(0,0) + k0*A(1,0)) + coeff2[7] * (k2*A(0,0) + k0*A(2,0)) + coeff2[10] * k1*A(1,0) + coeff2[13] *(k2*A(1,0) + k1*A(2,0)) + coeff2[16] * k2*A(2,0);
-    coeff3[2] = coeff2[2] *  k0*A(0,0) + coeff2[5] * (k1*A(0,0) + k0*A(1,0)) + coeff2[8] * (k2*A(0,0) + k0*A(2,0)) + coeff2[11] * k1*A(1,0) + coeff2[14] *(k2*A(1,0) + k1*A(2,0)) + coeff2[17] * k2*A(2,0);
-    coeff3[3] = coeff2[0] *  k0*A(0,1) + coeff2[3] * (k1*A(0,1) + k0*A(1,1)) + coeff2[6] * (k2*A(0,1) + k0*A(2,1)) + coeff2[9] *  k1*A(1,1) + coeff2[12] *(k2*A(1,1) + k1*A(2,1)) + coeff2[15] * k2*A(2,1);
-    coeff3[4] = coeff2[1] *  k0*A(0,1) + coeff2[4] * (k1*A(0,1) + k0*A(1,1)) + coeff2[7] * (k2*A(0,1) + k0*A(2,1)) + coeff2[10] * k1*A(1,1) + coeff2[13] *(k2*A(1,1) + k1*A(2,1)) + coeff2[16] * k2*A(2,1);
-    coeff3[5] = coeff2[2] *  k0*A(0,1) + coeff2[5] * (k1*A(0,1) + k0*A(1,1)) + coeff2[8] * (k2*A(0,1) + k0*A(2,1)) + coeff2[11] * k1*A(1,1) + coeff2[14] *(k2*A(1,1) + k1*A(2,1)) + coeff2[17] * k2*A(2,1);
-    coeff3[6] = coeff2[0] *  k0*A(0,2) + coeff2[3] * (k1*A(0,2) + k0*A(1,2)) + coeff2[6] * (k2*A(0,2) + k0*A(2,2)) + coeff2[9] *  k1*A(1,2) + coeff2[12] *(k2*A(1,2) + k1*A(2,2)) + coeff2[15] * k2*A(2,2);
-    coeff3[7] = coeff2[1] *  k0*A(0,2) + coeff2[4] * (k1*A(0,2) + k0*A(1,2)) + coeff2[7] * (k2*A(0,2) + k0*A(2,2)) + coeff2[10] * k1*A(1,2) + coeff2[13] *(k2*A(1,2) + k1*A(2,2)) + coeff2[16] * k2*A(2,2);
-    coeff3[8] = coeff2[2] *  k0*A(0,2) + coeff2[5] * (k1*A(0,2) + k0*A(1,2)) + coeff2[8] * (k2*A(0,2) + k0*A(2,2)) + coeff2[11] * k1*A(1,2) + coeff2[14] *(k2*A(1,2) + k1*A(2,2)) + coeff2[17] * k2*A(2,2);
-    double t = (coeff3[0]*coeff3[5] - coeff3[2]*coeff3[3]) / (coeff3[1]*coeff3[3] - coeff3[0]*coeff3[4]);
-
-    osg::Vec3d calculated_ctr = start_pt + dir_vec * t;
-    m_last_circle->center[0] = calculated_ctr.x();
-    m_last_circle->center[1] = calculated_ctr.y();
-    m_last_circle->center[2] = calculated_ctr.z();
-
-    std::cout << "Final Last Circle: " << std::endl;
-    std::cout << *m_last_circle << std::endl;
-    std::cout << "------------------------" << std::endl;
+    // 3) Based on normal and depth estimation, estimate the 3D circle
+    Segment2D seg;
+    m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, *m_last_circle);
 
     // 4) Add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
-    */
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthographic_projection() {
@@ -543,18 +422,73 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
     m_last_circle->center *= (m_fixed_depth / -m_pp->near);
 
     // update the circle normal
-    const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-    Eigen::Vector3d nrm_1 = (m_last_circle->center - sections.back().center).normalized();
-    osg::Vec2d dir = m_lsegment->direction();
-    osg::Vec2d nrm_2(dir.y(), -dir.x());
-    nrm_2.normalize();
-    double dp = nrm_2.x() * nrm_1[0] +  nrm_2.y() * nrm_1[1];
-    if(dp > 0) m_last_circle->normal = Eigen::Vector3d(nrm_2.x(), nrm_2.y(), 0);
-    else       m_last_circle->normal = Eigen::Vector3d(-nrm_2.x(), -nrm_2.y(), 0);
+    m_tvec.normalize();
+    m_last_circle->normal[0] = m_tvec.x();
+    m_last_circle->normal[1] = m_tvec.y();
+    m_last_circle->normal[2] = 0;
+    std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+    if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
+    /*
+    if(sections.size() == 1) {
+        sections.back().normal = m_last_circle->normal;
+        m_gcyl->Recalculate();
+    }
+    */
+
+    // update the circle normal alternative but does not work when the mouse pointer does nor coincide
+    // the center of the ellipse.
+    // const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+    // m_last_circle->normal = (m_last_circle->center - sections.back().center).normalized();
 
     // add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
+}
+
+void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint() {
+
+    Segment2D seg;
+    m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+
+    std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+    if(sections.size() == 1) {
+
+        Circle3D circles[2];
+        Ellipse2D elp_prj;
+        m_pp->convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(*m_first_ellipse, elp_prj);
+        elp_prj.points[3] = seg.mid_point();
+        m_circle_estimator->estimate_3d_circles_using_orthogonality_constraint(elp_prj, -m_pp->near, circles, true);
+
+        *m_first_circle = circles[0]; // for now! Select the one that fits better!
+        double ratio = (m_fixed_depth / m_first_circle->center[2]);
+
+        m_first_circle->radius *= ratio;
+        m_first_circle->center *= ratio;
+        sections[0] = *m_first_circle;
+        m_gcyl->Recalculate();
+    }
+
+    // set the radius: proportional to the length of the semi-major axis
+    m_last_circle->radius = seg.half_length() * (m_fixed_depth / -m_pp->near);
+
+    // set the center: should be scaled with respect to the fixed depth
+    osg::Vec2d ctr = seg.mid_point();
+    m_last_circle->center[0] = ctr.x();
+    m_last_circle->center[1] = ctr.y();
+    m_last_circle->center[2] = -m_pp->near;
+    m_last_circle->center *= (m_fixed_depth / -m_pp->near);
+
+    // update the circle normal
+    m_tvec.normalize();
+    m_last_circle->normal[0] = m_tvec.x();
+    m_last_circle->normal[1] = m_tvec.y();
+    m_last_circle->normal[2] = 0;
+    if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
+
+    // add estimated 3D circle to the generalized cylinder
+    m_gcyl->AddPlanarSection(*m_last_circle);
+    m_gcyl->Update();
+
 }
 
 /*
@@ -596,58 +530,26 @@ void ImageModeller::initialize_spine_drawing_mode(projection_type pt) {
     // modify the user clicked point with its projection on the minor-axis guide line
     m_vertices->at(2) = m_first_ellipse->points[2];
 
+    // copy the base ellipse major axis into the last segment
+    m_lsegment->pt1 = m_first_ellipse->points[0];
+    m_lsegment->pt2 = m_first_ellipse->points[1];
+
     // initialize the generalized cylinder as a new node in the scene graph.
     if(m_gcyl.valid()) m_gcyl = nullptr;
 
     // estimate the first circle
-    if(pt == projection_type::perspective)
+    if(pt == projection_type::perspective) {
         estimate_first_circle_under_persective_projection();
-    else if(pt == projection_type::orthographic)
+    }
+    else if(pt == projection_type::orthographic) {
         estimate_first_circle_under_orthographic_projection();
+    }
+    if(pt == projection_type::orthogonality_constraint) {
+        estimate_first_circle_under_orthogonality_constraint();
+    }
 
     m_gcyl = new GeneralizedCylinder(GenerateComponentId(), *m_first_circle, m_rtype);
     m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
-
-    // initialize the constraint line if spine contraint is straight_planar
-    if(sp_constraints == spine_constraints::straight_planar) {
-
-        //        // let's define the constraint line in the opengl screen coordinate which is also
-        //        double a = m_last_circle->center[1] * m_last_circle->normal[2] - m_last_circle->center[2] * m_last_circle->normal[1];
-        //        double b = m_last_circle->center[2] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[2];
-        //        double c = (m_last_circle->center[1] * m_last_circle->normal[0] - m_last_circle->center[0] * m_last_circle->normal[1]) * m_pp->height / (2*tan(m_pp->fovy/2.0)) - a*(m_pp->width/2.0) - b*(m_pp->height/2.0);
-        //        m_constraint_line = std::unique_ptr<Line2D>(new Line2D(a,b,c));
-
-        //        // display the constraint line
-        //        std::vector<osg::Vec2d> intersection_pts;
-        //        double var = m_constraint_line->get_x_at_y(0);
-        //        if(var >= 0 && var < m_pp->width)
-        //            intersection_pts.push_back(osg::Vec2d(var, 0));
-
-        //        var = m_constraint_line->get_x_at_y(m_pp->height - 1);
-        //        if(var >= 0 && var < m_pp->width)
-        //            intersection_pts.push_back(osg::Vec2d(var, m_pp->height - 1));
-
-        //        var = m_constraint_line->get_y_at_x(0);
-        //        if(var >= 0 && var < m_pp->height)
-        //            intersection_pts.push_back(osg::Vec2d(0, var));
-
-        //        var = m_constraint_line->get_y_at_x(m_pp->width - 1);
-        //        if(var >= 0 && var < m_pp->height)
-        //            intersection_pts.push_back(osg::Vec2d(m_pp->width - 1, var));
-
-        //        if(intersection_pts.size() == 2)
-        //            m_uihelper->DisplayConstraintLine(intersection_pts);
-        //        else
-        //            std::cout << "ERROR: Number of intersections must be two!" << std::endl;
-
-        //        std::cout << "intersection points: \n";
-        //        for(auto it = intersection_pts.begin(); it != intersection_pts.end(); ++it)
-        //            std::cout << it->x() << " " << it->y() << std::endl;
-    }
-
-    // copy the base ellipse major axis into the last segment
-    m_lsegment->pt1 = m_first_ellipse->points[0];
-    m_lsegment->pt2 = m_first_ellipse->points[1];
 }
 
 void ImageModeller::calculate_ellipse() {
@@ -684,6 +586,7 @@ void ImageModeller::update_dynamic_segment() {
 
     // vector from last validated spine point to the current mouse position
     osg::Vec2d tvec = m_mouse - m_lsegment->mid_point();
+    m_tvec = tvec;
 
     if(sp_constraints == spine_constraints::straight_planar) {
         // translate the dynamic segment to the current mouse point
@@ -733,35 +636,13 @@ void ImageModeller::estimate_3d_circle_under_orthographic_projection(std::unique
 
     Ellipse2D elp_prj;
     m_pp->convert_ellipse_from_logical_device_coordinates_to_projected_coordinates(*ellipse, elp_prj);
-    m_circle_estimator->estimate_3d_circles_under_orthographic_projection(elp_prj, circle, m_pp->near);
+    m_circle_estimator->estimate_3d_circles_under_orthographic_projection(elp_prj, circle, -m_pp->near);
 
     // perspective scaling:
     // -----------------------------------------------------------------------------------------------------
-
-    /* radius of the circle is equal to the length of the smj_vec_2d = smj_vec_3d = tilted_smn_vec_3d = ellipse.smj_axis on the
-     * near plane (image plane). On the near plane, depth = 0 w.r.t computer graphics and depth = -near w.r.t mathematical notion.
-     * Here we need to use the mathematical notion and take the depth = -near on the image plane. At the desired depth, the radius
-     * will be calculated as below from the similar triangles.
-     *
-     * radius_at_desired_depth = (desired_depth / depth_at_near_plane) * radius_on_near_plane
-     *                         = (desired_depth / -near) * length(smj_vec_2d)
-     *
-     */
-    circle.radius *= (m_fixed_depth / -m_pp->near);
-
-    /* center of the ellipse on the image plane is (ellipse.center.x(), ellipse.center.y(), -near)
-     * however circle is moved to the desired depth. We need to multiply the center with the ratio (new_radius / old_radius) or
-     * (new_depth / old_depth)
-    */
-    circle.center *= (m_fixed_depth / -m_pp->near);
-
-    // othographic scaling:
-    // -----------------------------------------------------------------------------------------------------
-    /*
-    // radius and x, y coordinates of the centre do not change. Only the z coordinate of the circle needs
-    // to be updated with the desired depth.
-    circle.center[2] = m_fixed_depth;
-    */
+    double ratio = (m_fixed_depth / -m_pp->near);
+    circle.radius *= ratio;
+    circle.center *= ratio;
 }
 
 size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles) {
@@ -1202,7 +1083,7 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
         m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
         m_dsegment->pt2 = new_p1;
     }
-    // no hits
+    // not hits
     else {
         return;
     }
@@ -1221,6 +1102,68 @@ void ImageModeller::constrain_mouse_point() {
     default:
         break;
     }
+}
+
+void ImageModeller::test_circle_estimation_from_major_axis(const Segment2D& seg) {
+
+    Circle3D circles[2];
+    estimate_3d_circles_with_fixed_depth(m_first_ellipse, circles, m_fixed_depth);
+
+    Circle3D c1;
+    c1.normal = circles[0].normal;
+    c1.center[2] = circles[0].center[2];
+    Circle3D c2;
+    c2.normal = circles[1].normal;
+    c2.radius = circles[1].radius;
+
+    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, c1);
+    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_radius_is_fixed(seg, -m_pp->near, c2);
+
+    std::cout << "----------------------" << std::endl;
+    std::cout << circles[0] << std::endl;
+    std::cout << "----------------------" << std::endl;
+    std::cout << c1 << std::endl;
+    std::cout << "----------------------" << std::endl;
+    std::cout << "----------------------" << std::endl;
+    std::cout << circles[1] << std::endl;
+    std::cout << "----------------------" << std::endl;
+    std::cout << c2 << std::endl;
+    std::cout << "----------------------" << std::endl;
+}
+
+
+void ImageModeller::test_circle_estimation_from_major_axis() {
+
+    Ellipse2D elp2d(3.54, 2.4, acos(0.95), osg::Vec2d(-2.45, 1.23));
+    elp2d.calculate_coefficients_from_parameters();
+
+    Circle3D circles[2];
+    m_circle_estimator->estimate_3d_circles_with_fixed_depth(elp2d, circles, m_pp.get(), m_fixed_depth);
+
+    Circle3D c1;
+    c1.normal = circles[0].normal;
+    c1.center[2] = circles[0].center[2];
+
+    Circle3D c2;
+    c2.normal = circles[1].normal;
+    c2.radius = circles[1].radius;
+
+    osg::Vec2d p1, p2;
+    elp2d.get_major_axis_end_points(p1, p2);
+    Segment2D seg(p1,p2);
+
+    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, c1);
+    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_radius_is_fixed(seg, -m_pp->near, c2);
+
+    std::cout << "----------------------" << std::endl;
+    std::cout << circles[0] << std::endl;
+    std::cout << "----------------------" << std::endl;
+    std::cout << c1 << std::endl;
+    std::cout << "----------------------" << std::endl;
+    std::cout << circles[1] << std::endl;
+    std::cout << "----------------------" << std::endl;
+    std::cout << c2 << std::endl;
+    std::cout << "----------------------" << std::endl;
 }
 
 /*

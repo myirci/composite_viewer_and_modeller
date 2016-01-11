@@ -54,7 +54,8 @@ enum class spine_drawing_mode : unsigned char {
 
 enum class projection_type : unsigned char {
     perspective,
-    orthographic
+    orthographic,
+    orthogonality_constraint
 };
 
 class ImageModeller {
@@ -103,6 +104,8 @@ private:
     double m_fixed_depth;
     double m_scale_factor;
 
+    osg::Vec2d m_tvec;
+
     // for ray cast display
     bool m_display_raycast;
     osg::ref_ptr<osg::Vec2dArray> m_raycast;
@@ -140,20 +143,21 @@ private:
     void constrain_mouse_point();
 
     // estimation of the other circles
-    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
-    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_2();
-    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_3();
+    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+    inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
 
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
     inline void estimate_first_circle_under_orthographic_projection();
+    inline void estimate_first_circle_under_orthogonality_constraint();
 
     // 3D circle estimation functions
     inline int estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius);
     inline int estimate_3d_circles_with_fixed_depth(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_depth);
     inline int estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles);
     inline void estimate_3d_circle_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
+
 
     // selection of the estimated circles under perspective projection
     inline size_t select_first_3d_circle(const Circle3D* const circles);
@@ -164,6 +168,10 @@ private:
     void project_points(const osg::Vec3dArray * const pt3darr, osg::Vec2dArray* const pt2darr) const;
     void project_circle(const Circle3D& circle, Ellipse2D& ellipse) const;
     void project_generalized_cylinder(const GeneralizedCylinder& gcyl) const;
+
+    // test
+    void test_circle_estimation_from_major_axis(const Segment2D& seg);
+    void test_circle_estimation_from_major_axis();
 
     // projection error calculators
     // inline void constrain_spine_point_in_piecewise_linear_mode();
