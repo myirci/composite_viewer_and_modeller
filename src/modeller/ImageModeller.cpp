@@ -45,7 +45,8 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_circle_estimator(new CircleEstimator),
     m_display_raycast(false),
     m_raycast(nullptr),
-    m_scale_factor(0.35) {
+    m_scale_factor(0.35),
+    m_angle_corretion(0.0){
 
     std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
     std::ifstream infile(binary_img_path);
@@ -360,6 +361,11 @@ void ImageModeller::estimate_first_circle_under_persective_projection() {
 
     // 3) copy the first circle to the last circle
     *m_last_circle = *m_first_circle;
+
+    std::cout << *m_first_circle << std::endl;
+
+    // 4) compute the angle correction
+    m_angle_corretion = acos(m_first_circle->normal[2]);
 }
 
 void ImageModeller::estimate_first_circle_under_orthographic_projection() {
@@ -398,6 +404,9 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
     if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
 
+   //  if(sections.size() == 1)
+   //     m_last_circle->normal = m_first_circle->normal;
+
     // 2) Set the depth of the last circle
     m_last_circle->center[2] = m_fixed_depth;
 
@@ -405,7 +414,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     Segment2D seg;
     m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, *m_last_circle);
-
 
     // 4) Add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
@@ -433,12 +441,17 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
     m_last_circle->normal[2] = 0;
     std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
     if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
+
+    // if(sections.size() == 1)
+    //    m_last_circle->normal = m_first_circle->normal;
+
     /*
     if(sections.size() == 1) {
         sections.back().normal = m_last_circle->normal;
         m_gcyl->Recalculate();
     }
     */
+
 
     // update the circle normal alternative but does not work when the mouse pointer does nor coincide
     // the center of the ellipse.
@@ -489,6 +502,8 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogo
     m_last_circle->normal[1] = m_tvec.y();
     m_last_circle->normal[2] = 0;
     if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
+
+    // if(sections.size() == 1) m_last_circle->normal = m_first_circle->normal;
 
     // add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
@@ -805,165 +820,74 @@ void ImageModeller::update_dynamic_segment_with_mirror_point(const osg::Vec2d& p
 
 void ImageModeller::ray_cast_within_binary_image_for_profile_match() {
 
-    // 1) transform the point coordinates to pixel coordinates
-    Point2D<int> p1(static_cast<int>(m_dsegment->pt1.x()), static_cast<int>(m_dsegment->pt1.y()));
-    Point2D<int> p2(static_cast<int>(m_dsegment->pt2.x()), static_cast<int>(m_dsegment->pt2.y()));
-    m_canvas->UsrDeviceToLogical(p1);
-    m_canvas->UsrDeviceToLogical(p2);
+       // 1) transform the point coordinates to pixel coordinates
+       Point2D<int> p0(static_cast<int>(m_dsegment->pt1.x()), static_cast<int>(m_dsegment->pt1.y()));
+       Point2D<int> p1(static_cast<int>(m_dsegment->pt2.x()), static_cast<int>(m_dsegment->pt2.y()));
+       m_canvas->UsrDeviceToLogical(p0);
+       m_canvas->UsrDeviceToLogical(p1);
 
-    // 2) calculate the casting direction vector,the change in major-axis length is limited by a factor
-    Vector2D<int> dir_vec(static_cast<int>((p2.x - p1.x) * m_scale_factor), static_cast<int>((p2.y - p1.y) * m_scale_factor));
+       // 2) calculate the casting direction vector,the change in major-axis length is limited by a factor
+       Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
 
-    // 3) perform ray casts and display shot rays variables for ray casting
-    bool hit_result[4] = { false, false, false, false };
-    Point2D<int> hit[4];
+       // 3) perform ray casts and display shot rays variables for ray casting
+       bool hit_result[4] = { false, false, false, false };
+       Point2D<int> hit[4];
 
-    // 3.1) ray cast from p0-center direction
-    Point2D<int> end = p1 + dir_vec;
-    if(m_rect->intersect(p1, end))
-        hit_result[0] = BinaryImageRayCast(m_bimage, p1, end, hit[0]);
+       // 3.1) ray cast from p0-center direction
+       Point2D<int> end = p0 + dir_vec;
+       if(m_rect->intersect(p0, end))
+           hit_result[0] = BinaryImageRayCast(m_bimage, p0, end, hit[0]);
 
-    // 3.2) ray cast from p0-outside direction
-    end = p1 - dir_vec;
-    if(m_rect->intersect(p1, end))
-        hit_result[1] = BinaryImageRayCast(m_bimage, p1, end, hit[1]);
+       // 3.2) ray cast from p0-outside direction
+       end = p0 - dir_vec;
+       if(m_rect->intersect(p0, end))
+           hit_result[1] = BinaryImageRayCast(m_bimage, p0, end, hit[1]);
 
-    // 3.3) ray cast from p1-center direction
-    end = p2 - dir_vec;
-    if(m_rect->intersect(p2, end))
-        hit_result[2] = BinaryImageRayCast(m_bimage, p2, end, hit[2]);
+       // 3.3) ray cast from p1-center direction
+       end = p1 - dir_vec;
+       if(m_rect->intersect(p1, end))
+           hit_result[2] = BinaryImageRayCast(m_bimage, p1, end, hit[2]);
 
-    // 3.4) ray cast from p1-outside direction
-    end = p2 + dir_vec;
-    if(m_rect->intersect(p2, end))
-        hit_result[3] = BinaryImageRayCast(m_bimage, p2, end, hit[3]);
+       // 3.4) ray cast from p1-outside direction
+       end = p1 + dir_vec;
+       if(m_rect->intersect(p1, end))
+           hit_result[3] = BinaryImageRayCast(m_bimage, p1, end, hit[3]);
 
-    // 4) analyze the result of the ray casts
-    bool flagp1 = hit_result[0] || hit_result[1];
-    bool flagp2 = hit_result[2] || hit_result[3];
+       // 4) analyze the result of the ray casts
+       Point2D<int> p0_hit = p0;
+       if(hit_result[0] && hit_result[1])  p0_hit = p0;
+       else if(hit_result[0])              p0_hit = hit[0];
+       else if(hit_result[1])              p0_hit = hit[1];
+       m_canvas->UsrDeviceToLogical(p0_hit);
 
-    if(!flagp1 && !flagp2) { // no_hit
-        return;
-    }
-    else if(flagp1 && !flagp2) { // only p1 hit
+       Point2D<int> p1_hit;
+       if(hit_result[2] && hit_result[3])  p1_hit = p1;
+       else if(hit_result[2])              p1_hit = hit[2];
+       else if(hit_result[3])              p1_hit = hit[3];
+       m_canvas->UsrDeviceToLogical(p1_hit);
 
-        Point2D<int> p1_hit;
-        if(hit_result[0]) p1_hit = hit[0];
-        else p1_hit = hit[1];
-        m_canvas->UsrDeviceToLogical(p1_hit);
-        update_dynamic_segment_with_mirror_point(osg::Vec2d(p1_hit.x, p1_hit.y), true);
-    }
-    else if(!flagp1 && flagp2) { // only p2 hit
-
-        Point2D<int> p2_hit;
-        if(hit_result[0]) p2_hit = hit[2];
-        else p2_hit = hit[3];
-        m_canvas->UsrDeviceToLogical(p2_hit);
-        update_dynamic_segment_with_mirror_point(osg::Vec2d(p2_hit.x, p2_hit.y), false);
-    }
-    else { // both hit
-
-        Point2D<int> p1_hit;
-        if(hit_result[0]) p1_hit = hit[0];
-        else p1_hit = hit[1];
-        m_canvas->UsrDeviceToLogical(p1_hit);
-        update_dynamic_segment_with_mirror_point(osg::Vec2d(p1_hit.x, p1_hit.y), true);
-
-        /*
-        if(hit_result[0] && hit_result[1]) { // hit both ways
-
-            Point2D<int> p1_hit0 = hit[0];
-            m_canvas->UsrDeviceToLogical(p1_hit0);
-            osg::Vec2d vec1(p1_hit0.x, p1_hit0.y);
-
-            Point2D<int> p1_hit1 = hit[1];
-            m_canvas->UsrDeviceToLogical(p1_hit1);
-            osg::Vec2d vec2(p1_hit1.x, p1_hit1.y);
-
-            double l1 = (m_dsegment->pt1 - vec1).length2();
-            double l2 = (m_dsegment->pt1 - vec2).length2();
-
-            if(l1 < l2) { // apply same with the shrink
-
-            }
-            else if(l2 > l1) { // apply same with the enlarge
-
-            }
-            else {
-
-            }
-        }
-
-        else if(!hit_result[0] && hit_result[1]) { // enlarge
-
-            if(hit_result[2] && hit_result[3]) { // hit both ways
-                std::cout << "Hit both sides: noth handled!" << std::endl;
-            }
-            else if(!hit_result[2] && hit_result[3]) { // enlarge
-                // take the biggest enlargement
-                Point2D<int> p1_hit = hit[1];
-                m_canvas->UsrDeviceToLogical(p1_hit);
-                osg::Vec2d p1h(p1_hit.x, p1_hit.y);
-
-                Point2D<int> p2_hit = hit[3];
-                m_canvas->UsrDeviceToLogical(p2_hit);
-                osg::Vec2d p2h(p2_hit.x, p2_hit.y);
-
-                double l1 = (p1h - m_dsegment->pt1).length2();
-                double l2 = (p2h - m_dsegment->pt2).length2();
-                if(l1 < l2) {
-                    m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - p2h);
-                    m_dsegment->pt2 = p2h;
-                }
-                else if(l1 > l2) {
-                    m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - p1h);
-                    m_dsegment->pt1 = p1h;
-                }
-                else {
-                    m_dsegment->pt1 = osg::Vec2d(p1_hit.x, p1_hit.y);
-                    m_dsegment->pt2 = osg::Vec2d(p2_hit.x, p2_hit.y);
-                }
-            }
-            else { // shrink
-                std::cout << "Opposite directions: noth handled!" << std::endl;
-            }
-        }
-        else {  // shrink
-            if(hit_result[2] && hit_result[3]) { // hit both ways
-                std::cout << "Hit both sides: noth handled!" << std::endl;
-            }
-            else if(!hit_result[2] && hit_result[3]) { // enlarge
-                std::cout << "Opposite directions: noth handled!" << std::endl;
-            }
-            else { // shrink
-                // take the smallest enlargement
-                Point2D<int> p1_hit = hit[0];
-                m_canvas->UsrDeviceToLogical(p1_hit);
-                osg::Vec2d p1h(p1_hit.x, p1_hit.y);
-
-                Point2D<int> p2_hit = hit[2];
-                m_canvas->UsrDeviceToLogical(p2_hit);
-                osg::Vec2d p2h(p2_hit.x, p2_hit.y);
-
-                double l1 = (p1h - m_dsegment->pt1).length2();
-                double l2 = (p2h - m_dsegment->pt2).length2();
-                if(l1 < l2) {
-                    m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - p1h);
-                    m_dsegment->pt1 = p1h;
-                }
-                else if (l2 < l1) {
-                    osg::Vec2d p2h(p2_hit.x, p2_hit.y);
-                    m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - p2h);
-                    m_dsegment->pt2 = p2h;
-                }
-                else {
-                    m_dsegment->pt1 = osg::Vec2d(p1_hit.x, p1_hit.y);
-                    m_dsegment->pt2 = osg::Vec2d(p2_hit.x, p2_hit.y);
-                }
-            }
-        }
-        */
-    }
+       if((hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {          // update p0, p1
+           /*
+           m_dsegment->pt1 = osg::Vec2d(p0_hit.x, p0_hit.y);
+           m_dsegment->pt2 = osg::Vec2d(p1_hit.x, p1_hit.y);
+           */
+           osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+           m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
+           m_dsegment->pt1 = new_p0;
+       }
+       else if((hit_result[0] || hit_result[1]) && !(hit_result[2] || hit_result[3])) {    // update p0, p1 is the mirror of p0
+           osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+           m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
+           m_dsegment->pt1 = new_p0;
+       }
+       else if(!(hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {    // update p1, p0 is the mirror of p1
+           osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
+           m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
+           m_dsegment->pt2 = new_p1;
+       }
+       else {
+           return;
+       }
 }
 
 void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
@@ -1075,8 +999,13 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
     m_canvas->UsrDeviceToLogical(p1_hit);
 
     if(p0_updated && p1_updated) { // update p0, p1
+        /*
         m_dsegment->pt1 = osg::Vec2d(p0_hit.x, p0_hit.y);
         m_dsegment->pt2 = osg::Vec2d(p1_hit.x, p1_hit.y);
+        */
+        osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+        m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
+        m_dsegment->pt1 = new_p0;
     }
     else if(p0_updated) { // update p0, p1 is the mirror of p0
         osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
@@ -1124,6 +1053,7 @@ void ImageModeller::test_circle_estimation_from_major_axis(const Segment2D& seg)
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, c1);
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_radius_is_fixed(seg, -m_pp->near, c2);
 
+    std::cout.precision(16);
     std::cout << "----------------------" << std::endl;
     std::cout << circles[0] << std::endl;
     std::cout << "----------------------" << std::endl;

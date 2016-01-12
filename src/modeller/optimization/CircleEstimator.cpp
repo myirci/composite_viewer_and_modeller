@@ -652,5 +652,4 @@ void CircleEstimator::estimate_3d_circles_using_orthogonality_constraint(const E
     circles[1].normal[1] = nrm.y();
     circles[1].normal[2] = nrm.z();
     circles[1].radius = (ctr - P0).length();
-
 }

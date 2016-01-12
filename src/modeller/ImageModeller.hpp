@@ -103,6 +103,7 @@ private:
 
     double m_fixed_depth;
     double m_scale_factor;
+    double m_angle_corretion;
 
     osg::Vec2d m_tvec;
 

@@ -483,7 +483,8 @@ bool OsgWxFrame::usrLoadImageFile(const wxString& fpath) {
     SetClientSize(img_size);
 
     // perspective projection parameters of the main camera
-    m_pp = std::shared_ptr<ProjectionParameters>(new ProjectionParameters(45.0, img_size.x, img_size.y, 1.0, 100.0));
+    // m_pp = std::shared_ptr<ProjectionParameters>(new ProjectionParameters(45.0, img_size.x, img_size.y, 1.0, 100.0));
+    m_pp = std::shared_ptr<ProjectionParameters>(new ProjectionParameters(45, img_size.x, img_size.y, 1.0, 100.0));
 
     // set the properties of the main camera
 
