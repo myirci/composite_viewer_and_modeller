@@ -397,9 +397,9 @@ void CircleEstimator::estimate_3d_circle_from_major_axis_when_circle_depth_is_fi
 
     // Solve the plane equations parametrically
     Eigen::Matrix3d mat0;
-    mat0 << n1.x(), n1.y(), n1.z(),
-            n2.x(), n2.y(), n2.z(),
-            n3.x(), n3.y(), n3.z();
+    mat0 << n1.x(), n1.y(), n1.z(), // bisector plane
+            n2.x(), n2.y(), n2.z(), // offset plane-1
+            n3.x(), n3.y(), n3.z(); // offset plane-2
 
     Eigen::Matrix3d mat1;
     mat1 << 0, n1.y(), n1.z(),
@@ -445,9 +445,14 @@ void CircleEstimator::estimate_3d_circle_from_major_axis_when_circle_depth_is_fi
     double q3 = s1 * s1 + s3 * s3 + s5 * s5 - 1;
     double disc = q2 * q2 - 4 * q1 * q3;
 
+    /*
     std::cout.precision(16);
     std::cout << "D: " << D << std::endl;
+    std::cout << n1.x() << " "  << n1.y() << " " << n1.z() << std::endl;
+    std::cout << n2.x() << " "  << n2.y() << " " << n2.z() << std::endl;
+    std::cout << n3.x() << " "  << n3.y() << " " << n3.z() << std::endl;
     std::cout << "discriminant-1: " << disc << std::endl;
+    */
 
     double ratio = 0.0;
     ratio = (-q2) / (2*q1);

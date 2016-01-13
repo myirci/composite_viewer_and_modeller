@@ -93,6 +93,34 @@ bool intersect_ray_and_plane(const Ray3D& ray, const Plane3D& plane, osg::Vec3d&
     return true;
 }
 
+bool intersect_ray_and_plane_2(const Ray3D& ray, const Plane3D& plane, osg::Vec3d& intersection) {
+
+    if(is_parallel(ray, plane)) {
+        std::cout << "Ray and plane are parallel" << std::endl;
+        return false;
+    }
+    else {
+        osg::Vec3d normal;
+        plane.get_normal(normal);
+        double t = -(ray.start_point() * normal + plane.get_plane().w()) / (ray.direction_vector() * normal);
+
+        if(t < 0) {
+            normal *= -1;
+            t = -(ray.start_point() * normal + plane.get_plane().w()) / (ray.direction_vector() * normal);
+            if(t < 0)
+                std::cout << "Ray intersects with the plane in the reverse direction" << " t: " << t << std::endl;
+        }
+        else if(t == 0) {
+            std::cout << "Ray starting point is on the plane" << std::endl;
+            intersection = ray.start_point();
+        }
+        else {
+            intersection = ray.start_point() + ray.direction_vector() * t;
+        }
+    }
+    return true;
+}
+
 bool is_intersecting(const Ray3D& ray, const Plane3D& plane) {
 
     if(is_parallel(ray, plane)) return false;

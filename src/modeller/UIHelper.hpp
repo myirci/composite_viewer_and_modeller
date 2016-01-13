@@ -31,6 +31,8 @@ public:
     void UpdateSweepCurve(const std::unique_ptr<Ellipse2D>& ellipse);
     void UpdateSweepCurve(const std::unique_ptr<Segment2D>& segment);
     void UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp);
+    void InitializeFinalEllipseDisplay(const std::unique_ptr<Segment2D>& segment);
+    void UpdateFinalEllipse(const std::unique_ptr<Ellipse2D>& elp);
     void DisplayLineStrip(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
     void DisplayLineLoop(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
     void DisplayRayCast(const osg::ref_ptr<osg::Vec2dArray>& pts);
@@ -39,11 +41,14 @@ public:
 private:
 
     sweep_curve_type m_sweep_type;
-    osg::ref_ptr<osg::Vec2dArray>               m_sweep_ellipse_vertices; // for displaying the sweepline
-    std::vector<osg::ref_ptr<osg::DrawArrays>>  m_sweep_ellipse_arrays;   // draw arrays for m_sweepline_vertices
+    osg::ref_ptr<osg::Vec2dArray>               m_sweep_ellipse_vertices; // for displaying the sweep ellipse
+    std::vector<osg::ref_ptr<osg::DrawArrays>>  m_sweep_ellipse_arrays;   // draw arrays for sweep ellipse vertices
 
     osg::ref_ptr<osg::Vec2dArray>               m_sweepline_vertices;     // for displaying the sweepline
     std::vector<osg::ref_ptr<osg::DrawArrays>>  m_sweepline_arrays;       // draw arrays for m_sweepline_vertices
+
+    osg::ref_ptr<osg::Vec2dArray>               m_last_ellipse_vertices;  // for displaying the last ellipse
+    std::vector<osg::ref_ptr<osg::DrawArrays>>  m_last_ellipse_arrays;    // draw arrays for last ellipse vertices
 
     osg::ref_ptr<osg::Vec2dArray>               m_base_elp_vertices;      // for displaying the base ellipse
     std::vector<osg::ref_ptr<osg::DrawArrays>>  m_base_elp_arrays;        // draw arrays for m_base_elp_vertices
@@ -60,6 +65,7 @@ private:
     inline osg::Geometry* initialize_sweepline_display();
     inline osg::Geometry* initialize_sweep_ellipse_display();
     inline osg::Geometry* initialize_base_ellipse_display();
+    inline osg::Geometry* initialize_last_ellipse_display();
     inline osg::Geometry* initialize_spine_display();
     inline osg::Geometry* initialize_ray_cast_display();
 

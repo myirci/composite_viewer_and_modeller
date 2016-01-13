@@ -25,6 +25,7 @@ bool is_parallel(const osg::Vec3d& vec1, const osg::Vec3d& vec2);
 bool is_parallel(const Plane3D& pl1, const Plane3D& pl2);
 bool is_parallel(const Ray3D& ray, const Plane3D& plane);
 bool intersect_ray_and_plane(const Ray3D& ray, const Plane3D& plane, osg::Vec3d& intersection);
+bool intersect_ray_and_plane_2(const Ray3D& ray, const Plane3D& plane, osg::Vec3d& intersection);
 bool is_intersecting(const Ray3D& ray, const Plane3D& plane);
 bool intersect_two_planes(const Plane3D& pl1, const Plane3D& pl2, osg::Vec3d& start, osg::Vec3d& dir);
 

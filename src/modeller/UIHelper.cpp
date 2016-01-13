@@ -12,6 +12,7 @@ UIHelper::UIHelper(osg::Geode* geode) : m_geode(geode), m_sweepline_vertices(nul
     m_geode->addDrawable(initialize_base_ellipse_display());
     m_geode->addDrawable(initialize_spine_display());
     m_geode->addDrawable(initialize_ray_cast_display());
+    m_geode->addDrawable(initialize_last_ellipse_display());
 
     osg::Geometry* sweep_geom;
     if(m_sweep_type == sweep_curve_type::line)
@@ -134,6 +135,48 @@ osg::Geometry* UIHelper::initialize_base_ellipse_display() {
     return geom.release();
 }
 
+osg::Geometry* UIHelper::initialize_last_ellipse_display() {
+
+    // for base ellipse display
+    // 2 for major axis             Lines: m_last_elp_arrays[0], Color: Red
+    // 2 for minor axis             Lines: m_last_elp_arrays[1], Color: Red
+    // 40 for last ellipse          Line Loop: m_base_elp_arrays[2], Color: Cyan
+    // 10 for p0                    Line Loop: m_base_elp_arrays[3], Color: Lawn Green
+    // 10 for p1                    Line Loop: m_base_elp_arrays[4], Color: Lawn Green
+    // 10 for center                Line Loop: m_base_elp_arrays[5], Color: Lawn Green
+    // 10 for p2                    Line Loop: m_base_elp_arrays[6], Color: Lawn Green
+
+    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
+    geom->setUseDisplayList(false);
+    geom->setUseVertexBufferObjects(true);
+    geom->setDataVariance(osg::Object::DYNAMIC);
+
+    m_last_ellipse_vertices = new osg::Vec2dArray(84);
+    geom->setVertexArray(m_last_ellipse_vertices);
+
+    for(int i = 0; i < 2; ++i) {
+        m_last_ellipse_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
+        geom->addPrimitiveSet(m_last_ellipse_arrays.back());
+    }
+
+    for(int i = 0; i < 5; ++i) {
+        m_last_ellipse_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
+        geom->addPrimitiveSet(m_last_ellipse_arrays.back());
+    }
+
+    osg::Vec4Array* colors = new osg::Vec4Array;
+    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f));                  // Red
+    colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f));                  // Red
+    colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f));                  // Cyan
+    colors->push_back(osg::Vec4(0.48627451f, 0.988235294f, 0.0f, 1.0f));   // Lawn Green
+    colors->push_back(osg::Vec4(0.48627451f, 0.988235294f, 0.0f, 1.0f));   // Lawn Green
+    colors->push_back(osg::Vec4(0.48627451f, 0.988235294f, 0.0f, 1.0f));   // Lawn Green
+    colors->push_back(osg::Vec4(0.48627451f, 0.988235294f, 0.0f, 1.0f));   // Lawn Green
+
+    geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
+    return geom.release();
+}
+
 osg::Geometry* UIHelper::initialize_spine_display() {
 
     // for spine display : extending with each spine point
@@ -208,6 +251,10 @@ void UIHelper::Reset() {
     for(auto it = m_base_elp_arrays.begin(); it != m_base_elp_arrays.end(); ++it)
         (*it)->setCount(0);
     m_base_elp_vertices->dirty();
+
+    for(auto it = m_last_ellipse_arrays.begin(); it != m_last_ellipse_arrays.end(); ++it)
+        (*it)->setCount(0);
+    m_last_ellipse_vertices->dirty();
 
     for(auto it = m_ray_cast_arrays.begin(); it != m_ray_cast_arrays.end(); ++it)
         (*it)->setCount(0);
@@ -297,6 +344,59 @@ void UIHelper::UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp) {
     m_base_elp_arrays[2]->setFirst(4);
     m_base_elp_arrays[2]->setCount(40);
     m_base_elp_vertices->dirty();
+}
+
+void UIHelper::InitializeFinalEllipseDisplay(const std::unique_ptr<Segment2D>& segment) {
+
+    // major axis
+    m_last_ellipse_vertices->at(0) = segment->pt1;
+    m_last_ellipse_vertices->at(1) = segment->pt2;
+    m_last_ellipse_arrays[0]->setFirst(0);
+    m_last_ellipse_arrays[0]->setCount(2);
+
+    // minor axis guideline
+    osg::Vec2d mid = segment->mid_point();
+    osg::Vec2d vec1 = m_last_ellipse_vertices->at(1) - mid;
+    osg::Vec2d vec2(-vec1.y(), vec1.x());
+    m_last_ellipse_vertices->at(2) = mid - vec2;
+    m_last_ellipse_vertices->at(3) = mid + vec2;
+    m_last_ellipse_arrays[1]->setFirst(2);
+    m_last_ellipse_arrays[1]->setCount(2);
+
+    // display a small circle on the first point
+    Ellipse2DLight tmp(3, 3, 0, segment->pt1);
+    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 44, 10);
+    m_last_ellipse_arrays[3]->setFirst(44);
+    m_last_ellipse_arrays[3]->setCount(10);
+
+    // display a small circle on the second point
+    tmp.center = segment->pt2;
+    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 54, 10);
+    m_last_ellipse_arrays[4]->setFirst(54);
+    m_last_ellipse_arrays[4]->setCount(10);
+
+    // display a small cirle at the center of the ellipse
+    tmp.center = (m_last_ellipse_vertices->at(0) + m_last_ellipse_vertices->at(1)) / 2.0;
+    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 64, 10);
+    m_last_ellipse_arrays[5]->setFirst(64);
+    m_last_ellipse_arrays[5]->setCount(10);
+
+    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 74, 10);
+    m_last_ellipse_arrays[6]->setFirst(74);
+    m_last_ellipse_arrays[6]->setCount(10);
+
+    m_last_ellipse_vertices->dirty();
+}
+
+void UIHelper::UpdateFinalEllipse(const std::unique_ptr<Ellipse2D>& elp) {
+
+    elp->generate_points_on_the_ellipse(m_last_ellipse_vertices, 4, 40);
+    Ellipse2DLight tmp(3, 3, 0, elp->points[2]);
+    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 74, 10);
+    m_last_ellipse_arrays[2]->setFirst(4);
+    m_last_ellipse_arrays[2]->setCount(40);
+    m_last_ellipse_vertices->dirty();
+
 }
 
 void UIHelper::InitializeSpineDrawing(const std::unique_ptr<Ellipse2D>& ellipse) {
