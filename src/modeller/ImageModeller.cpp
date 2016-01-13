@@ -37,6 +37,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     sc_constraints(section_constraints::constant),
     comp_type(component_type::generalized_cylinder),
     m_first_ellipse(new Ellipse2D),
+    m_final_ellipse(new Ellipse2D),
     m_lsegment(new Segment2D),
     m_dsegment(new Segment2D),
     m_last_circle(new Circle3D),
@@ -46,7 +47,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_display_raycast(false),
     m_raycast(nullptr),
     m_scale_factor(0.35),
-    m_angle_corretion(0.0){
+    m_num_right_click(0) {
 
     std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
     std::ifstream infile(binary_img_path);
@@ -179,6 +180,8 @@ void ImageModeller::Reset2DDrawingInterface() {
     m_right_click = false;
     m_vertices->clear();
     m_uihelper->Reset();
+    m_num_right_click = 0;
+    m_segments.clear();
 }
 
 void ImageModeller::DeleteLastSection() {
@@ -317,6 +320,7 @@ void ImageModeller::model_update() {
                 update_dynamic_segment();
 
                 if(m_right_click) {
+                    /*
                     // right click ends the modelling of the current component being modelled.
                     m_right_click = false;
                     m_uihelper->AddSpinePoint(m_mouse);
@@ -328,6 +332,32 @@ void ImageModeller::model_update() {
                     // m_component_solver->SolveGeneralizedCylinder(m_gcyl.get());
                     // m_solver->AddComponent(m_gcyl.get());
                     // project_generalized_cylinder(*m_gcyl);
+                    */
+
+                    m_right_click = false;
+                    *m_lsegment = *m_dsegment;
+                    ++m_num_right_click;
+                    if(m_num_right_click == 1) {
+                        m_segments.push_back(*m_dsegment);
+                        m_uihelper->InitializeFinalEllipseDisplay(m_dsegment);
+                    }
+                    else if(m_num_right_click == 2) {
+                        calculate_final_ellipse();
+                        compute_generalized_cylinder();
+                        Reset2DDrawingInterface();
+                    }
+                    else {
+                        std::cout << "Right click error!" << std::endl;
+                    }
+
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
+                    // Reset2DDrawingInterface();
+                    // m_component_solver->SolveGeneralizedCylinder(m_gcyl.get());
+                    // m_solver->AddComponent(m_gcyl.get());
+                    // project_generalized_cylinder(*m_gcyl);
+
                 }
                 else if(m_left_click) {
 
@@ -340,8 +370,13 @@ void ImageModeller::model_update() {
                     // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
                 }
                 else {
-                    m_uihelper->UpdateSweepCurve(m_dsegment);
-                    m_uihelper->SpinePointCandidate(m_mouse);
+                    if(m_num_right_click == 0) {
+                        m_uihelper->UpdateSweepCurve(m_dsegment);
+                        m_uihelper->SpinePointCandidate(m_mouse);
+                    }
+                    else {
+                        calculate_final_ellipse();
+                    }
                 }
             }
         }
@@ -355,17 +390,12 @@ void ImageModeller::estimate_first_circle_under_persective_projection() {
     int count = estimate_3d_circles_with_fixed_depth(m_first_ellipse, circles, m_fixed_depth);
 
     // 2) Select one of the two estimated circles based on how the user drew the ellipse
-    if(count == 2)       *m_first_circle = circles[select_first_3d_circle(circles)];
+    if(count == 2)       *m_first_circle = circles[select_first_3d_circle(circles, m_first_ellipse)];
     else if (count == 1) *m_first_circle = circles[0];
     else                  std::cout << "ERROR: Perspective 3D circle estimation error " << std::endl;
 
     // 3) copy the first circle to the last circle
     *m_last_circle = *m_first_circle;
-
-    std::cout << *m_first_circle << std::endl;
-
-    // 4) compute the angle correction
-    m_angle_corretion = acos(m_first_circle->normal[2]);
 }
 
 void ImageModeller::estimate_first_circle_under_orthographic_projection() {
@@ -394,6 +424,60 @@ void ImageModeller::estimate_first_circle_under_orthogonality_constraint() {
     *m_last_circle = *m_first_circle;
 }
 
+void ImageModeller::compute_generalized_cylinder() {
+
+    Circle3D circles[2];
+    int count = estimate_3d_circles_with_fixed_depth(m_final_ellipse, circles, m_fixed_depth);
+
+    Circle3D final_circle;
+    // 2) Select one of the two estimated circles based on how the user drew the ellipse
+    if(count == 2)       final_circle = circles[select_first_3d_circle(circles, m_final_ellipse)];
+    else if (count == 1) final_circle = circles[0];
+    else                 std::cout << "ERROR: Perspective 3D circle estimation error " << std::endl;
+
+    std::cout << "First Circle: " << *m_first_circle << std::endl;
+    std::cout << "Final Circle: " << final_circle << std::endl;
+
+    // Eigen::Vector3d n = m_first_circle->normal.cross(final_circle.normal);
+    Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
+    n.normalize();
+    Plane3D main_axis_plane(n, m_first_circle->center);
+    main_axis_plane.print();
+
+    std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+    std::cout << "*******************************" << std::endl;
+    for(int i = 0; i < sections.size(); ++i) {
+        std::cout << sections[i] << std::endl;
+        std::cout << "------------------" << std::endl;
+    }
+    std::cout << "*******************************" << std::endl;
+
+    for(int i = 1; i < sections.size(); ++i) {
+        double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
+        sections[i].center *= factor;
+        sections[i].radius *= factor;
+
+        sections[i].normal[2] = (-n[0]*sections[i].normal[0] - n[1]*sections[i].normal[1]) / n[2];
+        sections[i].normal.normalize();
+    }
+    m_gcyl->Recalculate();
+
+    double scale = m_first_circle->center.dot(n) / final_circle.center.dot(n);
+    final_circle.radius *= scale;
+    final_circle.center *= scale;
+
+    if(final_circle.normal.dot(sections.back().normal) < 0)
+        final_circle.normal *= -1;
+
+    m_gcyl->AddPlanarSection(final_circle);
+    m_gcyl->Update();
+
+    for(int i = 0; i < sections.size(); ++i) {
+        std::cout << sections[i] << std::endl;
+        std::cout << "------------------" << std::endl;
+    }
+}
+
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
 
     // 1) Estimate the normal of the circle
@@ -413,6 +497,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     // 3) Based on normal and depth estimation, estimate the 3D circle
     Segment2D seg;
     m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+    m_segments.push_back(seg);
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, *m_last_circle);
 
     // 4) Add estimated 3D circle to the generalized cylinder
@@ -442,8 +527,8 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
     std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
     if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
 
-    // if(sections.size() == 1)
-    //    m_last_circle->normal = m_first_circle->normal;
+    if(sections.size() == 1)
+        m_last_circle->normal = m_first_circle->normal;
 
     /*
     if(sections.size() == 1) {
@@ -599,6 +684,32 @@ void ImageModeller::calculate_ellipse() {
     }
 }
 
+void ImageModeller::calculate_final_ellipse() {
+
+    m_final_ellipse->update_major_axis(m_segments.back().pt1, m_segments.back().pt2);
+
+    // calculate the end points of the minor_axis guide line
+    osg::Vec2d vec_mj = m_final_ellipse->points[1] - m_final_ellipse->points[0];
+    osg::Vec2d vec_mn(-vec_mj.y(), vec_mj.x());
+    vec_mn.normalize();
+    osg::Vec2d pt_0 = m_final_ellipse->center - vec_mn * m_final_ellipse->smj_axis;
+    osg::Vec2d pt_1 = m_final_ellipse->center + vec_mn * m_final_ellipse->smj_axis;
+    osg::Vec2d vec1 = m_mouse - pt_0;
+    osg::Vec2d vec2 = pt_1 - pt_0;
+    double ratio = (vec1 * vec2) / (vec2 * vec2) ;
+
+    if(ratio >= 0.0 && ratio <= 1.0) {
+        // find the projection point
+        vec2.normalize();
+        osg::Vec2d proj_point = (vec2 * 2 * ratio * m_final_ellipse->smj_axis) + pt_0;
+
+        // update the m_first_ellipse
+        m_final_ellipse->update_minor_axis(proj_point);
+
+        m_uihelper->UpdateFinalEllipse(m_final_ellipse);
+    }
+}
+
 void ImageModeller::update_dynamic_segment() {
 
     // copy the last segment into the dynamic segment
@@ -665,7 +776,7 @@ void ImageModeller::estimate_3d_circle_under_orthographic_projection(std::unique
     circle.center *= ratio;
 }
 
-size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles) {
+size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles, std::unique_ptr<Ellipse2D>& ellipse) {
 
     // get projection and viewport mapping matrix
     const osg::Camera* const cam = m_canvas->UsrGetMainCamera();
@@ -683,7 +794,7 @@ size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles) {
 
     // construct 2D vectors:
     Vector2D<double> vec1(ntip.x() - ctr.x(), ntip.y() - ctr.y());
-    Vector2D<double> vec2(ctr.x() - m_first_ellipse->points[2].x(), ctr.y() - m_first_ellipse->points[2].y());
+    Vector2D<double> vec2(ctr.x() - ellipse->points[2].x(), ctr.y() - ellipse->points[2].y());
 
     return (vec1.dot(vec2) < 0) ? 0 : 1;
 }

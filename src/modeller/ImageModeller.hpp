@@ -90,6 +90,7 @@ private:
     Circle3D* m_first_circle;
     Circle3D* m_last_circle;
     std::unique_ptr<Ellipse2D> m_first_ellipse;
+    std::unique_ptr<Ellipse2D> m_final_ellipse;
 
     std::unique_ptr<Segment2D> m_lsegment; // last segment
     std::unique_ptr<Segment2D> m_dsegment; // dynamic segment
@@ -100,12 +101,12 @@ private:
     std::unique_ptr<ComponentSolver> m_component_solver;
     std::shared_ptr<ProjectionParameters> m_pp;
     std::unique_ptr<CircleEstimator> m_circle_estimator;
+    std::vector<Segment2D> m_segments;
 
     double m_fixed_depth;
     double m_scale_factor;
-    double m_angle_corretion;
-
     osg::Vec2d m_tvec;
+    int m_num_right_click;
 
     // for ray cast display
     bool m_display_raycast;
@@ -137,6 +138,7 @@ private:
 
     void model_update();
     void calculate_ellipse();
+    void calculate_final_ellipse();
     void update_dynamic_segment();
     void update_dynamic_segment_with_mirror_point(const osg::Vec2d& pt, bool first);
     void ray_cast_within_binary_image_for_profile_match();     // based on binary images
@@ -149,6 +151,8 @@ private:
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
 
+    inline void compute_generalized_cylinder();
+
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
     inline void estimate_first_circle_under_orthographic_projection();
@@ -160,9 +164,8 @@ private:
     inline int estimate_unit_3d_circles(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles);
     inline void estimate_3d_circle_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
 
-
     // selection of the estimated circles under perspective projection
-    inline size_t select_first_3d_circle(const Circle3D* const circles);
+    inline size_t select_first_3d_circle(const Circle3D* const circles, std::unique_ptr<Ellipse2D>& ellipse);
     inline size_t select_parallel_circle(const Circle3D* const circles);
 
     // projection functions
