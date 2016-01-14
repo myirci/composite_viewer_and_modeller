@@ -79,6 +79,26 @@ struct CostFunctor_2 {
     const std::vector<Circle3D>& sections;
 };
 
+struct CostFunctor_Depth {
+
+    CostFunctor_Depth(const Circle3D& c0, const Circle3D& c1) : m_circle_0(c0), m_circle_1(c1) { }
+    template <typename T>
+    bool operator()(const T* const s, T* residual) const {
+        Vector3D<T> C0(T(m_circle_0.center[0]), T(m_circle_0.center[1]), T(m_circle_0.center[2]));
+        Vector3D<T> n0(T(m_circle_0.normal[0]), T(m_circle_0.normal[1]), T(m_circle_0.normal[2]));
+        Vector3D<T> C1(T(m_circle_1.center[0]), T(m_circle_1.center[1]), T(m_circle_1.center[2]));
+        Vector3D<T> n1(T(m_circle_1.normal[0]), T(m_circle_1.normal[1]), T(m_circle_1.normal[2]));
+        C1 = C1 * s[0];
+        Vector3D<T> diff = C1 - C0;
+        residual[0] = (diff.cross(n0)).squared_norm() + (diff.cross(n1)).squared_norm();
+        return true;
+    }
+    private:
+    const Circle3D& m_circle_0;
+    const Circle3D& m_circle_1;
+};
+
+
 class ComponentSolver {
 public:
     ComponentSolver(double near) : n(near) {
@@ -88,6 +108,7 @@ public:
     }
     void SolveForSingleCircle(osg::Vec2dArray const * const proj, Circle3D& circle);
     void SolveGeneralizedCylinder(GeneralizedCylinder* gcyl);
+    void SolveDepth(const Circle3D& C0, Circle3D& C1);
 private:
     ceres::Solver::Options options;
     ceres::Solver::Summary summary;

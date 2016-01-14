@@ -22,7 +22,7 @@ class ProjectionParameters;
 class OsgWxGLCanvas;
 class CircleEstimator;
 
-enum class drawing_mode : unsigned char {
+enum class gcyl_drawing_mode : unsigned char {
     mode_0,     // do nothing
     mode_1,     // semi_major_axis
     mode_2,     // semi_minor_axis
@@ -36,9 +36,10 @@ enum class component_type : unsigned char {
 };
 
 enum class spine_constraints : unsigned char {
-    none,            // no constraint
-    straight_planar, // spine points constitutes a 3D line
-    planar           // spine points are planar
+    none,             // no constraint
+    constant_depth,   // spine points are on a plane parallel to image plane
+    straight_planar,  // spine points constitutes a 3D line
+    planar            // spine points are planar
 };
 
 enum class section_constraints : unsigned char {
@@ -80,37 +81,39 @@ private:
     osg::ref_ptr<osg::Vec2dArray> m_vertices;               // for storing user clicks
 
     osg::Vec2d m_mouse;                                     // current position of the mouse updated by osgWxGLCanvas
-    drawing_mode m_mode;                                    // internal modes of component drawing
+    gcyl_drawing_mode m_gcyl_dmode;                         // current drawing mode of the generalized cylinder
     bool m_bimg_exists;                                     // indicates if the binary image exists or not
     bool m_right_click;                                     // set to true in the case of user right click
     bool m_left_click;                                      // set to true in the case of user left click
 
     rendering_type m_rtype;                                 // rendering type for generalized cylinders
 
-    Circle3D* m_first_circle;
-    Circle3D* m_last_circle;
-    std::unique_ptr<Ellipse2D> m_first_ellipse;
-    std::unique_ptr<Ellipse2D> m_final_ellipse;
+    Circle3D* m_first_circle;                               // first modelled 3D circle
+    Circle3D* m_last_circle;                                // most recetly modelled 3D circle
+    std::unique_ptr<Ellipse2D> m_first_ellipse;             // first 2D profile
+    std::unique_ptr<Ellipse2D> m_final_ellipse;             // final 2D profile
 
-    std::unique_ptr<Segment2D> m_lsegment; // last segment
-    std::unique_ptr<Segment2D> m_dsegment; // dynamic segment
+    std::unique_ptr<Segment2D> m_lsegment;                  // last segment
+    std::unique_ptr<Segment2D> m_dsegment;                  // dynamic segment
+    osg::Vec2d m_tvec;                                      // translation vector for dynamic segment
 
-    std::unique_ptr<UIHelper> m_uihelper;
-    std::unique_ptr<Rectangle2D> m_rect;
-    std::unique_ptr<ModelSolver> m_solver;
-    std::unique_ptr<ComponentSolver> m_component_solver;
-    std::shared_ptr<ProjectionParameters> m_pp;
-    std::unique_ptr<CircleEstimator> m_circle_estimator;
-    std::vector<Segment2D> m_segments;
+    std::unique_ptr<UIHelper> m_uihelper;                   // for user drawings
 
-    double m_fixed_depth;
-    double m_scale_factor;
-    osg::Vec2d m_tvec;
-    int m_num_right_click;
-
-    // for ray cast display
+    std::unique_ptr<Rectangle2D> m_rect;                    // for ray casting
     bool m_display_raycast;
     osg::ref_ptr<osg::Vec2dArray> m_raycast;
+
+    std::shared_ptr<ProjectionParameters> m_pp;             // for 3D circle estimation
+    std::unique_ptr<CircleEstimator> m_circle_estimator;
+
+    double m_fixed_depth;                                   // fixed depth
+    double m_scale_factor;                                  // scale factor
+
+    int m_num_right_click;
+    std::vector<Segment2D> m_segments;                      // array of major axis segments on the image plane (in projected coordinates)
+
+    std::unique_ptr<ModelSolver> m_solver;
+    std::unique_ptr<ComponentSolver> m_component_solver;
 
 public:
 
@@ -137,14 +140,13 @@ public:
 private:
 
     void model_update();
-    void calculate_ellipse();
-    void calculate_final_ellipse();
+    void model_generalized_cylinder();
+    void calculate_ellipse(std::unique_ptr<Ellipse2D>& ellipse);
     void update_dynamic_segment();
     void update_dynamic_segment_with_mirror_point(const osg::Vec2d& pt, bool first);
     void ray_cast_within_binary_image_for_profile_match();     // based on binary images
     void ray_cast_within_gradient_image_for_profile_match();   // based on gradient
     void initialize_spine_drawing_mode(projection_type pt);
-    void constrain_mouse_point();
 
     // estimation of the other circles
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
@@ -174,13 +176,8 @@ private:
     void project_circle(const Circle3D& circle, Ellipse2D& ellipse) const;
     void project_generalized_cylinder(const GeneralizedCylinder& gcyl) const;
 
-    // test
-    void test_circle_estimation_from_major_axis(const Segment2D& seg);
+    // for testing the center formula
     void test_circle_estimation_from_major_axis();
-
-    // projection error calculators
-    // inline void constrain_spine_point_in_piecewise_linear_mode();
-    // inline void constrain_spine_point_in_continuous_mode();
 };
 
 #endif // IMAGE_MODELLER_HPP

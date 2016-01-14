@@ -77,4 +77,20 @@ void ComponentSolver::SolveGeneralizedCylinder(GeneralizedCylinder* gcyl) {
     gcyl->Recalculate();
 }
 
+void ComponentSolver::SolveDepth(const Circle3D& C0, Circle3D& C1) {
+
+    // initialize the optimization parameters
+    double s = 1;
+    ceres::Problem problem;
+    ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<CostFunctor_Depth, 1, 1>(new CostFunctor_Depth(C0, C1));
+    problem.AddResidualBlock(cost_function, NULL, &s);
+    ceres::Solve(options, &problem, &summary);
+    std::cout << summary.BriefReport() << "\n";
+
+    // scale the circle
+    C1.center *= s;
+    C1.radius *= s;
+}
+
+
 

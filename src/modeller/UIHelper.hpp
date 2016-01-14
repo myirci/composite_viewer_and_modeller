@@ -47,8 +47,8 @@ private:
     osg::ref_ptr<osg::Vec2dArray>               m_sweepline_vertices;     // for displaying the sweepline
     std::vector<osg::ref_ptr<osg::DrawArrays>>  m_sweepline_arrays;       // draw arrays for m_sweepline_vertices
 
-    osg::ref_ptr<osg::Vec2dArray>               m_last_ellipse_vertices;  // for displaying the last ellipse
-    std::vector<osg::ref_ptr<osg::DrawArrays>>  m_last_ellipse_arrays;    // draw arrays for last ellipse vertices
+    osg::ref_ptr<osg::Vec2dArray>               m_final_ellipse_vertices;  // for displaying the last ellipse
+    std::vector<osg::ref_ptr<osg::DrawArrays>>  m_final_ellipse_arrays;    // draw arrays for last ellipse vertices
 
     osg::ref_ptr<osg::Vec2dArray>               m_base_elp_vertices;      // for displaying the base ellipse
     std::vector<osg::ref_ptr<osg::DrawArrays>>  m_base_elp_arrays;        // draw arrays for m_base_elp_vertices
