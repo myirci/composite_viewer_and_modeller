@@ -15,10 +15,9 @@ public:
     Plane3D(double a, double b, double c, double d);
     Plane3D(const osg::Vec3d& normal, const osg::Vec3d& p);
     Plane3D(const Plane3D& pl);
-    Plane3D(const Eigen::Vector3d& normal, const Eigen::Vector3d& pt);
+    Plane3D(const Eigen::Vector3d& normal, const Eigen::Vector3d& pt); 
+    Plane3D(const osg::Vec3d& p1, const osg::Vec3d& p2, const osg::Vec3d& p3); // points has to be non - collinear
 
-    // points has to be non - collinear
-    Plane3D(const osg::Vec3d& p1, const osg::Vec3d& p2, const osg::Vec3d& p3);
     bool is_on_plane(const osg::Vec3d& pt) const;
     void get_normal(osg::Vec3d& normal) const;
     void get_unit_normal(osg::Vec3d& normal) const;

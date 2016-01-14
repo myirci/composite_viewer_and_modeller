@@ -28,13 +28,13 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_rtype(rendering_type::triangle_strip),
     m_solver(new ModelSolver()),
     m_component_solver(new ComponentSolver(-pp->near)),
-    m_mode(drawing_mode::mode_0),
+    m_gcyl_dmode(gcyl_drawing_mode::mode_0),
     m_left_click(false),
     m_right_click(false),
     m_bimg_exists(false),
     spd_mode(spine_drawing_mode::piecewise_linear),
     sp_constraints(spine_constraints::none),
-    sc_constraints(section_constraints::constant),
+    sc_constraints(section_constraints::none),
     comp_type(component_type::generalized_cylinder),
     m_first_ellipse(new Ellipse2D),
     m_final_ellipse(new Ellipse2D),
@@ -175,13 +175,13 @@ void ImageModeller::DebugPrint() {
 
 void ImageModeller::Reset2DDrawingInterface() {
 
-    m_mode = drawing_mode::mode_0;
+    m_gcyl_dmode = gcyl_drawing_mode::mode_0;
     m_left_click = false;
     m_right_click = false;
     m_vertices->clear();
-    m_uihelper->Reset();
     m_num_right_click = 0;
     m_segments.clear();
+    m_uihelper->Reset();
 }
 
 void ImageModeller::DeleteLastSection() {
@@ -203,7 +203,7 @@ void ImageModeller::OnLeftClick(double x, double y) {
 
 void ImageModeller::OnRightClick(double x, double y) {
 
-    if(m_mode == drawing_mode::mode_3) {
+    if(m_gcyl_dmode == gcyl_drawing_mode::mode_3) {
         m_right_click = true;
         m_mouse.set(x,y);
         m_vertices->push_back(m_mouse);
@@ -213,7 +213,7 @@ void ImageModeller::OnRightClick(double x, double y) {
 
 void ImageModeller::OnMouseMove(double x, double y) {
 
-    if(m_mode != drawing_mode::mode_0) {
+    if(m_gcyl_dmode != gcyl_drawing_mode::mode_0) {
         m_mouse.set(x,y);
         model_update();
     }
@@ -236,149 +236,129 @@ void ImageModeller::DecrementScaleFactor() {
 // Execution of the modelling process is done within this function.
 void ImageModeller::model_update() {
 
-    if(comp_type == component_type::generalized_cylinder) {
+    if(comp_type == component_type::generalized_cylinder) model_generalized_cylinder();
+    else                                                  std::cout << "Component type is unknown" << std::endl;
+}
 
-        if(m_mode == drawing_mode::mode_0) {
-            if(m_left_click) {
-                // first click
-                m_left_click = false;
-                m_uihelper->InitializeMajorAxisDrawing(m_mouse);
-                m_mode = drawing_mode::mode_1;
-            }
+void ImageModeller::model_generalized_cylinder() {
+
+    if(m_gcyl_dmode == gcyl_drawing_mode::mode_0) {
+
+        if(m_left_click) {
+            // first click
+            m_left_click = false;
+            m_uihelper->InitializeMajorAxisDrawing(m_mouse);
+            m_gcyl_dmode = gcyl_drawing_mode::mode_1;
         }
-        else if(m_mode == drawing_mode::mode_1) {
-            if(m_left_click) {
-                // second click: major axis has been determined.
-                m_left_click = false;
-                m_first_ellipse->update_major_axis(m_vertices->at(0), m_vertices->at(1));
-                m_uihelper->InitializeMinorAxisDrawing(m_mouse);
-                m_mode = drawing_mode::mode_2;
-            }
-            else {
-                // Here we are executing the major axis drawing mode. In this mode we only update the end point of
-                // the major axis with the mouse position. The operator has not decided the major axis yet.
-                m_uihelper->Updatep1(m_mouse);
-            }
+    }
+    else if(m_gcyl_dmode == gcyl_drawing_mode::mode_1) {
+
+        if(m_left_click) {
+            // second click: major axis has been determined.
+            m_left_click = false;
+            m_first_ellipse->update_major_axis(m_vertices->at(0), m_vertices->at(1));
+
+            Segment2D seg;
+            m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(Segment2D(m_vertices->at(0), m_vertices->at(1)), seg);
+            m_segments.push_back(seg);
+
+            m_uihelper->InitializeMinorAxisDrawing(m_mouse);
+            m_gcyl_dmode = gcyl_drawing_mode::mode_2;
         }
-        else if(m_mode == drawing_mode::mode_2) {
+        else {
+            // Here we are executing the major axis drawing mode. In this mode we only update the end point of
+            // the major axis with the mouse position. The user has not decided the major axis yet.
+            m_uihelper->Updatep1(m_mouse);
+        }
+    }
+    else if(m_gcyl_dmode == gcyl_drawing_mode::mode_2) {
 
-            // calculate the possible ellpise based on the current mouse position
-            calculate_ellipse();
+        // calculate the possible ellpise based on the current mouse position
+        calculate_ellipse(m_first_ellipse);
+        m_uihelper->UpdateBaseEllipse(m_first_ellipse);
+
+        if(m_left_click) {
+            // third click: base ellipse (m_first_ellipse) has been determined.
+            m_left_click = false;
+            initialize_spine_drawing_mode(projection_type::perspective);
+            m_uihelper->InitializeSpineDrawing(m_first_ellipse);
+            m_gcyl_dmode = gcyl_drawing_mode::mode_3;
+
+            /* to enable the test
+             * uncomment the following line and comment out the m_gcyl_dmode = gcyl_drawing_mode::mode_3
+            */
+            // test_circle_estimation_from_major_axis(seg);
+        }
+    }
+    else if(m_gcyl_dmode == gcyl_drawing_mode::mode_3) {
+
+        if(spd_mode == spine_drawing_mode::piecewise_linear) {
+
+            update_dynamic_segment();
 
             if(m_left_click) {
-                // third click: base ellipse (m_first_ellipse) has been determined.
+
+                // left click is a new spine point
                 m_left_click = false;
-                initialize_spine_drawing_mode(projection_type::perspective);
-                m_uihelper->InitializeSpineDrawing(m_first_ellipse);
-                m_mode = drawing_mode::mode_3;
-
-                // Dynamic test
-                // Segment2D seg;
-                // m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
-                // test_circle_estimation_from_major_axis(seg);
-
-                // Static test
-                // test_circle_estimation_from_major_axis();
+                *m_lsegment = *m_dsegment;
+                m_uihelper->AddSpinePoint(m_dsegment->mid_point());
+                add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+                // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
             }
-        }
-        else if(m_mode == drawing_mode::mode_3) {
 
-            if(spd_mode == spine_drawing_mode::continuous) {
+            else if(m_right_click) {
 
-                /*
-                if(m_left_click) {
-                    m_left_click = false;
-                    // End the modelling process for the current generalized cylinder with the 4th click. The last
-                    // clicked point is accepted as the last sample point.
-                    update_dynamic_profile();
-                    // *m_last_profile = *m_dynamic_profile;
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
-                    add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                    m_solver->AddComponent(m_gcyl.get());
-                    Reset2DDrawingInterface();
-                }
-                else {
-                    // Here we are executing the mode_3 (spine drawing mode) for continuos spine drawing. Generate the
-                    // 2D profile along the path of the spine as the spine is being drawn
+                m_right_click = false;
+                *m_lsegment = *m_dsegment;
 
-                    // vector from last validated spine point to the current mouse position
-                    osg::Vec2d vec = m_mouse - m_last_profile->points[2];
+                if(sp_constraints == spine_constraints::constant_depth) {
 
-                    // If the distance between the last validated spine point and the candidate spine point (mouse point)
-                    // is bigger than a threshold, then the current spine point is accepted as a sample point.
-                    if(vec.length2() > 100) {
-                        update_dynamic_profile();
-                        *m_last_profile = *m_dynamic_profile;
-                        add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                        // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_1();
-                    }
-                }
-                */
-            }
-            else if(spd_mode == spine_drawing_mode::piecewise_linear) {
-
-                update_dynamic_segment();
-
-                if(m_right_click) {
-                    /*
-                    // right click ends the modelling of the current component being modelled.
-                    m_right_click = false;
-                    m_uihelper->AddSpinePoint(m_mouse);
-                    *m_lsegment = *m_dsegment;
+                    // right click ends the modelling of the current generalized cylinder
+                    m_uihelper->AddSpinePoint(m_dsegment->mid_point());
                     add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
                     Reset2DDrawingInterface();
-                    // m_component_solver->SolveGeneralizedCylinder(m_gcyl.get());
-                    // m_solver->AddComponent(m_gcyl.get());
                     // project_generalized_cylinder(*m_gcyl);
-                    */
+                }
+                else if(sp_constraints == spine_constraints::planar || sp_constraints == spine_constraints::straight_planar) {
 
-                    m_right_click = false;
-                    *m_lsegment = *m_dsegment;
                     ++m_num_right_click;
                     if(m_num_right_click == 1) {
-                        m_segments.push_back(*m_dsegment);
                         m_uihelper->InitializeFinalEllipseDisplay(m_dsegment);
+                        m_final_ellipse->update_major_axis(m_lsegment->pt1, m_lsegment->pt2);
+                        Segment2D seg;
+                        m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+                        m_segments.push_back(seg);
                     }
                     else if(m_num_right_click == 2) {
-                        calculate_final_ellipse();
+                        calculate_ellipse(m_final_ellipse);
+                        m_uihelper->UpdateFinalEllipse(m_final_ellipse);
                         compute_generalized_cylinder();
                         Reset2DDrawingInterface();
                     }
-                    else {
-                        std::cout << "Right click error!" << std::endl;
-                    }
-
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-                    // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                    // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
-                    // Reset2DDrawingInterface();
-                    // m_component_solver->SolveGeneralizedCylinder(m_gcyl.get());
-                    // m_solver->AddComponent(m_gcyl.get());
-                    // project_generalized_cylinder(*m_gcyl);
-
-                }
-                else if(m_left_click) {
-
-                    // left click is a new spine point
-                    m_left_click = false;
-                    m_uihelper->AddSpinePoint(m_mouse);
-                    *m_lsegment = *m_dsegment;
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-                    // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                    // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
-                }
-                else {
-                    if(m_num_right_click == 0) {
-                        m_uihelper->UpdateSweepCurve(m_dsegment);
-                        m_uihelper->SpinePointCandidate(m_mouse);
-                    }
-                    else {
-                        calculate_final_ellipse();
-                    }
                 }
             }
+            else {
+                if(sp_constraints == spine_constraints::constant_depth ) {
+                    m_uihelper->UpdateSweepCurve(m_dsegment);
+                    m_uihelper->SpinePointCandidate(m_dsegment->mid_point());
+                }
+                else if(sp_constraints == spine_constraints::planar || sp_constraints == spine_constraints::straight_planar) {
+                    if(m_num_right_click == 0) {
+                        m_uihelper->UpdateSweepCurve(m_dsegment);
+                        m_uihelper->SpinePointCandidate(m_dsegment->mid_point());
+                    }
+                    else {
+                        calculate_ellipse(m_final_ellipse);
+                        m_uihelper->UpdateFinalEllipse(m_final_ellipse);
+                    }
+                }                
+            }
+        }
+        else if(spd_mode == spine_drawing_mode::continuous) {
+            std::cout << "Continuous mode is not implemented yet!" << std::endl;
         }
     }
 }
@@ -435,47 +415,60 @@ void ImageModeller::compute_generalized_cylinder() {
     else if (count == 1) final_circle = circles[0];
     else                 std::cout << "ERROR: Perspective 3D circle estimation error " << std::endl;
 
-    std::cout << "First Circle: " << *m_first_circle << std::endl;
-    std::cout << "Final Circle: " << final_circle << std::endl;
+    if(sp_constraints == spine_constraints::planar) {
 
-    // Eigen::Vector3d n = m_first_circle->normal.cross(final_circle.normal);
-    Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
-    n.normalize();
-    Plane3D main_axis_plane(n, m_first_circle->center);
-    main_axis_plane.print();
+        // find the plane of the generalized cylinder's axis
+        Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
+        n.normalize();
+        Plane3D main_axis_plane(n, m_first_circle->center);
 
-    std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-    std::cout << "*******************************" << std::endl;
-    for(int i = 0; i < sections.size(); ++i) {
-        std::cout << sections[i] << std::endl;
-        std::cout << "------------------" << std::endl;
+        // update the sections
+        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+        for(int i = 1; i < sections.size(); ++i) {
+            double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
+            sections[i].center *= factor;
+            sections[i].radius *= factor;
+
+            sections[i].normal[2] = (-n[0]*sections[i].normal[0] - n[1]*sections[i].normal[1]) / n[2];
+            sections[i].normal.normalize();
+        }
+        m_gcyl->Recalculate();
+
+        // scale the last circle so that it's center lies on the computed plane
+        double scale = m_first_circle->center.dot(n) / final_circle.center.dot(n);
+        final_circle.radius *= scale;
+        final_circle.center *= scale;
+        if(final_circle.normal.dot(sections.back().normal) < 0)
+            final_circle.normal *= -1;
     }
-    std::cout << "*******************************" << std::endl;
+    else if(sp_constraints == spine_constraints::straight_planar) {
 
-    for(int i = 1; i < sections.size(); ++i) {
-        double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
-        sections[i].center *= factor;
-        sections[i].radius *= factor;
+        m_component_solver->SolveDepth(*m_first_circle, final_circle);
 
-        sections[i].normal[2] = (-n[0]*sections[i].normal[0] - n[1]*sections[i].normal[1]) / n[2];
-        sections[i].normal.normalize();
+        Eigen::Vector3d vec = m_first_circle->center - final_circle.center;
+        Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
+        Eigen::Vector2d sol;
+        A(0,1) = vec[0];
+        A(1,1) = vec[1];
+        A(2,1) = vec[2];
+
+        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+        for(int i = 1; i < sections.size(); ++i) {
+
+            A(0,0) = sections[i].center[0];
+            A(1,0) = sections[i].center[1];
+            A(2,0) = sections[i].center[2];
+            sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
+            std::cout << "sol[0]: " << sol[0] << std::endl;
+            sections[i].center *= sol[0];
+            sections[i].radius *= sol[0];
+            sections[i].normal = m_first_circle->normal;
+        }
+        m_gcyl->Recalculate();
     }
-    m_gcyl->Recalculate();
-
-    double scale = m_first_circle->center.dot(n) / final_circle.center.dot(n);
-    final_circle.radius *= scale;
-    final_circle.center *= scale;
-
-    if(final_circle.normal.dot(sections.back().normal) < 0)
-        final_circle.normal *= -1;
 
     m_gcyl->AddPlanarSection(final_circle);
     m_gcyl->Update();
-
-    for(int i = 0; i < sections.size(); ++i) {
-        std::cout << sections[i] << std::endl;
-        std::cout << "------------------" << std::endl;
-    }
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
@@ -488,8 +481,8 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
     if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
 
-   //  if(sections.size() == 1)
-   //     m_last_circle->normal = m_first_circle->normal;
+    //  if(sections.size() == 1)
+    //     m_last_circle->normal = m_first_circle->normal;
 
     // 2) Set the depth of the last circle
     m_last_circle->center[2] = m_fixed_depth;
@@ -510,6 +503,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
     // set the radius: proportional to the length of the semi-major axis
     Segment2D seg;
     m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+    m_segments.push_back(seg);
     m_last_circle->radius = seg.half_length() * (m_fixed_depth / -m_pp->near);
 
     // set the center: should be scaled with respect to the fixed depth
@@ -552,6 +546,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogo
 
     Segment2D seg;
     m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+    m_segments.push_back(seg);
 
     std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
     if(sections.size() == 1) {
@@ -596,40 +591,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogo
 
 }
 
-/*
-void ImageModeller::add_planar_section_to_the_generalized_cylinder_constrained() {
-
-    // 1) set the radius : proportional to the length of the semi-major axis
-    m_last_circle->radius = m_first_circle->radius * (m_last_profile->smj_axis / m_first_ellipse->smj_axis);
-
-    // 2) set the center : should be scaled with respect to the fixed depth
-    osg::Vec2d ctr;
-    m_pp->convert_from_logical_device_coordinates_to_projected_coordinates(m_last_profile->center, ctr);
-    m_last_circle->center[0] = ctr.x();
-    m_last_circle->center[1] = ctr.y();
-    m_last_circle->center[2] = -m_pp->near;
-    m_last_circle->center *= (m_fixed_depth / -m_pp->near);
-
-    // 3) set the normal : tilt angle (constant for a generalized cylinder) & bend angle (rot angle for the ellipse)
-    m_last_circle->normal[0] = sin(m_tilt_angle) * sin(m_last_profile->rot_angle);
-    m_last_circle->normal[1] = -sin(m_tilt_angle) * cos(m_last_profile->rot_angle);
-
-    osg::Vec2d smj_vec = m_last_profile->points[1] - m_last_profile->center;
-    osg::Vec2d smn_vec = m_last_profile->points[2] - m_last_profile->center;
-    if(smj_vec.x() * smn_vec.y() - smj_vec.y() * smn_vec.x() > 0) m_last_circle->normal[2] = cos(m_tilt_angle);
-    else                                                          m_last_circle->normal[2] = -cos(m_tilt_angle);
-
-    osg::ref_ptr<osg::Vec2dArray> projections = new osg::Vec2dArray(2);
-    m_pp->convert_from_logical_device_coordinates_to_projected_coordinates(m_last_profile->points[0], projections->at(0));
-    m_pp->convert_from_logical_device_coordinates_to_projected_coordinates(m_last_profile->points[1], projections->at(1));
-
-    m_component_solver->SolveForSingleCircle(projections.get(), *m_last_circle);
-    m_gcyl->AddPlanarSection(*m_last_circle);
-    m_gcyl->Update();
-}
-
-*/
-
 void ImageModeller::initialize_spine_drawing_mode(projection_type pt) {
 
     // modify the user clicked point with its projection on the minor-axis guide line
@@ -657,14 +618,14 @@ void ImageModeller::initialize_spine_drawing_mode(projection_type pt) {
     m_canvas->UsrAddSelectableNodeToDisplay(m_gcyl.get(), m_gcyl->GetComponentId());
 }
 
-void ImageModeller::calculate_ellipse() {
+void ImageModeller::calculate_ellipse(std::unique_ptr<Ellipse2D>& ellipse) {
 
     // calculate the end points of the minor_axis guide line
-    osg::Vec2d vec_mj = m_first_ellipse->points[1] - m_first_ellipse->points[0];
+    osg::Vec2d vec_mj = ellipse->points[1] - ellipse->points[0];
     osg::Vec2d vec_mn(-vec_mj.y(), vec_mj.x());
     vec_mn.normalize();
-    osg::Vec2d pt_0 = m_first_ellipse->center - vec_mn * m_first_ellipse->smj_axis;
-    osg::Vec2d pt_1 = m_first_ellipse->center + vec_mn * m_first_ellipse->smj_axis;
+    osg::Vec2d pt_0 = ellipse->center - vec_mn * ellipse->smj_axis;
+    osg::Vec2d pt_1 = ellipse->center + vec_mn * ellipse->smj_axis;
 
     osg::Vec2d vec1 = m_mouse - pt_0;
     osg::Vec2d vec2 = pt_1 - pt_0;
@@ -674,39 +635,10 @@ void ImageModeller::calculate_ellipse() {
 
         // find the projection point
         vec2.normalize();
-        osg::Vec2d proj_point = (vec2 * 2 * ratio * m_first_ellipse->smj_axis) + pt_0;
+        osg::Vec2d proj_point = (vec2 * 2 * ratio * ellipse->smj_axis) + pt_0;
 
         // update the m_first_ellipse
-        m_first_ellipse->update_minor_axis(proj_point);
-
-        // display the ellipse and a small circle on the projection point
-        m_uihelper->UpdateBaseEllipse(m_first_ellipse);
-    }
-}
-
-void ImageModeller::calculate_final_ellipse() {
-
-    m_final_ellipse->update_major_axis(m_segments.back().pt1, m_segments.back().pt2);
-
-    // calculate the end points of the minor_axis guide line
-    osg::Vec2d vec_mj = m_final_ellipse->points[1] - m_final_ellipse->points[0];
-    osg::Vec2d vec_mn(-vec_mj.y(), vec_mj.x());
-    vec_mn.normalize();
-    osg::Vec2d pt_0 = m_final_ellipse->center - vec_mn * m_final_ellipse->smj_axis;
-    osg::Vec2d pt_1 = m_final_ellipse->center + vec_mn * m_final_ellipse->smj_axis;
-    osg::Vec2d vec1 = m_mouse - pt_0;
-    osg::Vec2d vec2 = pt_1 - pt_0;
-    double ratio = (vec1 * vec2) / (vec2 * vec2) ;
-
-    if(ratio >= 0.0 && ratio <= 1.0) {
-        // find the projection point
-        vec2.normalize();
-        osg::Vec2d proj_point = (vec2 * 2 * ratio * m_final_ellipse->smj_axis) + pt_0;
-
-        // update the m_first_ellipse
-        m_final_ellipse->update_minor_axis(proj_point);
-
-        m_uihelper->UpdateFinalEllipse(m_final_ellipse);
+        ellipse->update_minor_axis(proj_point);
     }
 }
 
@@ -716,30 +648,33 @@ void ImageModeller::update_dynamic_segment() {
     *m_dsegment = *m_lsegment;
 
     // vector from last validated spine point to the current mouse position
-    osg::Vec2d tvec = m_mouse - m_lsegment->mid_point();
-    m_tvec = tvec;
+    m_tvec = m_mouse - m_lsegment->mid_point();
 
     if(sp_constraints == spine_constraints::straight_planar) {
         // translate the dynamic segment to the current mouse point
-        m_dsegment->translate(tvec);
+        // under the constraint of straight line
+
+        osg::Vec2d vec = m_first_ellipse->points[2] - m_first_ellipse->points[3];
+        vec.normalize();
+        m_tvec = vec * (vec * m_tvec);
+        m_dsegment->translate(m_tvec);
     }
     else {
 
         // rotate the dynamic segment according to the bend of the spine curve
         osg::Vec2d dir = m_lsegment->direction();
-        double angle = acos((tvec * dir) / tvec.length());
+        double angle = acos((m_tvec * dir) / m_tvec.length());
 
-        if(dir.x()*tvec.y() - dir.y()*tvec.x() > 0) m_dsegment->rotate(angle - HALF_PI);
-        else                                        m_dsegment->rotate(HALF_PI - angle);
+        if(dir.x()*m_tvec.y() - dir.y()*m_tvec.x() > 0) m_dsegment->rotate(angle - HALF_PI);
+        else                                            m_dsegment->rotate(HALF_PI - angle);
 
         // translate the dynamic segment to the current mouse point
-        m_dsegment->translate(tvec);
+        m_dsegment->translate(m_tvec);
     }
 
-    if(m_bimg_exists)
-        ray_cast_within_binary_image_for_profile_match();
-    else
-        ray_cast_within_gradient_image_for_profile_match();
+    if(m_bimg_exists) ray_cast_within_binary_image_for_profile_match();
+    else              ray_cast_within_gradient_image_for_profile_match();
+
 }
 
 int ImageModeller::estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius) {
@@ -806,117 +741,6 @@ size_t ImageModeller::select_parallel_circle(const Circle3D * const circles) {
     return std::abs(a) > std::abs(b) ? 0 : 1;
 }
 
-void ImageModeller::project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d) const {
-
-    osg::Vec4d pt4d(pt3d,1);
-    const osg::Matrixd& Mproj = m_canvas->UsrGetMainCamera()->getProjectionMatrix();
-    osg::Matrixd Mvp = m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
-    osg::Vec4d pt_vp = pt4d * Mproj * Mvp;
-    pt2d.x() = pt_vp.x() / pt_vp.w();
-    pt2d.y() = pt_vp.y() / pt_vp.w();
-}
-
-void ImageModeller::project_points(const osg::Vec3dArray * const pt3darr, osg::Vec2dArray * const pt2darr) const {
-
-    osg::Matrixd M = m_canvas->UsrGetMainCamera()->getProjectionMatrix() *
-            m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
-    osg::Vec4d pt4d;
-    for(auto it = pt3darr->begin(); it != pt3darr->end(); ++it) {
-        pt4d = osg::Vec4d(*it, 1) * M;
-        pt2darr->push_back(osg::Vec2d(pt4d.x()/pt4d.w(), pt4d.y()/pt4d.w()));
-    }
-}
-
-void ImageModeller::project_circle(const Circle3D& circle, Ellipse2D& ellipse) const {
-
-    osg::Matrixd M = m_canvas->UsrGetMainCamera()->getProjectionMatrix();
-    transpose(M,4);
-    Eigen::Matrix<double, 3, 4> Mprj;
-    for(size_t i = 0; i < 4; ++i) {
-        Mprj(0,i) = M(0,i);
-        Mprj(1,i) = M(1,i);
-        Mprj(2,i) = M(3,i);
-    }
-
-    Eigen::Matrix4d Qs;
-    circle.get_matrix_representation(Qs);
-    Eigen::Matrix3d dConic = Mprj * Qs * Mprj.transpose();
-
-    if(dConic.determinant() != 0) {
-        Eigen::Matrix3d conic = dConic.inverse();
-        conic /= conic(0,0);
-        ellipse.coeff[0] = conic(0,0);
-        ellipse.coeff[1] = 2*conic(0,1);
-        ellipse.coeff[2] = conic(1,1);
-        ellipse.coeff[3] = 2*conic(0,2);
-        ellipse.coeff[4] = 2*conic(1,2);
-        ellipse.coeff[5] = conic(2,2);
-        ellipse.calculate_parameters_from_coeffients();
-    }
-    else {
-        std::cout << "camera::project_camera_circle3d: dual conic is degenerate" << std::endl;
-    }
-
-    // Ellipse is in projected coordinatres. We need to convert it to the logical device coordinates
-    osg::Matrixd Mvp = m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
-
-    osg::Vec4d pt4d;
-    for(size_t i = 0; i < 4; ++i) {
-        pt4d = osg::Vec4d(ellipse.points[i].x(), ellipse.points[i].y(), -m_pp->near, 1) * Mvp;
-        ellipse.points[i].x() = pt4d.x() / pt4d.w();
-        ellipse.points[i].y() = pt4d.y() / pt4d.w();
-    }
-
-    // calculate the remaining parameters and the coefficients
-    ellipse.center.x() = (ellipse.points[0].x() + ellipse.points[1].x())/2.0;
-    ellipse.center.y() = (ellipse.points[0].y() + ellipse.points[1].y())/2.0;
-    ellipse.smj_axis = (ellipse.points[0] - ellipse.center).length();
-    ellipse.smn_axis = (ellipse.points[2] - ellipse.center).length();
-    ellipse.calculate_coefficients_from_parameters();
-}
-
-void ImageModeller::project_generalized_cylinder(const GeneralizedCylinder& gcyl)  const {
-
-    std::vector<Ellipse2D> ellipses;
-    const std::vector<Circle3D>& circles =  gcyl.GetGeometry()->GetSections();
-    osg::ref_ptr<osg::Vec3dArray> main_axis = new osg::Vec3dArray;
-    Ellipse2D elp;
-    for(size_t i = 0; i < circles.size(); ++i) {
-        main_axis->push_back(osg::Vec3d(circles[i].center[0], circles[i].center[1], circles[i].center[2]));
-        project_circle(circles[i], elp);
-        ellipses.push_back(elp);
-    }
-
-    osg::ref_ptr<osg::Vec2dArray> main_axis_prj = new osg::Vec2dArray;
-    project_points(main_axis.get(), main_axis_prj.get());
-
-    osg::Vec2d left, right, dir;
-    std::vector<osg::Vec2d> left_silhouette;
-    std::vector<osg::Vec2d> right_silhouette;
-    for(int i = 0; i < main_axis_prj->size()-1; ++i) {
-        dir = main_axis_prj->at(i+1) - main_axis_prj->at(i);
-        ellipses[i].get_tangent_points(dir, left, right);
-        left_silhouette.push_back(left);
-        right_silhouette.push_back(right);
-    }
-    ellipses.back().get_tangent_points(dir,left, right);
-    left_silhouette.push_back(left);
-    right_silhouette.push_back(right);
-
-
-    // displat the silhouettes
-    m_uihelper->DisplayLineStrip(left_silhouette, osg::Vec4(0,1,0,1));
-    m_uihelper->DisplayLineStrip(right_silhouette, osg::Vec4(0,0,1,1));
-
-    // display feature curves
-    std::vector<osg::Vec2d> elp_pts;
-    for(int i = 0; i < ellipses.size(); ++ i) {
-        ellipses[i].generate_points_on_the_ellipse(elp_pts, 40);
-        m_uihelper->DisplayLineLoop(elp_pts, osg::Vec4(0.1,0.1,0.1,1));
-    }
-
-}
-
 void ImageModeller::update_dynamic_segment_with_mirror_point(const osg::Vec2d& pt, bool first) {
 
     if(first) {
@@ -931,74 +755,77 @@ void ImageModeller::update_dynamic_segment_with_mirror_point(const osg::Vec2d& p
 
 void ImageModeller::ray_cast_within_binary_image_for_profile_match() {
 
-       // 1) transform the point coordinates to pixel coordinates
-       Point2D<int> p0(static_cast<int>(m_dsegment->pt1.x()), static_cast<int>(m_dsegment->pt1.y()));
-       Point2D<int> p1(static_cast<int>(m_dsegment->pt2.x()), static_cast<int>(m_dsegment->pt2.y()));
-       m_canvas->UsrDeviceToLogical(p0);
-       m_canvas->UsrDeviceToLogical(p1);
+    // 1) transform the point coordinates to pixel coordinates
+    Point2D<int> p0(static_cast<int>(m_dsegment->pt1.x()), static_cast<int>(m_dsegment->pt1.y()));
+    Point2D<int> p1(static_cast<int>(m_dsegment->pt2.x()), static_cast<int>(m_dsegment->pt2.y()));
+    m_canvas->UsrDeviceToLogical(p0);
+    m_canvas->UsrDeviceToLogical(p1);
 
-       // 2) calculate the casting direction vector,the change in major-axis length is limited by a factor
-       Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
+    // 2) calculate the casting direction vector,the change in major-axis length is limited by a factor
+    Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
 
-       // 3) perform ray casts and display shot rays variables for ray casting
-       bool hit_result[4] = { false, false, false, false };
-       Point2D<int> hit[4];
+    // 3) perform ray casts and display shot rays variables for ray casting
+    bool hit_result[4] = { false, false, false, false };
+    Point2D<int> hit[4];
 
-       // 3.1) ray cast from p0-center direction
-       Point2D<int> end = p0 + dir_vec;
-       if(m_rect->intersect(p0, end))
-           hit_result[0] = BinaryImageRayCast(m_bimage, p0, end, hit[0]);
+    // 3.1) ray cast from p0-center direction
+    Point2D<int> end = p0 + dir_vec;
+    if(m_rect->intersect(p0, end))
+        hit_result[0] = BinaryImageRayCast(m_bimage, p0, end, hit[0]);
 
-       // 3.2) ray cast from p0-outside direction
-       end = p0 - dir_vec;
-       if(m_rect->intersect(p0, end))
-           hit_result[1] = BinaryImageRayCast(m_bimage, p0, end, hit[1]);
+    // 3.2) ray cast from p0-outside direction
+    end = p0 - dir_vec;
+    if(m_rect->intersect(p0, end))
+        hit_result[1] = BinaryImageRayCast(m_bimage, p0, end, hit[1]);
 
-       // 3.3) ray cast from p1-center direction
-       end = p1 - dir_vec;
-       if(m_rect->intersect(p1, end))
-           hit_result[2] = BinaryImageRayCast(m_bimage, p1, end, hit[2]);
+    // 3.3) ray cast from p1-center direction
+    end = p1 - dir_vec;
+    if(m_rect->intersect(p1, end))
+        hit_result[2] = BinaryImageRayCast(m_bimage, p1, end, hit[2]);
 
-       // 3.4) ray cast from p1-outside direction
-       end = p1 + dir_vec;
-       if(m_rect->intersect(p1, end))
-           hit_result[3] = BinaryImageRayCast(m_bimage, p1, end, hit[3]);
+    // 3.4) ray cast from p1-outside direction
+    end = p1 + dir_vec;
+    if(m_rect->intersect(p1, end))
+        hit_result[3] = BinaryImageRayCast(m_bimage, p1, end, hit[3]);
 
-       // 4) analyze the result of the ray casts
-       Point2D<int> p0_hit = p0;
-       if(hit_result[0] && hit_result[1])  p0_hit = p0;
-       else if(hit_result[0])              p0_hit = hit[0];
-       else if(hit_result[1])              p0_hit = hit[1];
-       m_canvas->UsrDeviceToLogical(p0_hit);
+    // 4) analyze the result of the ray casts
+    Point2D<int> p0_hit = p0;
+    if(hit_result[0] && hit_result[1])  p0_hit = p0;
+    else if(hit_result[0])              p0_hit = hit[0];
+    else if(hit_result[1])              p0_hit = hit[1];
+    m_canvas->UsrDeviceToLogical(p0_hit);
 
-       Point2D<int> p1_hit;
-       if(hit_result[2] && hit_result[3])  p1_hit = p1;
-       else if(hit_result[2])              p1_hit = hit[2];
-       else if(hit_result[3])              p1_hit = hit[3];
-       m_canvas->UsrDeviceToLogical(p1_hit);
+    Point2D<int> p1_hit;
+    if(hit_result[2] && hit_result[3])  p1_hit = p1;
+    else if(hit_result[2])              p1_hit = hit[2];
+    else if(hit_result[3])              p1_hit = hit[3];
+    m_canvas->UsrDeviceToLogical(p1_hit);
 
-       if((hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {          // update p0, p1
-           /*
-           m_dsegment->pt1 = osg::Vec2d(p0_hit.x, p0_hit.y);
-           m_dsegment->pt2 = osg::Vec2d(p1_hit.x, p1_hit.y);
-           */
-           osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
-           m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
-           m_dsegment->pt1 = new_p0;
-       }
-       else if((hit_result[0] || hit_result[1]) && !(hit_result[2] || hit_result[3])) {    // update p0, p1 is the mirror of p0
-           osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
-           m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
-           m_dsegment->pt1 = new_p0;
-       }
-       else if(!(hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {    // update p1, p0 is the mirror of p1
-           osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
-           m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
-           m_dsegment->pt2 = new_p1;
-       }
-       else {
-           return;
-       }
+    osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+    osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
+
+    if((hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {          // update p0, p1
+
+        if((m_dsegment->pt1 - new_p0).length2() < (m_dsegment->pt2 - new_p1).length2()) {
+            m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
+            m_dsegment->pt2 = new_p1;
+        }
+        else {
+            m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
+            m_dsegment->pt1 = new_p0;
+        }
+    }
+    else if((hit_result[0] || hit_result[1]) && !(hit_result[2] || hit_result[3])) {    // update p0, p1 is the mirror of p0
+        m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
+        m_dsegment->pt1 = new_p0;
+    }
+    else if(!(hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {    // update p1, p0 is the mirror of p1
+        osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
+        m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
+    }
+    else {
+        return;
+    }
 }
 
 void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
@@ -1109,22 +936,24 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
     }
     m_canvas->UsrDeviceToLogical(p1_hit);
 
+    osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+    osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
+
     if(p0_updated && p1_updated) { // update p0, p1
-        /*
-        m_dsegment->pt1 = osg::Vec2d(p0_hit.x, p0_hit.y);
-        m_dsegment->pt2 = osg::Vec2d(p1_hit.x, p1_hit.y);
-        */
-        osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
-        m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
-        m_dsegment->pt1 = new_p0;
+       if((m_dsegment->pt1 - new_p0).length2() <  (m_dsegment->pt2 - new_p1).length2()) {
+            m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
+            m_dsegment->pt2 = new_p1;
+        }
+        else {
+            m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
+            m_dsegment->pt1 = new_p0;
+        }
     }
     else if(p0_updated) { // update p0, p1 is the mirror of p0
-        osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
         m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
         m_dsegment->pt1 = new_p0;
     }
     else if(p1_updated) { // update p1, p0 is the mirror of p1
-        osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
         m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
         m_dsegment->pt2 = new_p1;
     }
@@ -1134,22 +963,120 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
     }
 }
 
-void ImageModeller::constrain_mouse_point() {
+void ImageModeller::project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d) const {
 
-    switch(sp_constraints) {
-    case spine_constraints::none:
-        break;
-    case spine_constraints::straight_planar:
-        // mouse point should be on the projection of the 3D line
-        break;
-    case spine_constraints::planar:
-        break;
-    default:
-        break;
+    osg::Vec4d pt4d(pt3d,1);
+    const osg::Matrixd& Mproj = m_canvas->UsrGetMainCamera()->getProjectionMatrix();
+    osg::Matrixd Mvp = m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
+    osg::Vec4d pt_vp = pt4d * Mproj * Mvp;
+    pt2d.x() = pt_vp.x() / pt_vp.w();
+    pt2d.y() = pt_vp.y() / pt_vp.w();
+}
+
+void ImageModeller::project_points(const osg::Vec3dArray * const pt3darr, osg::Vec2dArray * const pt2darr) const {
+
+    osg::Matrixd M = m_canvas->UsrGetMainCamera()->getProjectionMatrix() *
+            m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
+    osg::Vec4d pt4d;
+    for(auto it = pt3darr->begin(); it != pt3darr->end(); ++it) {
+        pt4d = osg::Vec4d(*it, 1) * M;
+        pt2darr->push_back(osg::Vec2d(pt4d.x()/pt4d.w(), pt4d.y()/pt4d.w()));
     }
 }
 
-void ImageModeller::test_circle_estimation_from_major_axis(const Segment2D& seg) {
+void ImageModeller::project_circle(const Circle3D& circle, Ellipse2D& ellipse) const {
+
+    osg::Matrixd M = m_canvas->UsrGetMainCamera()->getProjectionMatrix();
+    transpose(M,4);
+    Eigen::Matrix<double, 3, 4> Mprj;
+    for(size_t i = 0; i < 4; ++i) {
+        Mprj(0,i) = M(0,i);
+        Mprj(1,i) = M(1,i);
+        Mprj(2,i) = M(3,i);
+    }
+
+    Eigen::Matrix4d Qs;
+    circle.get_matrix_representation(Qs);
+    Eigen::Matrix3d dConic = Mprj * Qs * Mprj.transpose();
+
+    if(dConic.determinant() != 0) {
+        Eigen::Matrix3d conic = dConic.inverse();
+        conic /= conic(0,0);
+        ellipse.coeff[0] = conic(0,0);
+        ellipse.coeff[1] = 2*conic(0,1);
+        ellipse.coeff[2] = conic(1,1);
+        ellipse.coeff[3] = 2*conic(0,2);
+        ellipse.coeff[4] = 2*conic(1,2);
+        ellipse.coeff[5] = conic(2,2);
+        ellipse.calculate_parameters_from_coeffients();
+    }
+    else {
+        std::cout << "camera::project_camera_circle3d: dual conic is degenerate" << std::endl;
+    }
+
+    // Ellipse is in projected coordinatres. We need to convert it to the logical device coordinates
+    osg::Matrixd Mvp = m_canvas->UsrGetMainCamera()->getViewport()->computeWindowMatrix();
+
+    osg::Vec4d pt4d;
+    for(size_t i = 0; i < 4; ++i) {
+        pt4d = osg::Vec4d(ellipse.points[i].x(), ellipse.points[i].y(), -m_pp->near, 1) * Mvp;
+        ellipse.points[i].x() = pt4d.x() / pt4d.w();
+        ellipse.points[i].y() = pt4d.y() / pt4d.w();
+    }
+
+    // calculate the remaining parameters and the coefficients
+    ellipse.center.x() = (ellipse.points[0].x() + ellipse.points[1].x())/2.0;
+    ellipse.center.y() = (ellipse.points[0].y() + ellipse.points[1].y())/2.0;
+    ellipse.smj_axis = (ellipse.points[0] - ellipse.center).length();
+    ellipse.smn_axis = (ellipse.points[2] - ellipse.center).length();
+    ellipse.calculate_coefficients_from_parameters();
+}
+
+void ImageModeller::project_generalized_cylinder(const GeneralizedCylinder& gcyl)  const {
+
+    std::vector<Ellipse2D> ellipses;
+    const std::vector<Circle3D>& circles =  gcyl.GetGeometry()->GetSections();
+    osg::ref_ptr<osg::Vec3dArray> main_axis = new osg::Vec3dArray;
+    Ellipse2D elp;
+    for(size_t i = 0; i < circles.size(); ++i) {
+        main_axis->push_back(osg::Vec3d(circles[i].center[0], circles[i].center[1], circles[i].center[2]));
+        project_circle(circles[i], elp);
+        ellipses.push_back(elp);
+    }
+
+    osg::ref_ptr<osg::Vec2dArray> main_axis_prj = new osg::Vec2dArray;
+    project_points(main_axis.get(), main_axis_prj.get());
+
+    osg::Vec2d left, right, dir;
+    std::vector<osg::Vec2d> left_silhouette;
+    std::vector<osg::Vec2d> right_silhouette;
+    for(int i = 0; i < main_axis_prj->size()-1; ++i) {
+        dir = main_axis_prj->at(i+1) - main_axis_prj->at(i);
+        ellipses[i].get_tangent_points(dir, left, right);
+        left_silhouette.push_back(left);
+        right_silhouette.push_back(right);
+    }
+    ellipses.back().get_tangent_points(dir,left, right);
+    left_silhouette.push_back(left);
+    right_silhouette.push_back(right);
+
+
+    // displat the silhouettes
+    m_uihelper->DisplayLineStrip(left_silhouette, osg::Vec4(0,1,0,1));
+    m_uihelper->DisplayLineStrip(right_silhouette, osg::Vec4(0,0,1,1));
+
+    // display feature curves
+    std::vector<osg::Vec2d> elp_pts;
+    for(int i = 0; i < ellipses.size(); ++ i) {
+        ellipses[i].generate_points_on_the_ellipse(elp_pts, 40);
+        m_uihelper->DisplayLineLoop(elp_pts, osg::Vec4(0.1,0.1,0.1,1));
+    }
+}
+
+void ImageModeller::test_circle_estimation_from_major_axis() {
+
+    Segment2D seg;
+    m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
 
     Circle3D circles[2];
     estimate_3d_circles_with_fixed_depth(m_first_ellipse, circles, m_fixed_depth);
@@ -1176,86 +1103,3 @@ void ImageModeller::test_circle_estimation_from_major_axis(const Segment2D& seg)
     std::cout << c2 << std::endl;
     std::cout << "----------------------" << std::endl;
 }
-
-
-void ImageModeller::test_circle_estimation_from_major_axis() {
-
-    Ellipse2D elp2d(3.54, 2.4, acos(0.95), osg::Vec2d(-2.45, 1.23));
-    elp2d.calculate_coefficients_from_parameters();
-
-    Circle3D circles[2];
-    m_circle_estimator->estimate_3d_circles_with_fixed_depth(elp2d, circles, m_pp.get(), m_fixed_depth);
-
-    Circle3D c1;
-    c1.normal = circles[0].normal;
-    c1.center[2] = circles[0].center[2];
-
-    Circle3D c2;
-    c2.normal = circles[1].normal;
-    c2.radius = circles[1].radius;
-
-    osg::Vec2d p1, p2;
-    elp2d.get_major_axis_end_points(p1, p2);
-    Segment2D seg(p1,p2);
-
-    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, c1);
-    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_radius_is_fixed(seg, -m_pp->near, c2);
-
-    std::cout << "----------------------" << std::endl;
-    std::cout << circles[0] << std::endl;
-    std::cout << "----------------------" << std::endl;
-    std::cout << c1 << std::endl;
-    std::cout << "----------------------" << std::endl;
-    std::cout << circles[1] << std::endl;
-    std::cout << "----------------------" << std::endl;
-    std::cout << c2 << std::endl;
-    std::cout << "----------------------" << std::endl;
-}
-
-/*
-// The spine points may be restricted by constraints. This function checks
-// the mouse position along with the possible constraints and updates the
-// spine point. If there are not any constraints, it does update the spine
-// point with the mouse point. The current spine point is stored at the back
-// of the m_vertices buffer.
-void ImageModeller::constrain_spine_point_in_continuous_mode() {
-
-    switch(sp_constraints) {
-    case spine_constraints::none:
-        m_vertices->back() = m_mouse;
-        break;
-    case spine_constraints::straight_planar:
-        osg::Vec2d vec_mj = m_first_ellipse->points[1] - m_first_ellipse->points[0];
-        osg::Vec2d vec_mn(-vec_mj.y(), vec_mj.x());
-        vec_mn.normalize();
-        osg::Vec2d mouse_vec = m_mouse - m_first_ellipse->center;
-        osg::Vec2d proj_vec = vec_mn * (mouse_vec * vec_mn);
-        osg::Vec2d proj_pt = m_first_ellipse->center + proj_vec;
-        m_vertices->back() = proj_pt;
-        break;
-    }
-}
-
-// The spine point may be restricted by a constraint. This function checks the last clicked point or current mouse point
-// along with the constraints and updates the spine point.
-void ImageModeller::constrain_spine_point_in_piecewise_linear_mode() {
-
-    // In piecewise linear mode, the last clicked point or the mouse point is at the back of the m_vertices.
-    switch(sp_constraints) {
-    case spine_constraints::none: // do nothing
-        break;
-    case spine_constraints::straight_planar: // project the point to the minor_axis
-
-        // major axis vector of the base ellipse
-        osg::Vec2d vec_mj = m_first_ellipse->points[1] - m_first_ellipse->points[0];
-        // minor axis vector of the base ellipse
-        osg::Vec2d vec_mn(-vec_mj.y(), vec_mj.x());
-        vec_mn.normalize();
-        osg::Vec2d vec = m_vertices->back() - m_first_ellipse->center;
-        osg::Vec2d proj_vec = vec_mn * (vec * vec_mn);
-        osg::Vec2d proj_pt = m_first_ellipse->center + proj_vec;
-        m_vertices->back() = proj_pt;
-        break;
-    }
-}
-*/

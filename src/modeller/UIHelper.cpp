@@ -9,17 +9,17 @@
 UIHelper::UIHelper(osg::Geode* geode) : m_geode(geode), m_sweepline_vertices(nullptr), m_base_elp_vertices(nullptr),
     m_spine_vertices(nullptr), m_sweep_type(sweep_curve_type::line){
 
-    m_geode->addDrawable(initialize_base_ellipse_display());
-    m_geode->addDrawable(initialize_spine_display());
-    m_geode->addDrawable(initialize_ray_cast_display());
-    m_geode->addDrawable(initialize_last_ellipse_display());
+    m_geode->addDrawable(initialize_base_ellipse_display());        // 0
+    m_geode->addDrawable(initialize_spine_display());               // 1
+    m_geode->addDrawable(initialize_ray_cast_display());            // 2
+    m_geode->addDrawable(initialize_last_ellipse_display());        // 3
 
     osg::Geometry* sweep_geom;
     if(m_sweep_type == sweep_curve_type::line)
         sweep_geom = initialize_sweepline_display();
     else if(m_sweep_type == sweep_curve_type::ellipse)
         sweep_geom = initialize_sweep_ellipse_display();
-    m_geode->addDrawable(sweep_geom);
+    m_geode->addDrawable(sweep_geom);                               // 4
 
     // for smooth lines
     m_geode->getOrCreateStateSet()->setMode(GL_LINE_SMOOTH, osg::StateAttribute::ON);
@@ -151,17 +151,17 @@ osg::Geometry* UIHelper::initialize_last_ellipse_display() {
     geom->setUseVertexBufferObjects(true);
     geom->setDataVariance(osg::Object::DYNAMIC);
 
-    m_last_ellipse_vertices = new osg::Vec2dArray(84);
-    geom->setVertexArray(m_last_ellipse_vertices);
+    m_final_ellipse_vertices = new osg::Vec2dArray(84);
+    geom->setVertexArray(m_final_ellipse_vertices);
 
     for(int i = 0; i < 2; ++i) {
-        m_last_ellipse_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
-        geom->addPrimitiveSet(m_last_ellipse_arrays.back());
+        m_final_ellipse_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINES));
+        geom->addPrimitiveSet(m_final_ellipse_arrays.back());
     }
 
     for(int i = 0; i < 5; ++i) {
-        m_last_ellipse_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
-        geom->addPrimitiveSet(m_last_ellipse_arrays.back());
+        m_final_ellipse_arrays.push_back(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP));
+        geom->addPrimitiveSet(m_final_ellipse_arrays.back());
     }
 
     osg::Vec4Array* colors = new osg::Vec4Array;
@@ -252,9 +252,9 @@ void UIHelper::Reset() {
         (*it)->setCount(0);
     m_base_elp_vertices->dirty();
 
-    for(auto it = m_last_ellipse_arrays.begin(); it != m_last_ellipse_arrays.end(); ++it)
+    for(auto it = m_final_ellipse_arrays.begin(); it != m_final_ellipse_arrays.end(); ++it)
         (*it)->setCount(0);
-    m_last_ellipse_vertices->dirty();
+    m_final_ellipse_vertices->dirty();
 
     for(auto it = m_ray_cast_arrays.begin(); it != m_ray_cast_arrays.end(); ++it)
         (*it)->setCount(0);
@@ -269,11 +269,14 @@ void UIHelper::Reset() {
     }
     m_proj_vertices.clear();
     m_proj_arrays.clear();
-    m_geode->removeDrawables(4, m_geode->getNumDrawables() - 4);
 
     m_spine_array->setCount(0);
     m_spine_vertices->clear();
     m_spine_vertices->dirty();
+
+    // for deleting ther projected generalized cylinders if any
+    // the numbers have to be updated if any other drawalble is added to the m_geode
+    m_geode->removeDrawables(5, m_geode->getNumDrawables() - 5);
 }
 
 // pt = p0 (first click)
@@ -349,53 +352,53 @@ void UIHelper::UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp) {
 void UIHelper::InitializeFinalEllipseDisplay(const std::unique_ptr<Segment2D>& segment) {
 
     // major axis
-    m_last_ellipse_vertices->at(0) = segment->pt1;
-    m_last_ellipse_vertices->at(1) = segment->pt2;
-    m_last_ellipse_arrays[0]->setFirst(0);
-    m_last_ellipse_arrays[0]->setCount(2);
+    m_final_ellipse_vertices->at(0) = segment->pt1;
+    m_final_ellipse_vertices->at(1) = segment->pt2;
+    m_final_ellipse_arrays[0]->setFirst(0);
+    m_final_ellipse_arrays[0]->setCount(2);
 
     // minor axis guideline
     osg::Vec2d mid = segment->mid_point();
-    osg::Vec2d vec1 = m_last_ellipse_vertices->at(1) - mid;
+    osg::Vec2d vec1 = m_final_ellipse_vertices->at(1) - mid;
     osg::Vec2d vec2(-vec1.y(), vec1.x());
-    m_last_ellipse_vertices->at(2) = mid - vec2;
-    m_last_ellipse_vertices->at(3) = mid + vec2;
-    m_last_ellipse_arrays[1]->setFirst(2);
-    m_last_ellipse_arrays[1]->setCount(2);
+    m_final_ellipse_vertices->at(2) = mid - vec2;
+    m_final_ellipse_vertices->at(3) = mid + vec2;
+    m_final_ellipse_arrays[1]->setFirst(2);
+    m_final_ellipse_arrays[1]->setCount(2);
 
     // display a small circle on the first point
     Ellipse2DLight tmp(3, 3, 0, segment->pt1);
-    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 44, 10);
-    m_last_ellipse_arrays[3]->setFirst(44);
-    m_last_ellipse_arrays[3]->setCount(10);
+    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 44, 10);
+    m_final_ellipse_arrays[3]->setFirst(44);
+    m_final_ellipse_arrays[3]->setCount(10);
 
     // display a small circle on the second point
     tmp.center = segment->pt2;
-    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 54, 10);
-    m_last_ellipse_arrays[4]->setFirst(54);
-    m_last_ellipse_arrays[4]->setCount(10);
+    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 54, 10);
+    m_final_ellipse_arrays[4]->setFirst(54);
+    m_final_ellipse_arrays[4]->setCount(10);
 
     // display a small cirle at the center of the ellipse
-    tmp.center = (m_last_ellipse_vertices->at(0) + m_last_ellipse_vertices->at(1)) / 2.0;
-    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 64, 10);
-    m_last_ellipse_arrays[5]->setFirst(64);
-    m_last_ellipse_arrays[5]->setCount(10);
+    tmp.center = (m_final_ellipse_vertices->at(0) + m_final_ellipse_vertices->at(1)) / 2.0;
+    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 64, 10);
+    m_final_ellipse_arrays[5]->setFirst(64);
+    m_final_ellipse_arrays[5]->setCount(10);
 
-    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 74, 10);
-    m_last_ellipse_arrays[6]->setFirst(74);
-    m_last_ellipse_arrays[6]->setCount(10);
+    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 74, 10);
+    m_final_ellipse_arrays[6]->setFirst(74);
+    m_final_ellipse_arrays[6]->setCount(10);
 
-    m_last_ellipse_vertices->dirty();
+    m_final_ellipse_vertices->dirty();
 }
 
 void UIHelper::UpdateFinalEllipse(const std::unique_ptr<Ellipse2D>& elp) {
 
-    elp->generate_points_on_the_ellipse(m_last_ellipse_vertices, 4, 40);
+    elp->generate_points_on_the_ellipse(m_final_ellipse_vertices, 4, 40);
     Ellipse2DLight tmp(3, 3, 0, elp->points[2]);
-    tmp.generate_points_on_the_ellipse(m_last_ellipse_vertices, 74, 10);
-    m_last_ellipse_arrays[2]->setFirst(4);
-    m_last_ellipse_arrays[2]->setCount(40);
-    m_last_ellipse_vertices->dirty();
+    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 74, 10);
+    m_final_ellipse_arrays[2]->setFirst(4);
+    m_final_ellipse_arrays[2]->setCount(40);
+    m_final_ellipse_vertices->dirty();
 
 }
 

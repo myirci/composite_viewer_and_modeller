@@ -50,6 +50,7 @@ EVT_MENU(wxID_EDIT_CLEAR_VIEW, OsgWxFrame::OnDeleteModel)
 EVT_MENU(wxID_MODEL_CONSTRAINTS_NO_SPINE_CONSTRAINTS, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEL_CONSTRAINTS_STRAIGHT_PLANAR_SPINE, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEL_CONSTRAINTS_PLANAR_SPINE_POINTS, OsgWxFrame::OnToggleModellingConstraints)
+EVT_MENU(wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEL_CONSTRAINTS_NO_SECTION_CONSTRAINTS, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEl_CONSTRAINTS_CONSTANT_SECTIONS, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEL_CONSTRAINTS_LINEARLY_SCALED_SECTIONS, OsgWxFrame::OnToggleModellingConstraints)
@@ -370,7 +371,8 @@ void OsgWxFrame::usrInitMenubar() {
 
     wxMenu* spncstrnts = new wxMenu;
     spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_NO_SPINE_CONSTRAINTS, wxT("None"));
-    spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_PLANAR_SPINE_POINTS, wxT("Constant Depth"));
+    spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH, wxT("Constant Depth"));
+    spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_PLANAR_SPINE_POINTS, wxT("Planar Spine"));
     spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_STRAIGHT_PLANAR_SPINE, wxT("Straight Planar Spine"));
     model->AppendSubMenu(spncstrnts, wxT("Spine Constraints"));
 
@@ -533,6 +535,7 @@ void OsgWxFrame::usrEnableModellingMenus(bool flag) {
 
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_NO_SPINE_CONSTRAINTS)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_PLANAR_SPINE_POINTS)->Enable(flag);
+    GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_STRAIGHT_PLANAR_SPINE)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_NO_SECTION_CONSTRAINTS)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEl_CONSTRAINTS_CONSTANT_SECTIONS)->Enable(flag);
@@ -689,6 +692,10 @@ void OsgWxFrame::OnToggleModellingConstraints(wxCommandEvent& event) {
     case wxID_MODEL_CONSTRAINTS_NO_SPINE_CONSTRAINTS:
         modeller->sp_constraints = spine_constraints::none;
         std::cout << "\t-Spine constraint is set to none" << std::endl;
+        break;
+    case wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH:
+        modeller->sp_constraints = spine_constraints::constant_depth;
+        std::cout << "\t-Spine constraint is set to constant depth" << std::endl;
         break;
     case wxID_MODEL_CONSTRAINTS_PLANAR_SPINE_POINTS:
         modeller->sp_constraints = spine_constraints::planar;
