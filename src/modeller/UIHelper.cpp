@@ -30,8 +30,8 @@ osg::Geometry* UIHelper::initialize_sweepline_display() {
     // for sweepline display
     // 2 for sweepline      Lines    : m_sweepline_arrays[0], Color: Red
     // 10 for center        Line Loop: m_sweepline_arrays[1], Color: Gray
-    // 10 for p0            Line Loop: m_sweepline_arrays[2], Color: Light Blue
-    // 10 for p1            Line Loop: m_sweepline_arrays[3], Color: Royal Blue
+    // 10 for p0            Line Loop: m_sweepline_arrays[2], Color: Orange
+    // 10 for p1            Line Loop: m_sweepline_arrays[3], Color: Blue
 
     osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
     geom->setUseDisplayList(false);
@@ -51,8 +51,8 @@ osg::Geometry* UIHelper::initialize_sweepline_display() {
     osg::Vec4Array* colors = new osg::Vec4Array;
     colors->push_back(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f));                   // Red
     colors->push_back(osg::Vec4(0.2901961f, 0.2901961f, 0.2901961f, 1.0f)); // Gray
-    colors->push_back(osg::Vec4(0.749019608f, 0.937254902f, 1.0f, 1.0f));   // Light Blue
-    colors->push_back(osg::Vec4(0.2f, 0.2f, 1.0f, 1.0f));                   // Royal Blue
+    colors->push_back(osg::Vec4(1.0f, 0.647058824f, 0.0f, 1.0f));           // Orange
+    colors->push_back(osg::Vec4(0.0f, 0.0f, 1.0f, 1.0f));                   // Blue
     geom->setColorArray(colors, osg::Array::BIND_PER_PRIMITIVE_SET);
     return geom.release();
 }
@@ -225,8 +225,8 @@ osg::Geometry* UIHelper::initialize_ray_cast_display() {
     }
 
     osg::Vec4Array* colors = new osg::Vec4Array;
-    colors->push_back(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)); // yellow
-    colors->push_back(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)); // yellow
+    colors->push_back(osg::Vec4(1.0f, 0.0f, 1.0f, 1.0f)); // magenta
+    colors->push_back(osg::Vec4(1.0f, 0.0f, 1.0f, 1.0f)); // magenta
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan

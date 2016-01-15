@@ -87,10 +87,11 @@ struct CostFunctor_Depth {
         Vector3D<T> C0(T(m_circle_0.center[0]), T(m_circle_0.center[1]), T(m_circle_0.center[2]));
         Vector3D<T> n0(T(m_circle_0.normal[0]), T(m_circle_0.normal[1]), T(m_circle_0.normal[2]));
         Vector3D<T> C1(T(m_circle_1.center[0]), T(m_circle_1.center[1]), T(m_circle_1.center[2]));
-        Vector3D<T> n1(T(m_circle_1.normal[0]), T(m_circle_1.normal[1]), T(m_circle_1.normal[2]));
+        // Vector3D<T> n1(T(m_circle_1.normal[0]), T(m_circle_1.normal[1]), T(m_circle_1.normal[2]));
         C1 = C1 * s[0];
         Vector3D<T> diff = C1 - C0;
-        residual[0] = (diff.cross(n0)).squared_norm() + (diff.cross(n1)).squared_norm();
+        // residual[0] = (diff.cross(n0)).squared_norm() + (diff.cross(n1)).squared_norm();
+        residual[0] = (diff.cross(n0)).squared_norm();
         return true;
     }
     private:

@@ -212,11 +212,13 @@ bool BinaryImageRayCast(const OtbImageType::Pointer& image, const Point2D<int>& 
 }
 
 // input    : gradient image
-// return   : maximim pixel value and corresponding pixel
+// return   : maximum pixel value and corresponding pixel
 // start    : starting point for the ray segment
 // end      : end point for the ray segment
 OtbImageType::PixelType GradientImageRayCast(const OtbImageType::Pointer& image,
-                                             const Point2D<int>& start, const Point2D<int>& end, Point2D<int>& hit) {
+                                             const Point2D<int>& start,
+                                             const Point2D<int>& end,
+                                             Point2D<int>& hit) {
 
     int delta_x = end.x - start.x;
     int delta_y = end.y - start.y;

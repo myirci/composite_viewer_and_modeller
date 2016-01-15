@@ -144,14 +144,18 @@ private:
     void calculate_ellipse(std::unique_ptr<Ellipse2D>& ellipse);
     void update_dynamic_segment();
     void update_dynamic_segment_with_mirror_point(const osg::Vec2d& pt, bool first);
-    void ray_cast_within_binary_image_for_profile_match();     // based on binary images
-    void ray_cast_within_gradient_image_for_profile_match();   // based on gradient
     void initialize_spine_drawing_mode(projection_type pt);
+
+    // ray cast functiond
+    void ray_cast_within_binary_image_for_profile_match();
+    void ray_cast_within_gradient_image_for_profile_match();
 
     // estimation of the other circles
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
+
 
     inline void compute_generalized_cylinder();
 
