@@ -33,7 +33,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_right_click(false),
     m_bimg_exists(false),
     spd_mode(spine_drawing_mode::piecewise_linear),
-    sp_constraints(spine_constraints::none),
+    sp_constraints(spine_constraints::planar),
     sc_constraints(section_constraints::none),
     comp_type(component_type::generalized_cylinder),
     m_first_ellipse(new Ellipse2D),
@@ -302,7 +302,8 @@ void ImageModeller::model_generalized_cylinder() {
                 m_left_click = false;
                 *m_lsegment = *m_dsegment;
                 m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-                add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
+                // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                 // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                 // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
             }
@@ -316,7 +317,8 @@ void ImageModeller::model_generalized_cylinder() {
 
                     // right click ends the modelling of the current generalized cylinder
                     m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
                     Reset2DDrawingInterface();
@@ -452,6 +454,9 @@ void ImageModeller::compute_generalized_cylinder() {
         A(1,1) = vec[1];
         A(2,1) = vec[2];
 
+        vec.normalize();
+        if(vec.dot(m_first_circle->normal) < 0) vec *= -1;
+
         std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
         for(int i = 1; i < sections.size(); ++i) {
 
@@ -462,9 +467,12 @@ void ImageModeller::compute_generalized_cylinder() {
             std::cout << "sol[0]: " << sol[0] << std::endl;
             sections[i].center *= sol[0];
             sections[i].radius *= sol[0];
-            sections[i].normal = m_first_circle->normal;
+            // sections[i].normal = m_first_circle->normal;
+            sections[i].normal = vec;
         }
         m_gcyl->Recalculate();
+
+        final_circle.normal = vec;
     }
 
     m_gcyl->AddPlanarSection(final_circle);
@@ -481,9 +489,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
     if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
 
-    //  if(sections.size() == 1)
-    //     m_last_circle->normal = m_first_circle->normal;
-
     // 2) Set the depth of the last circle
     m_last_circle->center[2] = m_fixed_depth;
 
@@ -494,6 +499,19 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, *m_last_circle);
 
     // 4) Add estimated 3D circle to the generalized cylinder
+    m_gcyl->AddPlanarSection(*m_last_circle);
+    m_gcyl->Update();
+}
+
+void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder() {
+
+    m_last_circle->normal = m_first_circle->normal;
+    m_last_circle->center[2] = m_fixed_depth;
+    Segment2D seg;
+    m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+    m_segments.push_back(seg);
+    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, *m_last_circle);
+    m_component_solver->SolveDepth(*m_first_circle, *m_last_circle);
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
 }
@@ -831,52 +849,59 @@ void ImageModeller::ray_cast_within_binary_image_for_profile_match() {
 void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
 
     // 1) transform the point coordinates to pixel coordinates
-    Point2D<int> p0(static_cast<int>(m_dsegment->pt1.x()), static_cast<int>(m_dsegment->pt1.y()));
-    Point2D<int> p1(static_cast<int>(m_dsegment->pt2.x()), static_cast<int>(m_dsegment->pt2.y()));
-    m_canvas->UsrDeviceToLogical(p0);
+    Point2D<int> p1(static_cast<int>(m_dsegment->pt1.x()), static_cast<int>(m_dsegment->pt1.y()));
     m_canvas->UsrDeviceToLogical(p1);
+    Point2D<int> p2(static_cast<int>(m_dsegment->pt2.x()), static_cast<int>(m_dsegment->pt2.y()));
+    m_canvas->UsrDeviceToLogical(p2);
 
-    // 2) calculate the casting direction vector, the change in major-axis length is limited by a factor
-    Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * m_scale_factor), static_cast<int>((p1.y - p0.y) * m_scale_factor));
+    // 2) calculate the vectors for ray casting in both directions.
+    //    The length of the inward vector should not be larger than the half of the current segment length
+    //    No limit for the outward vector length (only limited by the scale factor)
+    Vector2D<int> outward_vec(static_cast<int>((p2.x - p1.x) * m_scale_factor),
+                              static_cast<int>((p2.y - p1.y) * m_scale_factor));
+    Vector2D<int> inward_vec = outward_vec;
+    if(m_scale_factor > 0.5) {
+        inward_vec *= (0.5 / m_scale_factor);
+    }
 
     // 3) perform ray casts and display shot rays variables for ray casting
     OtbImageType::PixelType hit_val[4];
     Point2D<int> hit_idx[4];
 
-    // 3.1) ray cast from p0-center direction
-    Point2D<int> end = p0 + dir_vec;
-    if(m_rect->intersect(p0, end))
-        hit_val[0] = GradientImageRayCast(m_gimage, p0, end, hit_idx[0]);
+    // 3.1) ray cast from p1-center direction
+    Point2D<int> end = p1 + inward_vec;
+    if(m_rect->intersect(p1, end))
+        hit_val[0] = GradientImageRayCast(m_gimage, p1, end, hit_idx[0]);
 
     if(m_display_raycast) {
         m_raycast->at(0).x() = end.x;
         m_raycast->at(0).y() = end.y;
     }
 
-    // 3.2) ray cast from p0-outside direction
-    end = p0 - dir_vec;
-    if(m_rect->intersect(p0, end))
-        hit_val[1] = GradientImageRayCast(m_gimage, p0, end, hit_idx[1]);
+    // 3.2) ray cast from p1-outside direction
+    end = p1 - outward_vec;
+    if(m_rect->intersect(p1, end))
+        hit_val[1] = GradientImageRayCast(m_gimage, p1, end, hit_idx[1]);
 
     if(m_display_raycast) {
         m_raycast->at(1).x() = end.x;
         m_raycast->at(1).y() = end.y;
     }
 
-    // 3.3) ray cast from p1-center direction
-    end = p1 - dir_vec;
-    if(m_rect->intersect(p1, end))
-        hit_val[2] = GradientImageRayCast(m_gimage, p1, end, hit_idx[2]);
+    // 3.3) ray cast from p2-center direction
+    end = p2 - inward_vec;
+    if(m_rect->intersect(p2, end))
+        hit_val[2] = GradientImageRayCast(m_gimage, p2, end, hit_idx[2]);
 
     if(m_display_raycast) {
         m_raycast->at(2).x() = end.x;
         m_raycast->at(2).y() = end.y;
     }
 
-    // 3.4) ray cast from p1-outside direction
-    end = p1 + dir_vec;
-    if(m_rect->intersect(p1, end))
-        hit_val[3] = GradientImageRayCast(m_gimage, p1, end, hit_idx[3]);
+    // 3.4) ray cast from p2-outside direction
+    end = p2 + outward_vec;
+    if(m_rect->intersect(p2, end))
+        hit_val[3] = GradientImageRayCast(m_gimage, p2, end, hit_idx[3]);
 
     if(m_display_raycast) {
         m_raycast->at(3).x() = end.x;
@@ -894,72 +919,62 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
     }
 
     // 4) analyze the result of the ray casts
-    OtbImageType::IndexType p0Idx, p1Idx;
-    p0Idx[0] = p0.x;
-    p0Idx[1] = p0.y;
-    OtbImageType::PixelType p0val = m_gimage->GetPixel(p0Idx);
-    p1Idx[0] = p1.x;
-    p1Idx[1] = p1.y;
+    OtbImageType::IndexType p1Idx, p2Idx;
+    p1Idx[0] = p1.x; p1Idx[1] = p1.y;
     OtbImageType::PixelType p1val = m_gimage->GetPixel(p1Idx);
-
-    bool p0_updated = false;
-    Point2D<int> p0_hit = p0;
-    if(hit_val[0] > p0val && hit_val[1] > p0val) {
-        if(hit_val[0] > hit_val[1]) p0_hit = hit_idx[0];
-        else                        p0_hit = hit_idx[1];
-        p0_updated = true;
-    }
-    else if(hit_val[0] > p0val) {
-        p0_hit = hit_idx[0];
-        p0_updated = true;
-    }
-    else if(hit_val[1] > p0val) {
-        p0_hit = hit_idx[1];
-        p0_updated = true;
-    }
-    m_canvas->UsrDeviceToLogical(p0_hit);
+    p2Idx[0] = p2.x; p2Idx[1] = p2.y;
+    OtbImageType::PixelType p2val = m_gimage->GetPixel(p2Idx);
 
     bool p1_updated = false;
     Point2D<int> p1_hit = p1;
-    if(hit_val[2] > p1val && hit_val[3] > p1val) {
-        if(hit_val[2] > hit_val[3]) p1_hit = hit_idx[2];
-        else                        p1_hit = hit_idx[3];
+    if(hit_val[0] > p1val && hit_val[1] > p1val) {              // both side hit
+        if(hit_val[0] > hit_val[1]) p1_hit = hit_idx[0];        // select based on the value of the hit
+        else                        p1_hit = hit_idx[1];
         p1_updated = true;
     }
-    else if(hit_val[2] > p1val) {
-        p1_hit = hit_idx[2];
+    else if(hit_val[0] > p1val) {                               // only one side hit
+        p1_hit = hit_idx[0];
         p1_updated = true;
     }
-    else if(hit_val[3] > p1val) {
-        p1_hit = hit_idx[3];
+    else if(hit_val[1] > p1val) {                               // only one side hit
+        p1_hit = hit_idx[1];
         p1_updated = true;
     }
-    m_canvas->UsrDeviceToLogical(p1_hit);
+    m_canvas->UsrDeviceToLogical(p1_hit);                       // convert hit point to logical coordinates
 
-    osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
+    bool p2_updated = false;
+    Point2D<int> p2_hit = p2;
+    if(hit_val[2] > p2val && hit_val[3] > p2val) {              // both side hit
+        if(hit_val[2] > hit_val[3]) p2_hit = hit_idx[2];        // select based on the value of the hit
+        else                        p2_hit = hit_idx[3];
+        p2_updated = true;
+    }
+    else if(hit_val[2] > p2val) {                               // only one side hit
+        p2_hit = hit_idx[2];
+        p2_updated = true;
+    }
+    else if(hit_val[3] > p2val) {                               // only one side hit
+        p2_hit = hit_idx[3];
+        p2_updated = true;
+    }
+    m_canvas->UsrDeviceToLogical(p2_hit);                       // convert hit point to logical coordinates
+
     osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
+    osg::Vec2d new_p2(p2_hit.x, p2_hit.y);
+    osg::Vec2d mid_p = m_dsegment->mid_point();
 
-    if(p0_updated && p1_updated) { // update p0, p1
-       if((m_dsegment->pt1 - new_p0).length2() <  (m_dsegment->pt2 - new_p1).length2()) {
-            m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
-            m_dsegment->pt2 = new_p1;
-        }
-        else {
-            m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
-            m_dsegment->pt1 = new_p0;
-        }
+    if(p1_updated && p2_updated) { // both points are updated
+
+        m_dsegment->pt1 = new_p1;
+        m_dsegment->pt2 = new_p2;
     }
-    else if(p0_updated) { // update p0, p1 is the mirror of p0
-        m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
-        m_dsegment->pt1 = new_p0;
+    else if(p1_updated) { // update p1, p2 is the mirror of p1
+        m_dsegment->pt1 = new_p1;
+        m_dsegment->pt2 = (mid_p * 2) - new_p1;
     }
-    else if(p1_updated) { // update p1, p0 is the mirror of p1
-        m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
-        m_dsegment->pt2 = new_p1;
-    }
-    // not hits
-    else {
-        return;
+    else if(p2_updated) { // update p2, p1 is the mirror of p2
+        m_dsegment->pt1 = (mid_p * 2) - new_p2;
+        m_dsegment->pt2 = new_p2;
     }
 }
 
