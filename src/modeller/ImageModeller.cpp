@@ -302,8 +302,8 @@ void ImageModeller::model_generalized_cylinder() {
                 m_left_click = false;
                 *m_lsegment = *m_dsegment;
                 m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-                add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
-                // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
+                add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                 // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                 // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
             }
@@ -317,8 +317,8 @@ void ImageModeller::model_generalized_cylinder() {
 
                     // right click ends the modelling of the current generalized cylinder
                     m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
+                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
                     Reset2DDrawingInterface();
@@ -606,7 +606,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogo
     // add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
-
 }
 
 void ImageModeller::initialize_spine_drawing_mode(projection_type pt) {
