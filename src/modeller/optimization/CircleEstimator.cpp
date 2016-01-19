@@ -658,3 +658,80 @@ void CircleEstimator::estimate_3d_circles_using_orthogonality_constraint(const E
     circles[1].normal[2] = nrm.z();
     circles[1].radius = (ctr - P0).length();
 }
+
+void CircleEstimator::estimate_unit_3d_circle_from_major_axis(const Segment2D& seg, double near, Circle3D& circle) {
+
+    osg::Vec3d v1(seg.pt1, near);
+    osg::Vec3d v2(seg.pt2, near);
+    osg::Vec3d diff = v2 - v1;
+
+    osg::Vec3d n0(circle.normal[0], circle.normal[1], circle.normal[2]);
+    osg::Vec3d n1 = n0 ^ (v2 ^ v1);
+    osg::Vec3d n2(-near*diff.x(), -near*diff.y(), v1 * diff);
+    osg::Vec3d n3(n2.x(), n2.y(), v2 * diff);
+
+    double par1 = n0 * v1;
+    double par2 = n0 * v2;
+    double par3 = n0 * n0;
+    double par4 = n0 * n2;
+    double par5 = n0 * n3;
+
+    double k1 = (par2 * par2 * (v1 * v1) - par1 * par1 * (v2 * v2) ) / (2 * near * par1 );
+    double k2 = std::sqrt(par3 * (n2 * n2) - par4 * par4);
+    double k3 = std::sqrt(par3 * (n3 * n3) - par5 * par5);
+
+    osg::Vec3d cam_centre(0,0,0);
+    Ray3D ray1(cam_centre, v1);
+    Ray3D ray2(cam_centre, v2);
+    if(!is_intersecting(ray2, Plane3D(n2.x(), n2.y(), n2.z(), k2))) k2 *= -1;
+    if(!is_intersecting(ray1, Plane3D(n3.x(), n3.y(), n3.z(), k3))) k3 *= -1;
+
+    // Solve the plane equations parametrically
+    Eigen::Matrix3d mat0;
+    mat0 << n1.x(), n1.y(), n1.z(),
+            n2.x(), n2.y(), n2.z(),
+            n3.x(), n3.y(), n3.z();
+
+    Eigen::Matrix3d mat1;
+    mat1 << 0, n1.y(), n1.z(),
+            k2, n2.y(), n2.z(),
+            k3, n3.y(), n3.z();
+
+    Eigen::Matrix2d mat2;
+    mat2 << n2.y(), n2.z(),
+            n3.y(), n3.z();
+
+    Eigen::Matrix3d mat3;
+    mat3 << n1.x(), 0, n1.z(),
+            n2.x(), k2, n2.z(),
+            n3.x(), k3, n3.z();
+
+    Eigen::Matrix2d mat4;
+    mat4 << n2.x(), n2.z(),
+            n3.x(), n3.z();
+
+    Eigen::Matrix3d mat5;
+    mat5 << n1.x(), n1.y(), 0,
+            n2.x(), n2.y(), k2,
+            n3.x(), n3.y(), k3;
+
+    // X = s1 + s2*Z2, Y = s3 + s4*Z2, Z = s5
+    double D = mat0.determinant();
+    double s1 = -mat1.determinant() / D;
+    double s2 = -k1 * mat2.determinant() / D;
+    double s3 = -mat3.determinant() / D ;
+    double s4 = k1 * mat4.determinant() / D;
+    double s5 = -mat5.determinant() / D;
+
+    double t1 = v2.x() / v2.z();
+    double t2 = v2.y() / v2.z();
+    double a = (s2 - t1) * (s2 - t1) + (s4 - t2) * (s4 - t2) + 1;
+    double b = 2 * s1 * (s2 - t1) + 2 * s3 * (s4 - t2) - 2 * s5;
+    double c = s1*s1 + s3*s3 + s5*s5 - 1;
+    double disc = b*b - 4*a*c = 0;
+    std::cout << disc << std::endl;
+
+    // circle.center[0] = s1 + s2 * Z2;
+    // circle.center[1] = s3 + s4 * Z2;
+    // circle.center[2] = s5;
+}
