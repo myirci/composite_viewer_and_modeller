@@ -156,8 +156,8 @@ private:
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
 
-
     inline void compute_generalized_cylinder();
+    inline void recompute_generalized_cylinder();
 
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();

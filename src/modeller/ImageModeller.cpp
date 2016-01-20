@@ -189,7 +189,8 @@ void ImageModeller::DeleteLastSection() {
     if(m_gcyl.valid()) {
         m_gcyl->DeleteLastSection();
         m_uihelper->DeleteLastSpinePoint();
-        // think a method to update the last circle,  m_lsegmet, etc..
+        m_segments.pop_back();
+        // think a method to update the m_lsegmet, etc..
     }
 }
 
@@ -287,7 +288,7 @@ void ImageModeller::model_generalized_cylinder() {
             /* to enable the test
              * uncomment the following line and comment out the m_gcyl_dmode = gcyl_drawing_mode::mode_3
             */
-            // test_circle_estimation_from_major_axis(seg);
+            // test_circle_estimation_from_major_axis();
         }
     }
     else if(m_gcyl_dmode == gcyl_drawing_mode::mode_3) {
@@ -337,7 +338,8 @@ void ImageModeller::model_generalized_cylinder() {
                     else if(m_num_right_click == 2) {
                         calculate_ellipse(m_final_ellipse);
                         m_uihelper->UpdateFinalEllipse(m_final_ellipse);
-                        compute_generalized_cylinder();
+                        // compute_generalized_cylinder();
+                        recompute_generalized_cylinder();
                         Reset2DDrawingInterface();
                     }
                 }
@@ -433,6 +435,79 @@ void ImageModeller::compute_generalized_cylinder() {
 
             sections[i].normal[2] = (-n[0]*sections[i].normal[0] - n[1]*sections[i].normal[1]) / n[2];
             sections[i].normal.normalize();
+        }
+        m_gcyl->Recalculate();
+
+        // scale the last circle so that it's center lies on the computed plane
+        double scale = m_first_circle->center.dot(n) / final_circle.center.dot(n);
+        final_circle.radius *= scale;
+        final_circle.center *= scale;
+        if(final_circle.normal.dot(sections.back().normal) < 0)
+            final_circle.normal *= -1;
+    }
+    else if(sp_constraints == spine_constraints::straight_planar) {
+
+        m_component_solver->SolveDepth(*m_first_circle, final_circle);
+
+        Eigen::Vector3d vec = m_first_circle->center - final_circle.center;
+        Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
+        Eigen::Vector2d sol;
+        A(0,1) = vec[0];
+        A(1,1) = vec[1];
+        A(2,1) = vec[2];
+
+        vec.normalize();
+        if(vec.dot(m_first_circle->normal) < 0) vec *= -1;
+
+        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+        for(int i = 1; i < sections.size(); ++i) {
+
+            A(0,0) = sections[i].center[0];
+            A(1,0) = sections[i].center[1];
+            A(2,0) = sections[i].center[2];
+            sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
+            std::cout << "sol[0]: " << sol[0] << std::endl;
+            sections[i].center *= sol[0];
+            sections[i].radius *= sol[0];
+            // sections[i].normal = m_first_circle->normal;
+            sections[i].normal = vec;
+        }
+        m_gcyl->Recalculate();
+
+        final_circle.normal = vec;
+    }
+
+    m_gcyl->AddPlanarSection(final_circle);
+    m_gcyl->Update();
+}
+
+void ImageModeller::recompute_generalized_cylinder() {
+
+    Circle3D circles[2];
+    int count = estimate_3d_circles_with_fixed_depth(m_final_ellipse, circles, m_fixed_depth);
+
+    Circle3D final_circle;
+    // 2) Select one of the two estimated circles based on how the user drew the ellipse
+    if(count == 2)       final_circle = circles[select_first_3d_circle(circles, m_final_ellipse)];
+    else                 final_circle = circles[0];
+
+    if(sp_constraints == spine_constraints::planar) {
+
+        // find the plane of the generalized cylinder's axis
+        Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
+        n.normalize();
+        Plane3D main_axis_plane(n, m_first_circle->center);
+
+        // update the sections
+        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+        for(int i = 1; i < sections.size(); ++i) {
+            // update the normal
+            sections[i].normal[2] = (-n[0]*sections[i].normal[0] - n[1]*sections[i].normal[1]) / n[2];
+            sections[i].normal.normalize();
+            m_circle_estimator->estimate_unit_3d_circle_from_major_axis(m_segments[i], -m_pp->near, sections[i]);
+            double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
+            sections[i].center *= factor;
+            sections[i].radius *= factor;
         }
         m_gcyl->Recalculate();
 
@@ -1089,6 +1164,7 @@ void ImageModeller::project_generalized_cylinder(const GeneralizedCylinder& gcyl
 
 void ImageModeller::test_circle_estimation_from_major_axis() {
 
+    std::cout.precision(16);
     Segment2D seg;
     m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
 
@@ -1105,7 +1181,6 @@ void ImageModeller::test_circle_estimation_from_major_axis() {
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, c1);
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_radius_is_fixed(seg, -m_pp->near, c2);
 
-    std::cout.precision(16);
     std::cout << "----------------------" << std::endl;
     std::cout << circles[0] << std::endl;
     std::cout << "----------------------" << std::endl;
@@ -1116,4 +1191,21 @@ void ImageModeller::test_circle_estimation_from_major_axis() {
     std::cout << "----------------------" << std::endl;
     std::cout << c2 << std::endl;
     std::cout << "----------------------" << std::endl;
+
+
+    /*
+    Circle3D circles2[2];
+    estimate_unit_3d_circles(m_first_ellipse, circles2);
+
+    Circle3D c3;
+    c3.normal = circles2[0].normal;
+    c3.radius = 1;
+
+    m_circle_estimator->estimate_unit_3d_circle_from_major_axis(seg, -m_pp->near, c3);
+
+    std::cout << "----------------------" << std::endl;
+    std::cout << circles2[0] << std::endl;
+    std::cout << "----------------------" << std::endl;
+    std::cout << c3 << std::endl;
+    */
 }
