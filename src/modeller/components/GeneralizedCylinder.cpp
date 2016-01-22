@@ -36,9 +36,9 @@ GeneralizedCylinder::GeneralizedCylinder(unsigned int component_id, const Circle
     m_display_vertex_normals(false) {
 
     // add the geometry
-    osg::Geode* geode1 = new osg::Geode;
-    geode1->addDrawable(m_geometry.get());
-    addChild(geode1);
+    osg::Geode* geode = new osg::Geode;
+    geode->addDrawable(m_geometry.get());
+    addChild(geode);
 
     // add the section normal
     add_to_section_normals(base_circle, 2);
@@ -85,6 +85,17 @@ void GeneralizedCylinder::DeleteLastSection() {
     // recalculated.
     m_geometry->GetSections().pop_back();
     Recalculate();
+}
+
+void GeneralizedCylinder::MakeTransparent() {
+
+    unsigned int numch = getNumChildren();
+    for(int i = 0; i < numch; ++i) {
+        osg::Node* child = getChild(i);
+        osg::StateSet* pStateSet = child->getOrCreateStateSet();
+        pStateSet->setMode(GL_BLEND, osg::StateAttribute::ON);
+        pStateSet->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    }
 }
 
 void GeneralizedCylinder::Clear(bool update_flag) {
