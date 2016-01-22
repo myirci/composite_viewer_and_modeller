@@ -298,13 +298,12 @@ void ImageModeller::model_generalized_cylinder() {
             update_dynamic_segment();
 
             if(m_left_click) {
-
                 // left click is a new spine point
                 m_left_click = false;
                 *m_lsegment = *m_dsegment;
                 m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-                // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
                 add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
                 // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                 // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
             }
@@ -318,10 +317,10 @@ void ImageModeller::model_generalized_cylinder() {
 
                     // right click ends the modelling of the current generalized cylinder
                     m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
                     add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
+                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
                     Reset2DDrawingInterface();
                     // project_generalized_cylinder(*m_gcyl);
                 }
