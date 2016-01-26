@@ -111,6 +111,7 @@ private:
 
     int m_num_right_click;
     std::vector<Segment2D> m_segments;                      // array of major axis segments on the image plane (in projected coordinates)
+    bool m_double_circle_for_collinear_axis;
 
     std::unique_ptr<ModelSolver> m_solver;
     std::unique_ptr<ComponentSolver> m_component_solver;
@@ -152,7 +153,6 @@ private:
 
     // estimation of the other circles
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-    inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
 

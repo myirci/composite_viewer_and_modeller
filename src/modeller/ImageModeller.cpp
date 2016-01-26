@@ -47,7 +47,8 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_display_raycast(false),
     m_raycast(nullptr),
     m_scale_factor(0.35),
-    m_num_right_click(0) {
+    m_num_right_click(0),
+    m_double_circle_for_collinear_axis(true) {
 
     std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
     std::ifstream infile(binary_img_path);
@@ -302,10 +303,14 @@ void ImageModeller::model_generalized_cylinder() {
                 m_left_click = false;
                 *m_lsegment = *m_dsegment;
                 m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-                add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-                // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
-                // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
+
+                if(sp_constraints == spine_constraints::constant_depth) {
+                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+                    // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
+                }
+                else {
+                    add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+                }
             }
 
             else if(m_right_click) {
@@ -320,7 +325,6 @@ void ImageModeller::model_generalized_cylinder() {
                     add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
                     // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
-                    // add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder();
                     Reset2DDrawingInterface();
                     // project_generalized_cylinder(*m_gcyl);
                 }
@@ -357,7 +361,7 @@ void ImageModeller::model_generalized_cylinder() {
                         calculate_ellipse(m_final_ellipse);
                         m_uihelper->UpdateFinalEllipse(m_final_ellipse);
                     }
-                }                
+                }
             }
         }
         else if(spd_mode == spine_drawing_mode::continuous) {
@@ -501,8 +505,10 @@ void ImageModeller::recompute_generalized_cylinder() {
         std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
         for(int i = 1; i < sections.size(); ++i) {
             // update the normal
-            sections[i].normal[2] = (-n[0]*sections[i].normal[0] - n[1]*sections[i].normal[1]) / n[2];
+            sections[i].normal = sections[i].normal - sections[i].normal.dot(n) * n;
+            // sections[i].normal[2] = (-n[0]*sections[i].normal[0] - n[1]*sections[i].normal[1]) / n[2];
             sections[i].normal.normalize();
+
             m_circle_estimator->estimate_unit_3d_circle_from_major_axis(m_segments[i], -m_pp->near, sections[i]);
             double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
             sections[i].center *= factor;
@@ -546,7 +552,7 @@ void ImageModeller::recompute_generalized_cylinder() {
         }
         m_gcyl->Recalculate();
 
-        final_circle.normal = vec;
+        // final_circle.normal = vec;
     }
 
     m_gcyl->AddPlanarSection(final_circle);
@@ -555,39 +561,51 @@ void ImageModeller::recompute_generalized_cylinder() {
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
 
-    // 1) Estimate the normal of the circle
-    m_tvec.normalize();
-    m_last_circle->normal[0] = m_tvec.x();
-    m_last_circle->normal[1] = m_tvec.y();
-    m_last_circle->normal[2] = 0;
-    const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-    if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
+    if(sp_constraints == spine_constraints::straight_planar && !m_double_circle_for_collinear_axis) {
 
-    // 2) Set the depth of the last circle
-    m_last_circle->center[2] = m_fixed_depth;
+        // estimate the normal of the circle
+        m_last_circle->normal = m_first_circle->normal;
 
-    // 3) Based on normal and depth estimation, estimate the 3D circle
+        // based on normal and depth estimation, estimate the 3D circle
+        Segment2D seg;
+        m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+        m_segments.push_back(seg);
+        m_circle_estimator->estimate_unit_3d_circle_from_major_axis(seg, -m_pp->near, *m_last_circle);
+
+        // scale the circle
+        Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
+        Eigen::Vector2d sol;
+        A << m_last_circle->center[0], m_last_circle->normal[0],
+             m_last_circle->center[1], m_last_circle->normal[1],
+             m_last_circle->center[2], m_last_circle->normal[2];
+        sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
+        m_last_circle->center *= sol[0];
+        m_last_circle->radius *= sol[0];
+    }
+    else {
+
+        // estimate the normal of the circle
+        m_tvec.normalize();
+        m_last_circle->normal[0] = m_tvec.x();
+        m_last_circle->normal[1] = m_tvec.y();
+        m_last_circle->normal[2] = 0;
+        const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+        if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
+
+        // set the depth of the last circle
+        m_last_circle->center[2] = m_fixed_depth;
+    }
+
+    // based on normal and depth estimation, estimate the 3D circle
     Segment2D seg;
     m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
     m_segments.push_back(seg);
     m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, *m_last_circle);
 
-    // 4) Add estimated 3D circle to the generalized cylinder
+    // add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
-}
 
-void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection_straight_cylinder() {
-
-    m_last_circle->normal = m_first_circle->normal;
-    m_last_circle->center[2] = m_fixed_depth;
-    Segment2D seg;
-    m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
-    m_segments.push_back(seg);
-    m_circle_estimator->estimate_3d_circle_from_major_axis_when_circle_depth_is_fixed(seg, -m_pp->near, *m_last_circle);
-    m_component_solver->SolveDepth(*m_first_circle, *m_last_circle);
-    m_gcyl->AddPlanarSection(*m_last_circle);
-    m_gcyl->Update();
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthographic_projection() {
