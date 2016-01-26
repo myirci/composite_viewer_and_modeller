@@ -154,7 +154,7 @@ void OsgWxGLCanvas::OnChar(wxKeyEvent &event) {
 
     if(m_parent->UsrGetUIOperationMode() == operation_mode::modelling) {
         if(key == WXK_ESCAPE)
-            m_modeller->Reset2DDrawingInterface();
+            m_modeller->EscapeKeyPressed();
         else if (key == WXK_SPACE)
             m_modeller->DeleteLastSection();
     }
