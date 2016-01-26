@@ -23,7 +23,7 @@ EVT_MENU(wxID_EDIT_ROTATE_CW, ImageFrame::OnRotateCW)
 EVT_MENU(wxID_EDIT_ROTATE_CCW, ImageFrame::OnRotateCCW)
 EVT_MENU(wxID_SAVE, ImageFrame::OnSaveImage)
 EVT_MENU(wxID_MODE_DEFAULT, ImageFrame::OnChangeOperationMode)
-EVT_MENU(wxID_MODE_RegionGrowING, ImageFrame::OnChangeOperationMode)
+EVT_MENU(wxID_MODE_REGION_GROWING, ImageFrame::OnChangeOperationMode)
 EVT_MENU(wxID_VIEW_GRAIDENT_IMAGE, ImageFrame::OnViewGradientImage)
 // EVT_MENU(wxID_MODE_DRAWING, ImageFrame::OnChangeOperationMode)
 // EVT_TOOL(wxID_DRAWING_MODE_CUBOID, ImageFrame::OnChangeDrawMode)
@@ -154,7 +154,7 @@ void ImageFrame::usrInitManubar() {
 
     wxMenu* op_mode = new wxMenu;
     op_mode->AppendRadioItem(wxID_MODE_DEFAULT, wxT("Default"));
-    op_mode->AppendRadioItem(wxID_MODE_RegionGrowING, wxT("Region Growing"));
+    op_mode->AppendRadioItem(wxID_MODE_REGION_GROWING, wxT("Region Growing"));
     // op_mode->AppendRadioItem(wxID_MODE_DRAWING, wxT("Drawing"));
     menubar->Append(op_mode, wxT("Mode"));
     SetMenuBar(menubar);
@@ -201,7 +201,7 @@ void ImageFrame::OnChangeOperationMode(wxCommandEvent& event) {
         m_img_panel->UsrSetUIOperationMode(image_operation_mode::Default);
         std::cout << "Operation mode is set to default" << std::endl;
     }
-    else if(event.GetId() == wxID_MODE_RegionGrowING) {
+    else if(event.GetId() == wxID_MODE_REGION_GROWING) {
         m_img_panel->UsrSetUIOperationMode(image_operation_mode::RegionGrowing);
         std::cout << "Operation mode is set to region growing" << std::endl;
     }

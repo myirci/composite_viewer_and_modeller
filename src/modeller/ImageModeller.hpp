@@ -26,7 +26,8 @@ enum class gcyl_drawing_mode : unsigned char {
     mode_0,     // do nothing
     mode_1,     // semi_major_axis
     mode_2,     // semi_minor_axis
-    mode_3      // spine drawing mode
+    mode_3,     // axis drawing mode
+    mode_4      // second circle drawing
 };
 
 enum class component_type : unsigned char {
@@ -115,12 +116,11 @@ private:
 
     std::unique_ptr<ModelSolver> m_solver;
     std::unique_ptr<ComponentSolver> m_component_solver;
-
 public:
 
     // Public member functions
     void Initialize2DDrawingInterface(osg::Geode* geode);
-    void Reset2DDrawingInterface();
+    void EscapeKeyPressed();
     void OnLeftClick(double x, double y);
     void OnRightClick(double x, double y);
     void OnMouseMove(double x, double y);
@@ -151,12 +151,17 @@ private:
     void ray_cast_within_binary_image_for_profile_match();
     void ray_cast_within_gradient_image_for_profile_match();
 
-    // modelling
+    // reset
+    inline void reset_2d_drawing_interface();
+    inline void reset_second_ellipse_drawing();
+
+    // generalized cylinder modelling steps
     inline void operate_piecewise_linear_axis_drawing_mode();
     inline void operate_continuous_axis_drawing_mode();
 
     // estimation of the other circles
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+    inline void add_planar_section_to_the_straight_generalized_cylinder_under_perspective_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
     inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
 

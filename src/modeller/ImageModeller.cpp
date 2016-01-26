@@ -48,7 +48,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_raycast(nullptr),
     m_scale_factor(0.35),
     m_num_right_click(0),
-    double_circle_drawing(true) {
+    double_circle_drawing(true){
 
     std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
     std::ifstream infile(binary_img_path);
@@ -174,7 +174,17 @@ void ImageModeller::DebugPrint() {
     m_solver->Print();
 }
 
-void ImageModeller::Reset2DDrawingInterface() {
+void ImageModeller::EscapeKeyPressed() {
+    if(m_gcyl_dmode == gcyl_drawing_mode::mode_4) {
+        if(m_num_right_click == 0) reset_2d_drawing_interface();
+        else                       reset_second_ellipse_drawing();
+    }
+    else {
+        reset_2d_drawing_interface();
+    }
+}
+
+void ImageModeller::reset_2d_drawing_interface() {
 
     m_gcyl_dmode = gcyl_drawing_mode::mode_0;
     m_left_click = false;
@@ -185,11 +195,19 @@ void ImageModeller::Reset2DDrawingInterface() {
     m_uihelper->Reset();
 }
 
+void ImageModeller::reset_second_ellipse_drawing() {
+
+    m_left_click = false;
+    m_right_click = false;
+    m_num_right_click = 0;
+    m_uihelper->ResetSecondEllipse();
+}
+
 void ImageModeller::DeleteLastSection() {
 
     if(m_gcyl.valid()) {
         m_gcyl->DeleteLastSection();
-        m_uihelper->DeleteLastSpinePoint();
+        m_uihelper->DeleteLastAxisPoint();
         m_segments.pop_back();
         // think a method to update the m_lsegmet, etc..
     }
@@ -205,7 +223,7 @@ void ImageModeller::OnLeftClick(double x, double y) {
 
 void ImageModeller::OnRightClick(double x, double y) {
 
-    if(m_gcyl_dmode == gcyl_drawing_mode::mode_3) {
+    if(m_gcyl_dmode == gcyl_drawing_mode::mode_3 || m_gcyl_dmode == gcyl_drawing_mode::mode_4) {
         m_right_click = true;
         m_mouse.set(x,y);
         m_vertices->push_back(m_mouse);
@@ -283,7 +301,7 @@ void ImageModeller::model_generalized_cylinder() {
             // third click: base ellipse (m_first_ellipse) has been determined.
             m_left_click = false;
             initialize_axis_drawing_mode(projection_type::perspective);
-            m_uihelper->InitializeSpineDrawing(m_first_ellipse);
+            m_uihelper->InitializeAxisDrawing(m_first_ellipse);
             m_gcyl_dmode = gcyl_drawing_mode::mode_3;
 
             /* to enable the test
@@ -296,62 +314,13 @@ void ImageModeller::model_generalized_cylinder() {
         if(axis_dmode == axis_drawing_mode::piecewise_linear) operate_piecewise_linear_axis_drawing_mode();
         else if(axis_dmode == axis_drawing_mode::continuous)  operate_continuous_axis_drawing_mode();
     }
-}
+    else if(m_gcyl_dmode == gcyl_drawing_mode::mode_4) {
 
-void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
+        if(m_right_click) {
 
-    update_dynamic_segment();
-
-    if(m_left_click) {
-
-        // every left click is a new spine point
-        m_left_click = false;
-        *m_lsegment = *m_dsegment;
-        m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-
-        if(ax_constraints == axis_constraints::linear && !double_circle_drawing) {
-
-            // estimate the normal of the circle
-            m_last_circle->normal = m_first_circle->normal;
-
-            // based on normal and depth estimation, estimate the 3D circle
-            Segment2D seg;
-            m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
-            m_segments.push_back(seg);
-            m_circle_estimator->estimate_unit_3d_circle_from_major_axis(seg, -m_pp->near, *m_last_circle);
-
-            // scale the circle
-            Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
-            Eigen::Vector2d sol;
-            A << m_last_circle->center[0], m_last_circle->normal[0],
-                 m_last_circle->center[1], m_last_circle->normal[1],
-                 m_last_circle->center[2], m_last_circle->normal[2];
-            sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
-            m_last_circle->center *= sol[0];
-            m_last_circle->radius *= sol[0];
-        }
-        else {
-            add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-            // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-        }
-    }
-    else if(m_right_click) {
-
-        m_right_click = false;
-        *m_lsegment = *m_dsegment;
-
-        if(ax_constraints == axis_constraints::constant_depth) {
-
-            // right click ends the modelling of the current generalized cylinder
-            m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-            add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-            // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-             Reset2DDrawingInterface();
-            // project_generalized_cylinder(*m_gcyl);
-        }
-        else if(ax_constraints == axis_constraints::planar || (ax_constraints == axis_constraints::linear && double_circle_drawing)) {
-
+            m_right_click = false;
             ++m_num_right_click;
+
             if(m_num_right_click == 1) {
                 m_uihelper->InitializeMajorAxisDrawing(m_mouse, false);
                 m_final_ellipse->points[0] = m_mouse;
@@ -369,43 +338,67 @@ void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
                 m_uihelper->UpdateEllipse(m_final_ellipse, false);
                 // compute_generalized_cylinder();
                 recompute_generalized_cylinder();
-                Reset2DDrawingInterface();
+                reset_2d_drawing_interface();
             }
+        }
+        else {
 
-            /*
-            ++m_num_right_click;
             if(m_num_right_click == 1) {
-                m_uihelper->InitializeFinalEllipseDisplay(m_dsegment);
-                m_final_ellipse->update_major_axis(m_lsegment->pt1, m_lsegment->pt2);
-                Segment2D seg;
-                m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
-                m_segments.push_back(seg);
+                m_uihelper->Updatep1(m_mouse, false);
             }
             else if(m_num_right_click == 2) {
-                calculate_ellipse(m_final_ellipse);
-                m_uihelper->UpdateFinalEllipse(m_final_ellipse);
-                // compute_generalized_cylinder();
-                recompute_generalized_cylinder();
-                Reset2DDrawingInterface();
-            }
-            */
-        }
-    }
-    else {
-        if(ax_constraints == axis_constraints::constant_depth || (ax_constraints == axis_constraints::linear && !double_circle_drawing)) {
-            m_uihelper->UpdateSweepCurve(m_dsegment);
-            m_uihelper->SpinePointCandidate(m_dsegment->mid_point());
-        }
-        else if(ax_constraints == axis_constraints::planar || (ax_constraints == axis_constraints::linear && double_circle_drawing)) {
-            if(m_num_right_click == 0) {
-                m_uihelper->UpdateSweepCurve(m_dsegment);
-                m_uihelper->SpinePointCandidate(m_dsegment->mid_point());
-            }
-            else {
                 calculate_ellipse(m_final_ellipse);
                 m_uihelper->UpdateEllipse(m_final_ellipse, false);
             }
         }
+    }
+}
+
+void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
+
+    update_dynamic_segment();
+
+    if(m_left_click) { // every left click is a new axis point
+
+        m_left_click = false;                              // toggle the flag
+        *m_lsegment = *m_dsegment;                         // update the last segment
+        m_uihelper->AddAxisPoint(m_dsegment->mid_point()); // update the user interface
+
+        if(ax_constraints == axis_constraints::linear && !double_circle_drawing) {
+            add_planar_section_to_the_straight_generalized_cylinder_under_perspective_projection();
+        }
+        else {
+            add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+            // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+        }
+    }
+    else if(m_right_click) {
+        m_right_click = false;
+
+        if(ax_constraints == axis_constraints::constant_depth) {// right click ends the modelling of the current generalized cylinder
+
+            *m_lsegment = *m_dsegment;                          // update the last segment
+            m_uihelper->AddAxisPoint(m_dsegment->mid_point());  // update the user interface
+            add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+            // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+            reset_2d_drawing_interface();
+            // project_generalized_cylinder(*m_gcyl);
+        }
+        else if(ax_constraints == axis_constraints::linear && !double_circle_drawing) {
+            *m_lsegment = *m_dsegment;                          // update the last segment
+            m_uihelper->AddAxisPoint(m_dsegment->mid_point());  // update the user interface
+            add_planar_section_to_the_straight_generalized_cylinder_under_perspective_projection();
+            reset_2d_drawing_interface();
+        }
+        else if(ax_constraints == axis_constraints::planar ||
+                (ax_constraints == axis_constraints::linear && double_circle_drawing)) {
+            m_gcyl_dmode = gcyl_drawing_mode::mode_4;
+            m_uihelper->ResetSweepCurve();
+        }
+    }
+    else {
+        m_uihelper->UpdateSweepCurve(m_dsegment);
+        m_uihelper->AxisPointCandidate(m_dsegment->mid_point());
     }
 }
 
@@ -625,6 +618,31 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     m_gcyl->Update();
 }
 
+void ImageModeller::add_planar_section_to_the_straight_generalized_cylinder_under_perspective_projection() {
+
+    // all normals are equal to the first normal
+    m_last_circle->normal = m_first_circle->normal;
+
+    // compute the last segment in the projected coordinates
+    Segment2D seg;
+    m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+    m_segments.push_back(seg);
+
+    // compute the cırcle centre
+    m_circle_estimator->estimate_unit_3d_circle_from_major_axis(seg, -m_pp->near, *m_last_circle);
+
+    // scale the circle
+    Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
+    Eigen::Vector2d sol;
+    A << m_last_circle->center[0], m_last_circle->normal[0],
+         m_last_circle->center[1], m_last_circle->normal[1],
+         m_last_circle->center[2], m_last_circle->normal[2];
+    sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
+    m_last_circle->center *= sol[0];
+    m_last_circle->radius *= sol[0];
+
+}
+
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthographic_projection() {
 
     // set the radius: proportional to the length of the semi-major axis
@@ -773,7 +791,7 @@ void ImageModeller::update_dynamic_segment() {
     // copy the last segment into the dynamic segment
     *m_dsegment = *m_lsegment;
 
-    // vector from last validated spine point to the current mouse position
+    // vector from last validated axis point to the current mouse position
     m_tvec = m_mouse - m_lsegment->mid_point();
 
     if(ax_constraints == axis_constraints::linear) {
@@ -787,7 +805,7 @@ void ImageModeller::update_dynamic_segment() {
     }
     else {
 
-        // rotate the dynamic segment according to the bend of the spine curve
+        // rotate the dynamic segment according to the bend of the axis curve
         osg::Vec2d dir = m_lsegment->direction();
         double angle = acos((m_tvec * dir) / m_tvec.length());
 

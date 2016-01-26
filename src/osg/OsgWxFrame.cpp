@@ -370,10 +370,11 @@ void OsgWxFrame::usrInitMenubar() {
     model->AppendSubMenu(model_delete, wxT("Delete"));
 
     wxMenu* spncstrnts = new wxMenu;
-    spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_NO_AXIS_CONSTRAINT, wxT("None"));
-    spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH, wxT("Constant Depth"));
     spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_PLANAR_AXIS, wxT("Planar Axis"));
     spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_LINEAR_AXIS, wxT("Linear Axis"));
+    spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH, wxT("Constant Depth"));
+    spncstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_NO_AXIS_CONSTRAINT, wxT("None"));
+
     model->AppendSubMenu(spncstrnts, wxT("Axis Constraints"));
 
     wxMenu* sctncnstrnts = new wxMenu;
@@ -386,7 +387,7 @@ void OsgWxFrame::usrInitMenubar() {
     sp_dr_mode->AppendRadioItem(wxID_MODEL_AXIS_DRAWING_MODE_CONTINUOUS, wxT("Continuous"));
     wxMenuItem* mi = sp_dr_mode->AppendRadioItem(wxID_MODEL_AXIS_DRAWING_MODE_PIECEWISE_LINEAR, wxT("Piecewise Linear"));
     mi->Check(true);
-    model->AppendSubMenu(sp_dr_mode, wxT("Spine Drawing Mode"));
+    model->AppendSubMenu(sp_dr_mode, wxT("Axis Drawing Mode"));
     menubar->Append(model, wxT("Model"));
 
     wxMenu* windows = new wxMenu;
@@ -691,19 +692,19 @@ void OsgWxFrame::OnToggleModellingConstraints(wxCommandEvent& event) {
     switch (event.GetId()) {
     case wxID_MODEL_CONSTRAINTS_NO_AXIS_CONSTRAINT:
         modeller->ax_constraints = axis_constraints::none;
-        std::cout << "\t-Spine constraint is set to none" << std::endl;
+        std::cout << "\t-Axis constraint is set to none" << std::endl;
         break;
     case wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH:
         modeller->ax_constraints = axis_constraints::constant_depth;
-        std::cout << "\t-Spine constraint is set to constant depth" << std::endl;
+        std::cout << "\t-Axis constraint is set to constant depth" << std::endl;
         break;
     case wxID_MODEL_CONSTRAINTS_PLANAR_AXIS:
         modeller->ax_constraints = axis_constraints::planar;
-        std::cout << "\t-Spine constraint is set to planar" << std::endl;
+        std::cout << "\t-Axis constraint is set to planar" << std::endl;
         break;
     case wxID_MODEL_CONSTRAINTS_LINEAR_AXIS:
         modeller->ax_constraints = axis_constraints::linear;
-        std::cout << "\t-Spine constraint is set to linear" << std::endl;
+        std::cout << "\t-Axis constraint is set to linear" << std::endl;
         break;
     case wxID_MODEL_CONSTRAINTS_NO_SECTION_CONSTRAINTS:
         modeller->sc_constraints = section_constraints::none;
@@ -734,7 +735,7 @@ void OsgWxFrame::OnToggleAxisDrawingMode(wxCommandEvent& event) {
         modeller->axis_dmode = axis_drawing_mode::piecewise_linear;
         break;
     default:
-        UsrLogErrorMessage("Id match error when setting spine drawing mode");
+        UsrLogErrorMessage("Id match error when setting axis drawing mode");
         break;
     }
 }
