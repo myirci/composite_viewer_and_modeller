@@ -280,126 +280,142 @@ void UIHelper::Reset() {
 }
 
 // pt = p0 (first click)
-void UIHelper::InitializeMajorAxisDrawing(const osg::Vec2d& pt) {
+void UIHelper::InitializeMajorAxisDrawing(const osg::Vec2d& pt, bool first) {
 
-    // store the first clicked point (p0) into the first and second slots
-    m_base_elp_vertices->at(0) = pt;
-    m_base_elp_vertices->at(1) = pt;
+    if(first) {
+        // store the first clicked point (p0) into the first and second slots
+        m_base_elp_vertices->at(0) = pt;
+        m_base_elp_vertices->at(1) = pt;
 
-    // enable the display of the major axis
-    m_base_elp_arrays[0]->setFirst(0);
-    m_base_elp_arrays[0]->setCount(2);
+        // enable the display of the major axis
+        m_base_elp_arrays[0]->setFirst(0);
+        m_base_elp_arrays[0]->setCount(2);
 
-    // display a small circle at the first click(p0)
-    Ellipse2DLight tmp(3, 3, 0, pt);
-    tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 44, 10);
-    m_base_elp_arrays[3]->setFirst(44);
-    m_base_elp_arrays[3]->setCount(10);
+        // display a small circle at the first click(p0)
+        Ellipse2DLight tmp(3, 3, 0, pt);
+        tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 44, 10);
+        m_base_elp_arrays[3]->setFirst(44);
+        m_base_elp_arrays[3]->setCount(10);
 
-    m_base_elp_vertices->dirty();
+        m_base_elp_vertices->dirty();
+    }
+    else {
+        // store the first clicked point (p0) into the first and second slots
+        m_final_ellipse_vertices->at(0) = pt;
+        m_final_ellipse_vertices->at(1) = pt;
+
+        // enable the display of the major axis
+        m_final_ellipse_arrays[0]->setFirst(0);
+        m_final_ellipse_arrays[0]->setCount(2);
+
+        // display a small circle at the first click(p0)
+        Ellipse2DLight tmp(3, 3, 0, pt);
+        tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 44, 10);
+        m_final_ellipse_arrays[3]->setFirst(44);
+        m_final_ellipse_arrays[3]->setCount(10);
+
+        m_final_ellipse_vertices->dirty();
+    }
 }
 
-void UIHelper::Updatep1(const osg::Vec2d& pt) {
+void UIHelper::Updatep1(const osg::Vec2d& pt, bool first) {
 
-    m_base_elp_vertices->at(1) = pt;
-    m_base_elp_vertices->dirty();
+    if(first) {
+        m_base_elp_vertices->at(1) = pt;
+        m_base_elp_vertices->dirty();
+    }
+    else {
+        m_final_ellipse_vertices->at(1) = pt;
+        m_final_ellipse_vertices->dirty();
+    }
 }
 
 // pt = p1 (second click)
-void UIHelper::InitializeMinorAxisDrawing(const osg::Vec2d& pt) {
+void UIHelper::InitializeMinorAxisDrawing(const osg::Vec2d& pt, bool first) {
 
-    // store the second clicked point (p1) into the second slot
-    m_base_elp_vertices->at(1) = pt;
+    if(first) {
+        // store the second clicked point (p1) into the second slot
+        m_base_elp_vertices->at(1) = pt;
 
-    // display a small circle at the second clicked point (p1)
-    Ellipse2DLight tmp(3, 3, 0, pt);
-    tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 54, 10);
-    m_base_elp_arrays[4]->setFirst(54);
-    m_base_elp_arrays[4]->setCount(10);
+        // display a small circle at the second clicked point (p1)
+        Ellipse2DLight tmp(3, 3, 0, pt);
+        tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 54, 10);
+        m_base_elp_arrays[4]->setFirst(54);
+        m_base_elp_arrays[4]->setCount(10);
 
-    // display a small cirle at the center of the ellipse
-    tmp.center = (m_base_elp_vertices->at(0) + m_base_elp_vertices->at(1)) / 2.0;
-    tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 64, 10);
-    m_base_elp_arrays[5]->setFirst(64);
-    m_base_elp_arrays[5]->setCount(10);
+        // display a small cirle at the center of the ellipse
+        tmp.center = (m_base_elp_vertices->at(0) + m_base_elp_vertices->at(1)) / 2.0;
+        tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 64, 10);
+        m_base_elp_arrays[5]->setFirst(64);
+        m_base_elp_arrays[5]->setCount(10);
 
-    //display the minor axis guideline
-    osg::Vec2d vec1 = m_base_elp_vertices->at(1) - tmp.center;
-    osg::Vec2d vec2(-vec1.y(), vec1.x());
-    m_base_elp_vertices->at(2) = tmp.center - vec2;
-    m_base_elp_vertices->at(3) = tmp.center + vec2;
-    m_base_elp_arrays[1]->setFirst(2);
-    m_base_elp_arrays[1]->setCount(2);
+        //display the minor axis guideline
+        osg::Vec2d vec1 = m_base_elp_vertices->at(1) - tmp.center;
+        osg::Vec2d vec2(-vec1.y(), vec1.x());
+        m_base_elp_vertices->at(2) = tmp.center - vec2;
+        m_base_elp_vertices->at(3) = tmp.center + vec2;
+        m_base_elp_arrays[1]->setFirst(2);
+        m_base_elp_arrays[1]->setCount(2);
 
-    // display of the projection of mouse pointer onto the minor axis guideline
-    // currently the projection is the same with the center of the ellipse
-    tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 74, 10);
-    m_base_elp_arrays[6]->setFirst(74);
-    m_base_elp_arrays[6]->setCount(10);
-    m_base_elp_vertices->dirty();
+        // display of the projection of mouse pointer onto the minor axis guideline
+        // currently the projection is the same with the center of the ellipse
+        tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 74, 10);
+        m_base_elp_arrays[6]->setFirst(74);
+        m_base_elp_arrays[6]->setCount(10);
+        m_base_elp_vertices->dirty();
+    }
+    else {
+
+        // store the second clicked point (p1) into the second slot
+        m_final_ellipse_vertices->at(1) = pt;
+
+        // display a small circle at the second clicked point (p1)
+        Ellipse2DLight tmp(3, 3, 0, pt);
+        tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 54, 10);
+        m_final_ellipse_arrays[4]->setFirst(54);
+        m_final_ellipse_arrays[4]->setCount(10);
+
+        // display a small cirle at the center of the ellipse
+        tmp.center = (m_final_ellipse_vertices->at(0) + m_final_ellipse_vertices->at(1)) / 2.0;
+        tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 64, 10);
+        m_final_ellipse_arrays[5]->setFirst(64);
+        m_final_ellipse_arrays[5]->setCount(10);
+
+        //display the minor axis guideline
+        osg::Vec2d vec1 = m_final_ellipse_vertices->at(1) - tmp.center;
+        osg::Vec2d vec2(-vec1.y(), vec1.x());
+        m_final_ellipse_vertices->at(2) = tmp.center - vec2;
+        m_final_ellipse_vertices->at(3) = tmp.center + vec2;
+        m_final_ellipse_arrays[1]->setFirst(2);
+        m_final_ellipse_arrays[1]->setCount(2);
+
+        // display of the projection of mouse pointer onto the minor axis guideline
+        // currently the projection is the same with the center of the ellipse
+        tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 74, 10);
+        m_final_ellipse_arrays[6]->setFirst(74);
+        m_final_ellipse_arrays[6]->setCount(10);
+        m_final_ellipse_vertices->dirty();
+    }
 }
 
-void UIHelper::UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp) {
+void UIHelper::UpdateEllipse(const std::unique_ptr<Ellipse2D>& elp, bool first) {
 
-    elp->generate_points_on_the_ellipse(m_base_elp_vertices, 4, 40);
-    Ellipse2DLight tmp(3, 3, 0, elp->points[2]);
-    tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 74, 10);
-    m_base_elp_arrays[2]->setFirst(4);
-    m_base_elp_arrays[2]->setCount(40);
-    m_base_elp_vertices->dirty();
-}
-
-void UIHelper::InitializeFinalEllipseDisplay(const std::unique_ptr<Segment2D>& segment) {
-
-    // major axis
-    m_final_ellipse_vertices->at(0) = segment->pt1;
-    m_final_ellipse_vertices->at(1) = segment->pt2;
-    m_final_ellipse_arrays[0]->setFirst(0);
-    m_final_ellipse_arrays[0]->setCount(2);
-
-    // minor axis guideline
-    osg::Vec2d mid = segment->mid_point();
-    osg::Vec2d vec1 = m_final_ellipse_vertices->at(1) - mid;
-    osg::Vec2d vec2(-vec1.y(), vec1.x());
-    m_final_ellipse_vertices->at(2) = mid - vec2;
-    m_final_ellipse_vertices->at(3) = mid + vec2;
-    m_final_ellipse_arrays[1]->setFirst(2);
-    m_final_ellipse_arrays[1]->setCount(2);
-
-    // display a small circle on the first point
-    Ellipse2DLight tmp(3, 3, 0, segment->pt1);
-    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 44, 10);
-    m_final_ellipse_arrays[3]->setFirst(44);
-    m_final_ellipse_arrays[3]->setCount(10);
-
-    // display a small circle on the second point
-    tmp.center = segment->pt2;
-    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 54, 10);
-    m_final_ellipse_arrays[4]->setFirst(54);
-    m_final_ellipse_arrays[4]->setCount(10);
-
-    // display a small cirle at the center of the ellipse
-    tmp.center = (m_final_ellipse_vertices->at(0) + m_final_ellipse_vertices->at(1)) / 2.0;
-    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 64, 10);
-    m_final_ellipse_arrays[5]->setFirst(64);
-    m_final_ellipse_arrays[5]->setCount(10);
-
-    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 74, 10);
-    m_final_ellipse_arrays[6]->setFirst(74);
-    m_final_ellipse_arrays[6]->setCount(10);
-
-    m_final_ellipse_vertices->dirty();
-}
-
-void UIHelper::UpdateFinalEllipse(const std::unique_ptr<Ellipse2D>& elp) {
-
-    elp->generate_points_on_the_ellipse(m_final_ellipse_vertices, 4, 40);
-    Ellipse2DLight tmp(3, 3, 0, elp->points[2]);
-    tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 74, 10);
-    m_final_ellipse_arrays[2]->setFirst(4);
-    m_final_ellipse_arrays[2]->setCount(40);
-    m_final_ellipse_vertices->dirty();
-
+    if(first) {
+        elp->generate_points_on_the_ellipse(m_base_elp_vertices, 4, 40);
+        Ellipse2DLight tmp(3, 3, 0, elp->points[2]);
+        tmp.generate_points_on_the_ellipse(m_base_elp_vertices, 74, 10);
+        m_base_elp_arrays[2]->setFirst(4);
+        m_base_elp_arrays[2]->setCount(40);
+        m_base_elp_vertices->dirty();
+    }
+    else {
+        elp->generate_points_on_the_ellipse(m_final_ellipse_vertices, 4, 40);
+        Ellipse2DLight tmp(3, 3, 0, elp->points[2]);
+        tmp.generate_points_on_the_ellipse(m_final_ellipse_vertices, 74, 10);
+        m_final_ellipse_arrays[2]->setFirst(4);
+        m_final_ellipse_arrays[2]->setCount(40);
+        m_final_ellipse_vertices->dirty();
+    }
 }
 
 void UIHelper::InitializeSpineDrawing(const std::unique_ptr<Ellipse2D>& ellipse) {

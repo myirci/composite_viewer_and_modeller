@@ -94,7 +94,7 @@ private:
     void OnToggleRenderType(wxCommandEvent& event);
     void OnToggleUIOperationMode(wxCommandEvent& event);
     void OnToggleModellingConstraints(wxCommandEvent& event);
-    void OnToggleSpineDrawingMode(wxCommandEvent& event);
+    void OnToggleAxisDrawingMode(wxCommandEvent& event);
     void OnToggleImageDisplay(wxCommandEvent& event);
     void OnEnableRayCastDisplay(wxCommandEvent& event);
     void OnDisplayLocalFrames(wxCommandEvent& event);

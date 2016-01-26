@@ -22,17 +22,17 @@ public:
 
     UIHelper(osg::Geode* geode);
     void Reset();
-    void InitializeMajorAxisDrawing(const osg::Vec2d& pt);
-    void InitializeMinorAxisDrawing(const osg::Vec2d& pt);
+
+    void InitializeMajorAxisDrawing(const osg::Vec2d& pt, bool first = true);
+    void Updatep1(const osg::Vec2d& pt, bool first = true);
+    void InitializeMinorAxisDrawing(const osg::Vec2d& pt, bool first = true);
+    void UpdateEllipse(const std::unique_ptr<Ellipse2D>& elp, bool first = true);
+
     void InitializeSpineDrawing(const std::unique_ptr<Ellipse2D>& ellipse);
     void SpinePointCandidate(const osg::Vec2d& pt);
     void AddSpinePoint(const osg::Vec2d& pt);
-    void Updatep1(const osg::Vec2d& pt);
     void UpdateSweepCurve(const std::unique_ptr<Ellipse2D>& ellipse);
     void UpdateSweepCurve(const std::unique_ptr<Segment2D>& segment);
-    void UpdateBaseEllipse(const std::unique_ptr<Ellipse2D>& elp);
-    void InitializeFinalEllipseDisplay(const std::unique_ptr<Segment2D>& segment);
-    void UpdateFinalEllipse(const std::unique_ptr<Ellipse2D>& elp);
     void DisplayLineStrip(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
     void DisplayLineLoop(const std::vector<osg::Vec2d>& pts, const osg::Vec4& color);
     void DisplayRayCast(const osg::ref_ptr<osg::Vec2dArray>& pts);

@@ -35,11 +35,11 @@ enum class component_type : unsigned char {
     sphere
 };
 
-enum class spine_constraints : unsigned char {
+enum class axis_constraints : unsigned char {
     none,             // no constraint
-    constant_depth,   // spine points are on a plane parallel to image plane
-    straight_planar,  // spine points constitutes a 3D line
-    planar            // spine points are planar
+    constant_depth,   // axis points are on a plane parallel to image plane
+    linear,           // axis is a 3D line segment
+    planar            // axis is a piecewise linear line on a plane
 };
 
 enum class section_constraints : unsigned char {
@@ -48,7 +48,7 @@ enum class section_constraints : unsigned char {
     linear_scaling
 };
 
-enum class spine_drawing_mode : unsigned char {
+enum class axis_drawing_mode : unsigned char {
     continuous,
     piecewise_linear
 };
@@ -65,9 +65,9 @@ public:
     ~ImageModeller();
 
     component_type comp_type;           // type of the component being modelled
-    spine_constraints sp_constraints;   // constraints on the main axis of the component
+    axis_constraints ax_constraints;    // constraints on the axis of the component
     section_constraints sc_constraints; // constraints on the sections of the generalized cylinders and cuboids
-    spine_drawing_mode spd_mode;        // either continuous or piecewise
+    axis_drawing_mode axis_dmode;       // either continuous or piecewise
 
 private:
 
@@ -111,7 +111,7 @@ private:
 
     int m_num_right_click;
     std::vector<Segment2D> m_segments;                      // array of major axis segments on the image plane (in projected coordinates)
-    bool m_double_circle_for_collinear_axis;
+    bool double_circle_drawing;                             // double circle drawing mode for straight axis generalized cylinders
 
     std::unique_ptr<ModelSolver> m_solver;
     std::unique_ptr<ComponentSolver> m_component_solver;
@@ -145,11 +145,15 @@ private:
     void calculate_ellipse(std::unique_ptr<Ellipse2D>& ellipse);
     void update_dynamic_segment();
     void update_dynamic_segment_with_mirror_point(const osg::Vec2d& pt, bool first);
-    void initialize_spine_drawing_mode(projection_type pt);
+    void initialize_axis_drawing_mode(projection_type pt);
 
     // ray cast functiond
     void ray_cast_within_binary_image_for_profile_match();
     void ray_cast_within_gradient_image_for_profile_match();
+
+    // modelling
+    inline void operate_piecewise_linear_axis_drawing_mode();
+    inline void operate_continuous_axis_drawing_mode();
 
     // estimation of the other circles
     inline void add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
