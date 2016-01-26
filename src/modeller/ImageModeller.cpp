@@ -32,8 +32,8 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_left_click(false),
     m_right_click(false),
     m_bimg_exists(false),
-    spd_mode(spine_drawing_mode::piecewise_linear),
-    sp_constraints(spine_constraints::planar),
+    axis_dmode(axis_drawing_mode::piecewise_linear),
+    ax_constraints(axis_constraints::planar),
     sc_constraints(section_constraints::none),
     comp_type(component_type::generalized_cylinder),
     m_first_ellipse(new Ellipse2D),
@@ -48,7 +48,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_raycast(nullptr),
     m_scale_factor(0.35),
     m_num_right_click(0),
-    m_double_circle_for_collinear_axis(true) {
+    double_circle_drawing(true) {
 
     std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
     std::ifstream infile(binary_img_path);
@@ -277,12 +277,12 @@ void ImageModeller::model_generalized_cylinder() {
 
         // calculate the possible ellpise based on the current mouse position
         calculate_ellipse(m_first_ellipse);
-        m_uihelper->UpdateBaseEllipse(m_first_ellipse);
+        m_uihelper->UpdateEllipse(m_first_ellipse);
 
         if(m_left_click) {
             // third click: base ellipse (m_first_ellipse) has been determined.
             m_left_click = false;
-            initialize_spine_drawing_mode(projection_type::perspective);
+            initialize_axis_drawing_mode(projection_type::perspective);
             m_uihelper->InitializeSpineDrawing(m_first_ellipse);
             m_gcyl_dmode = gcyl_drawing_mode::mode_3;
 
@@ -293,81 +293,124 @@ void ImageModeller::model_generalized_cylinder() {
         }
     }
     else if(m_gcyl_dmode == gcyl_drawing_mode::mode_3) {
+        if(axis_dmode == axis_drawing_mode::piecewise_linear) operate_piecewise_linear_axis_drawing_mode();
+        else if(axis_dmode == axis_drawing_mode::continuous)  operate_continuous_axis_drawing_mode();
+    }
+}
 
-        if(spd_mode == spine_drawing_mode::piecewise_linear) {
+void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
 
-            update_dynamic_segment();
+    update_dynamic_segment();
 
-            if(m_left_click) {
-                // left click is a new spine point
-                m_left_click = false;
-                *m_lsegment = *m_dsegment;
-                m_uihelper->AddSpinePoint(m_dsegment->mid_point());
+    if(m_left_click) {
 
-                if(sp_constraints == spine_constraints::constant_depth) {
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-                    // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
-                }
-                else {
-                    add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                }
-            }
+        // every left click is a new spine point
+        m_left_click = false;
+        *m_lsegment = *m_dsegment;
+        m_uihelper->AddSpinePoint(m_dsegment->mid_point());
 
-            else if(m_right_click) {
+        if(ax_constraints == axis_constraints::linear && !double_circle_drawing) {
 
-                m_right_click = false;
-                *m_lsegment = *m_dsegment;
+            // estimate the normal of the circle
+            m_last_circle->normal = m_first_circle->normal;
 
-                if(sp_constraints == spine_constraints::constant_depth) {
+            // based on normal and depth estimation, estimate the 3D circle
+            Segment2D seg;
+            m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+            m_segments.push_back(seg);
+            m_circle_estimator->estimate_unit_3d_circle_from_major_axis(seg, -m_pp->near, *m_last_circle);
 
-                    // right click ends the modelling of the current generalized cylinder
-                    m_uihelper->AddSpinePoint(m_dsegment->mid_point());
-                    add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-                    // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
-                    // add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
-                    Reset2DDrawingInterface();
-                    // project_generalized_cylinder(*m_gcyl);
-                }
-                else if(sp_constraints == spine_constraints::planar || sp_constraints == spine_constraints::straight_planar) {
-
-                    ++m_num_right_click;
-                    if(m_num_right_click == 1) {
-                        m_uihelper->InitializeFinalEllipseDisplay(m_dsegment);
-                        m_final_ellipse->update_major_axis(m_lsegment->pt1, m_lsegment->pt2);
-                        Segment2D seg;
-                        m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
-                        m_segments.push_back(seg);
-                    }
-                    else if(m_num_right_click == 2) {
-                        calculate_ellipse(m_final_ellipse);
-                        m_uihelper->UpdateFinalEllipse(m_final_ellipse);
-                        // compute_generalized_cylinder();
-                        recompute_generalized_cylinder();
-                        Reset2DDrawingInterface();
-                    }
-                }
-            }
-            else {
-                if(sp_constraints == spine_constraints::constant_depth ) {
-                    m_uihelper->UpdateSweepCurve(m_dsegment);
-                    m_uihelper->SpinePointCandidate(m_dsegment->mid_point());
-                }
-                else if(sp_constraints == spine_constraints::planar || sp_constraints == spine_constraints::straight_planar) {
-                    if(m_num_right_click == 0) {
-                        m_uihelper->UpdateSweepCurve(m_dsegment);
-                        m_uihelper->SpinePointCandidate(m_dsegment->mid_point());
-                    }
-                    else {
-                        calculate_ellipse(m_final_ellipse);
-                        m_uihelper->UpdateFinalEllipse(m_final_ellipse);
-                    }
-                }
-            }
+            // scale the circle
+            Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
+            Eigen::Vector2d sol;
+            A << m_last_circle->center[0], m_last_circle->normal[0],
+                 m_last_circle->center[1], m_last_circle->normal[1],
+                 m_last_circle->center[2], m_last_circle->normal[2];
+            sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
+            m_last_circle->center *= sol[0];
+            m_last_circle->radius *= sol[0];
         }
-        else if(spd_mode == spine_drawing_mode::continuous) {
-            std::cout << "Continuous mode is not implemented yet!" << std::endl;
+        else {
+            add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+            // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
         }
     }
+    else if(m_right_click) {
+
+        m_right_click = false;
+        *m_lsegment = *m_dsegment;
+
+        if(ax_constraints == axis_constraints::constant_depth) {
+
+            // right click ends the modelling of the current generalized cylinder
+            m_uihelper->AddSpinePoint(m_dsegment->mid_point());
+            add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+            // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+             Reset2DDrawingInterface();
+            // project_generalized_cylinder(*m_gcyl);
+        }
+        else if(ax_constraints == axis_constraints::planar || (ax_constraints == axis_constraints::linear && double_circle_drawing)) {
+
+            ++m_num_right_click;
+            if(m_num_right_click == 1) {
+                m_uihelper->InitializeMajorAxisDrawing(m_mouse, false);
+                m_final_ellipse->points[0] = m_mouse;
+            }
+            else if(m_num_right_click == 2) {
+                m_uihelper->InitializeMinorAxisDrawing(m_mouse, false);
+                m_final_ellipse->update_major_axis(m_final_ellipse->points[0], m_mouse);
+                Segment2D lseg(m_final_ellipse->points[0], m_final_ellipse->points[1]);
+                Segment2D seg;
+                m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(lseg, seg);
+                m_segments.push_back(seg);
+            }
+            else if(m_num_right_click == 3) {
+                calculate_ellipse(m_final_ellipse);
+                m_uihelper->UpdateEllipse(m_final_ellipse, false);
+                // compute_generalized_cylinder();
+                recompute_generalized_cylinder();
+                Reset2DDrawingInterface();
+            }
+
+            /*
+            ++m_num_right_click;
+            if(m_num_right_click == 1) {
+                m_uihelper->InitializeFinalEllipseDisplay(m_dsegment);
+                m_final_ellipse->update_major_axis(m_lsegment->pt1, m_lsegment->pt2);
+                Segment2D seg;
+                m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
+                m_segments.push_back(seg);
+            }
+            else if(m_num_right_click == 2) {
+                calculate_ellipse(m_final_ellipse);
+                m_uihelper->UpdateFinalEllipse(m_final_ellipse);
+                // compute_generalized_cylinder();
+                recompute_generalized_cylinder();
+                Reset2DDrawingInterface();
+            }
+            */
+        }
+    }
+    else {
+        if(ax_constraints == axis_constraints::constant_depth || (ax_constraints == axis_constraints::linear && !double_circle_drawing)) {
+            m_uihelper->UpdateSweepCurve(m_dsegment);
+            m_uihelper->SpinePointCandidate(m_dsegment->mid_point());
+        }
+        else if(ax_constraints == axis_constraints::planar || (ax_constraints == axis_constraints::linear && double_circle_drawing)) {
+            if(m_num_right_click == 0) {
+                m_uihelper->UpdateSweepCurve(m_dsegment);
+                m_uihelper->SpinePointCandidate(m_dsegment->mid_point());
+            }
+            else {
+                calculate_ellipse(m_final_ellipse);
+                m_uihelper->UpdateEllipse(m_final_ellipse, false);
+            }
+        }
+    }
+}
+
+void ImageModeller::operate_continuous_axis_drawing_mode() {
+      std::cout << "Continuous mode is not implemented yet!" << std::endl;
 }
 
 void ImageModeller::estimate_first_circle_under_persective_projection() {
@@ -422,7 +465,7 @@ void ImageModeller::compute_generalized_cylinder() {
     else if (count == 1) final_circle = circles[0];
     else                 std::cout << "ERROR: Perspective 3D circle estimation error " << std::endl;
 
-    if(sp_constraints == spine_constraints::planar) {
+    if(ax_constraints == axis_constraints::planar) {
 
         // find the plane of the generalized cylinder's axis
         Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
@@ -448,7 +491,7 @@ void ImageModeller::compute_generalized_cylinder() {
         if(final_circle.normal.dot(sections.back().normal) < 0)
             final_circle.normal *= -1;
     }
-    else if(sp_constraints == spine_constraints::straight_planar) {
+    else if(ax_constraints == axis_constraints::linear) {
 
         m_component_solver->SolveDepth(*m_first_circle, final_circle);
 
@@ -494,7 +537,7 @@ void ImageModeller::recompute_generalized_cylinder() {
     if(count == 2)       final_circle = circles[select_first_3d_circle(circles, m_final_ellipse)];
     else                 final_circle = circles[0];
 
-    if(sp_constraints == spine_constraints::planar) {
+    if(ax_constraints == axis_constraints::planar) {
 
         // find the plane of the generalized cylinder's axis
         Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
@@ -523,7 +566,7 @@ void ImageModeller::recompute_generalized_cylinder() {
         if(final_circle.normal.dot(sections.back().normal) < 0)
             final_circle.normal *= -1;
     }
-    else if(sp_constraints == spine_constraints::straight_planar) {
+    else if(ax_constraints == axis_constraints::linear) {
 
         m_component_solver->SolveDepth(*m_first_circle, final_circle);
 
@@ -560,41 +603,16 @@ void ImageModeller::recompute_generalized_cylinder() {
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspective_projection() {
+    // estimate the normal of the circle
+    m_tvec.normalize();
+    m_last_circle->normal[0] = m_tvec.x();
+    m_last_circle->normal[1] = m_tvec.y();
+    m_last_circle->normal[2] = 0;
+    const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+    if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
 
-    if(sp_constraints == spine_constraints::straight_planar && !m_double_circle_for_collinear_axis) {
-
-        // estimate the normal of the circle
-        m_last_circle->normal = m_first_circle->normal;
-
-        // based on normal and depth estimation, estimate the 3D circle
-        Segment2D seg;
-        m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(*m_lsegment, seg);
-        m_segments.push_back(seg);
-        m_circle_estimator->estimate_unit_3d_circle_from_major_axis(seg, -m_pp->near, *m_last_circle);
-
-        // scale the circle
-        Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
-        Eigen::Vector2d sol;
-        A << m_last_circle->center[0], m_last_circle->normal[0],
-             m_last_circle->center[1], m_last_circle->normal[1],
-             m_last_circle->center[2], m_last_circle->normal[2];
-        sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
-        m_last_circle->center *= sol[0];
-        m_last_circle->radius *= sol[0];
-    }
-    else {
-
-        // estimate the normal of the circle
-        m_tvec.normalize();
-        m_last_circle->normal[0] = m_tvec.x();
-        m_last_circle->normal[1] = m_tvec.y();
-        m_last_circle->normal[2] = 0;
-        const std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-        if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
-
-        // set the depth of the last circle
-        m_last_circle->center[2] = m_fixed_depth;
-    }
+    // set the depth of the last circle
+    m_last_circle->center[2] = m_fixed_depth;
 
     // based on normal and depth estimation, estimate the 3D circle
     Segment2D seg;
@@ -605,7 +623,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_perspec
     // add estimated 3D circle to the generalized cylinder
     m_gcyl->AddPlanarSection(*m_last_circle);
     m_gcyl->Update();
-
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthographic_projection() {
@@ -700,7 +717,7 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogo
     m_gcyl->Update();
 }
 
-void ImageModeller::initialize_spine_drawing_mode(projection_type pt) {
+void ImageModeller::initialize_axis_drawing_mode(projection_type pt) {
 
     // modify the user clicked point with its projection on the minor-axis guide line
     m_vertices->at(2) = m_first_ellipse->points[2];
@@ -759,7 +776,7 @@ void ImageModeller::update_dynamic_segment() {
     // vector from last validated spine point to the current mouse position
     m_tvec = m_mouse - m_lsegment->mid_point();
 
-    if(sp_constraints == spine_constraints::straight_planar) {
+    if(ax_constraints == axis_constraints::linear) {
         // translate the dynamic segment to the current mouse point
         // under the constraint of straight line
 
