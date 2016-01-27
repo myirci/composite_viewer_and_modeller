@@ -96,6 +96,7 @@ private:
     void OnToggleModellingConstraints(wxCommandEvent& event);
     void OnToggleAxisDrawingMode(wxCommandEvent& event);
     void OnToggleImageDisplay(wxCommandEvent& event);
+    void OnToggleSymmetricProfile(wxCommandEvent& event);
     void OnEnableRayCastDisplay(wxCommandEvent& event);
     void OnDisplayLocalFrames(wxCommandEvent& event);
     void OnDisplayWorldCoordinateFrame(wxCommandEvent& event);

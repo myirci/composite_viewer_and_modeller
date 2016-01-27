@@ -43,6 +43,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_uihelper(nullptr),
     m_circle_estimator(new CircleEstimator),
     m_display_raycast(false),
+    m_symmetric_profile(false),
     m_raycast(nullptr),
     m_scale_factor(0.35),
     m_num_right_click(0),
@@ -104,6 +105,10 @@ void ImageModeller::DeleteSelectedComopnents(std::vector<int>& index_vector) {
 
 void ImageModeller::SetRenderingType(rendering_type rtype) {
     m_rtype = rtype;
+}
+
+void ImageModeller::SetSymmetricProfile(bool sym) {
+    m_symmetric_profile = sym;
 }
 
 void ImageModeller::EnableRayCastDisplay(bool flag) {
@@ -851,25 +856,6 @@ size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles, std:
     return (vec1.dot(vec2) < 0) ? 0 : 1;
 }
 
-size_t ImageModeller::select_parallel_circle(const Circle3D * const circles) {
-
-    double a = (m_last_circle->normal).dot(circles[0].normal);
-    double b = (m_last_circle->normal).dot(circles[1].normal);
-    return std::abs(a) > std::abs(b) ? 0 : 1;
-}
-
-void ImageModeller::update_dynamic_segment_with_mirror_point(const osg::Vec2d& pt, bool first) {
-
-    if(first) {
-        m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - pt);
-        m_dsegment->pt1 = pt;
-    }
-    else {
-        m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - pt);
-        m_dsegment->pt2 = pt;
-    }
-}
-
 void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
 
     // 1) transform the point coordinates to pixel coordinates
@@ -944,42 +930,52 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
 
     // 4) analyze the result of the ray casts
     OtbImageType::IndexType p1Idx, p2Idx;
-    p1Idx[0] = p1.x; p1Idx[1] = p1.y;
-    OtbImageType::PixelType p1val = m_gimage->GetPixel(p1Idx);
-    p2Idx[0] = p2.x; p2Idx[1] = p2.y;
-    OtbImageType::PixelType p2val = m_gimage->GetPixel(p2Idx);
+    p1Idx[0] = p1.x; p1Idx[1] = p1.y;                           // coordinates of p1
+    OtbImageType::PixelType p1val = m_gimage->GetPixel(p1Idx);  // pixel value of p1
+    p2Idx[0] = p2.x; p2Idx[1] = p2.y;                           // coordinates of p2
+    OtbImageType::PixelType p2val = m_gimage->GetPixel(p2Idx);  // pixel value of p2
 
-    bool p1_updated = false;
+    OtbImageType::PixelType p1_hit_val = p1val;
     Point2D<int> p1_hit = p1;
     if(hit_val[0] > p1val && hit_val[1] > p1val) {              // both side hit
-        if(hit_val[0] > hit_val[1]) p1_hit = hit_idx[0];        // select based on the value of the hit
-        else                        p1_hit = hit_idx[1];
-        p1_updated = true;
+        if(hit_val[0] > hit_val[1]) {                           // select based on the value of the hit
+            p1_hit = hit_idx[0];
+            p1_hit_val = hit_val[0];
+        }
+        else {
+            p1_hit = hit_idx[1];
+            p1_hit_val = hit_val[1];
+        }
     }
     else if(hit_val[0] > p1val) {                               // only one side hit
         p1_hit = hit_idx[0];
-        p1_updated = true;
+        p1_hit_val = hit_val[0];
     }
     else if(hit_val[1] > p1val) {                               // only one side hit
         p1_hit = hit_idx[1];
-        p1_updated = true;
+        p1_hit_val = hit_val[1];
     }
     m_canvas->UsrDeviceToLogical(p1_hit);                       // convert hit point to logical coordinates
 
-    bool p2_updated = false;
+    OtbImageType::PixelType p2_hit_val = p2val;
     Point2D<int> p2_hit = p2;
     if(hit_val[2] > p2val && hit_val[3] > p2val) {              // both side hit
-        if(hit_val[2] > hit_val[3]) p2_hit = hit_idx[2];        // select based on the value of the hit
-        else                        p2_hit = hit_idx[3];
-        p2_updated = true;
+        if(hit_val[2] > hit_val[3]) {                           // select based on the value of the hit
+            p2_hit = hit_idx[2];
+            p2_hit_val = hit_val[2];
+        }
+        else {
+            p2_hit = hit_idx[3];
+            p2_hit_val = hit_val[3];
+        }
     }
     else if(hit_val[2] > p2val) {                               // only one side hit
         p2_hit = hit_idx[2];
-        p2_updated = true;
+        p2_hit_val = hit_val[2];
     }
     else if(hit_val[3] > p2val) {                               // only one side hit
         p2_hit = hit_idx[3];
-        p2_updated = true;
+        p2_hit_val = hit_val[3];
     }
     m_canvas->UsrDeviceToLogical(p2_hit);                       // convert hit point to logical coordinates
 
@@ -987,16 +983,27 @@ void ImageModeller::ray_cast_within_gradient_image_for_profile_match() {
     osg::Vec2d new_p2(p2_hit.x, p2_hit.y);
     osg::Vec2d mid_p = m_dsegment->mid_point();
 
-    if(p1_updated && p2_updated) { // both points are updated
-
-        m_dsegment->pt1 = new_p1;
-        m_dsegment->pt2 = new_p2;
+    if(p1_hit_val != p1val && p2_hit_val != p2val) { // both points are updated
+        if(m_symmetric_profile) {
+            if(p1_hit_val > p2_hit_val) {
+                m_dsegment->pt1 = new_p1;
+                m_dsegment->pt2 = (mid_p * 2) - new_p1;
+            }
+            else {
+                m_dsegment->pt1 = (mid_p * 2) - new_p2;
+                m_dsegment->pt2 = new_p2;
+            }
+        }
+        else {
+            m_dsegment->pt1 = new_p1;
+            m_dsegment->pt2 = new_p2;
+        }
     }
-    else if(p1_updated) { // update p1, p2 is the mirror of p1
+    else if(p1_hit_val != p1val) { // update p1, p2 is the mirror of p1
         m_dsegment->pt1 = new_p1;
         m_dsegment->pt2 = (mid_p * 2) - new_p1;
     }
-    else if(p2_updated) { // update p2, p1 is the mirror of p2
+    else if(p2_hit_val != p2val) { // update p2, p1 is the mirror of p2
         m_dsegment->pt1 = (mid_p * 2) - new_p2;
         m_dsegment->pt2 = new_p2;
     }
