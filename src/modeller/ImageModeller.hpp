@@ -74,14 +74,12 @@ private:
 
     // otb related data members
     OtbImageType::Pointer m_gimage;                         // for gradient image
-    OtbImageType::Pointer m_bimage;                         // for binary image
 
     // osg related data members
     OsgWxGLCanvas* m_canvas;
     osg::ref_ptr<GeneralizedCylinder> m_gcyl;               // for generalized cylinder modelling
     osg::Vec2d m_mouse;                                     // current position of the mouse updated by osgWxGLCanvas
     gcyl_drawing_mode m_gcyl_dmode;                         // current drawing mode of the generalized cylinder
-    bool m_bimg_exists;                                     // indicates if the binary image exists or not
     bool m_right_click;                                     // set to true in the case of user right click
     bool m_left_click;                                      // set to true in the case of user left click
 
@@ -110,7 +108,7 @@ private:
 
     int m_num_right_click;
     std::vector<Segment2D> m_segments;                      // array of major axis segments on the image plane (in projected coordinates)
-    bool double_circle_drawing;                             // double circle drawing mode for straight axis generalized cylinders
+    bool m_double_circle_drawing;                            // double circle drawing mode for straight axis generalized cylinders
 
     std::unique_ptr<ModelSolver> m_solver;
     std::unique_ptr<ComponentSolver> m_component_solver;
@@ -146,7 +144,6 @@ private:
     void initialize_axis_drawing_mode(projection_type pt);
 
     // ray cast functiond
-    void ray_cast_within_binary_image_for_profile_match();
     void ray_cast_within_gradient_image_for_profile_match();
 
     // reset

@@ -30,7 +30,6 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_gcyl_dmode(gcyl_drawing_mode::mode_0),
     m_left_click(false),
     m_right_click(false),
-    m_bimg_exists(false),
     axis_dmode(axis_drawing_mode::piecewise_linear),
     ax_constraints(axis_constraints::planar),
     sc_constraints(section_constraints::none),
@@ -47,41 +46,23 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_raycast(nullptr),
     m_scale_factor(0.35),
     m_num_right_click(0),
-    double_circle_drawing(false){
+    m_double_circle_drawing(false){
 
-    std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
-    std::ifstream infile(binary_img_path);
-    if(infile.good()) {
-        std::cout << "INFO: Binary image is loaded" << std::endl;
-        otb::ImageFileReader<OtbImageType>::Pointer reader = otb::ImageFileReader<OtbImageType>::New();
-        reader->SetFileName(binary_img_path);
-        reader->Update();
-        m_bimage = reader->GetOutput();
-        m_bimg_exists = true;
-        // binary image is ready for processing
-        OtbImageType::SizeType size = m_bimage->GetLargestPossibleRegion().GetSize();
-        m_rect = std::unique_ptr<Rectangle2D>(new Rectangle2D(0, 0, size[0] - 1, size[1] - 1));
+    std::string grad_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_grad"));
+    std::ifstream grad_file(grad_img_path);
+    if(grad_file.good()) {
+        m_gimage = LoadImage<OtbImageType>(grad_img_path);
+        std::cout << "INFO: Gradient image is loaded" << std::endl;
     }
     else {
-
-        std::cout << "INFO: No associated binary image file: " << std::endl;
-        std::string grad_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_grad"));
-        std::ifstream grad_file(grad_img_path);
-        if(grad_file.good()) {
-            m_gimage = LoadImage<OtbImageType>(grad_img_path);
-            std::cout << "INFO: Gradient image is loaded" << std::endl;
-        }
-        else {
-            OtbFloatVectorImageType::Pointer img = LoadImage<OtbFloatVectorImageType>(fpath.ToStdString());
-            m_gimage = GradientMagnitudeImage(img);
-            SaveImage<OtbImageType>(m_gimage, grad_img_path);
-            std::cout << "INFO: No gradient image! Gradient image is calculated and saved to the path: " << grad_img_path << std::endl;
-        }
-
-        OtbImageType::SizeType size = m_gimage->GetLargestPossibleRegion().GetSize();
-        m_rect = std::unique_ptr<Rectangle2D>(new Rectangle2D(0, 0, size[0] - 1, size[1] - 1));
+        OtbFloatVectorImageType::Pointer img = LoadImage<OtbFloatVectorImageType>(fpath.ToStdString());
+        m_gimage = GradientMagnitudeImage(img);
+        SaveImage<OtbImageType>(m_gimage, grad_img_path);
+        std::cout << "INFO: No gradient image! Gradient image is calculated and saved to the path: " << grad_img_path << std::endl;
     }
 
+    OtbImageType::SizeType size = m_gimage->GetLargestPossibleRegion().GetSize();
+    m_rect = std::unique_ptr<Rectangle2D>(new Rectangle2D(0, 0, size[0] - 1, size[1] - 1));
     m_fixed_depth = -(m_pp->near + m_pp->far)/2.0;
 }
 
@@ -295,7 +276,6 @@ void ImageModeller::model_generalized_cylinder() {
         if(m_left_click) {
             // third click: base ellipse (m_first_ellipse) has been determined.
             m_left_click = false;
-            m_first_ellipse->points[2] = m_mouse;
             initialize_axis_drawing_mode(projection_type::perspective);
             m_uihelper->InitializeAxisDrawing(m_first_ellipse);
             m_gcyl_dmode = gcyl_drawing_mode::mode_3;
@@ -360,7 +340,7 @@ void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
         *m_lsegment = *m_dsegment;                         // update the last segment
         m_uihelper->AddAxisPoint(m_dsegment->mid_point()); // update the user interface
 
-        if(ax_constraints == axis_constraints::linear && !double_circle_drawing) {
+        if(ax_constraints == axis_constraints::linear && !m_double_circle_drawing) {
             add_planar_section_to_the_straight_generalized_cylinder_under_perspective_projection();
         }
         else {
@@ -380,14 +360,14 @@ void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
             reset_2d_drawing_interface();
             // project_generalized_cylinder(*m_gcyl);
         }
-        else if(ax_constraints == axis_constraints::linear && !double_circle_drawing) {
+        else if(ax_constraints == axis_constraints::linear && !m_double_circle_drawing) {
             *m_lsegment = *m_dsegment;                          // update the last segment
             m_uihelper->AddAxisPoint(m_dsegment->mid_point());  // update the user interface
             add_planar_section_to_the_straight_generalized_cylinder_under_perspective_projection();
             reset_2d_drawing_interface();
         }
         else if(ax_constraints == axis_constraints::planar ||
-                (ax_constraints == axis_constraints::linear && double_circle_drawing)) {
+                (ax_constraints == axis_constraints::linear && m_double_circle_drawing)) {
             m_gcyl_dmode = gcyl_drawing_mode::mode_4;
             m_uihelper->ResetSweepCurve();
         }
@@ -399,7 +379,7 @@ void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
 }
 
 void ImageModeller::operate_continuous_axis_drawing_mode() {
-      std::cout << "Continuous mode is not implemented yet!" << std::endl;
+    std::cout << "Continuous mode is not implemented yet!" << std::endl;
 }
 
 void ImageModeller::estimate_first_circle_under_persective_projection() {
@@ -631,8 +611,8 @@ void ImageModeller::add_planar_section_to_the_straight_generalized_cylinder_unde
     Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
     Eigen::Vector2d sol;
     A << m_last_circle->center[0], m_last_circle->normal[0],
-         m_last_circle->center[1], m_last_circle->normal[1],
-         m_last_circle->center[2], m_last_circle->normal[2];
+            m_last_circle->center[1], m_last_circle->normal[1],
+            m_last_circle->center[2], m_last_circle->normal[2];
     sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
     m_last_circle->center *= sol[0];
     m_last_circle->radius *= sol[0];
@@ -796,8 +776,7 @@ void ImageModeller::update_dynamic_segment() {
 
         osg::Vec2d vec = m_first_ellipse->points[2] - m_first_ellipse->points[3];
         vec.normalize();
-        m_tvec = vec * (vec * m_tvec);
-        m_dsegment->translate(m_tvec);
+        m_dsegment->translate(vec * (vec * m_tvec));
     }
     else {
 
@@ -812,9 +791,7 @@ void ImageModeller::update_dynamic_segment() {
         m_dsegment->translate(m_tvec);
     }
 
-    if(m_bimg_exists) ray_cast_within_binary_image_for_profile_match();
-    else              ray_cast_within_gradient_image_for_profile_match();
-
+    ray_cast_within_gradient_image_for_profile_match();
 }
 
 int ImageModeller::estimate_3d_circles_with_fixed_radius(std::unique_ptr<Ellipse2D>& ellipse, Circle3D* circles, double desired_radius) {
@@ -890,81 +867,6 @@ void ImageModeller::update_dynamic_segment_with_mirror_point(const osg::Vec2d& p
     else {
         m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - pt);
         m_dsegment->pt2 = pt;
-    }
-}
-
-void ImageModeller::ray_cast_within_binary_image_for_profile_match() {
-
-    // 1) transform the point coordinates to pixel coordinates
-    Point2D<int> p0(static_cast<int>(m_dsegment->pt1.x()), static_cast<int>(m_dsegment->pt1.y()));
-    Point2D<int> p1(static_cast<int>(m_dsegment->pt2.x()), static_cast<int>(m_dsegment->pt2.y()));
-    m_canvas->UsrDeviceToLogical(p0);
-    m_canvas->UsrDeviceToLogical(p1);
-
-    // 2) calculate the casting direction vector,the change in major-axis length is limited by a factor
-    Vector2D<int> dir_vec(static_cast<int>((p1.x - p0.x) * 0.35), static_cast<int>((p1.y - p0.y) * 0.35));
-
-    // 3) perform ray casts and display shot rays variables for ray casting
-    bool hit_result[4] = { false, false, false, false };
-    Point2D<int> hit[4];
-
-    // 3.1) ray cast from p0-center direction
-    Point2D<int> end = p0 + dir_vec;
-    if(m_rect->intersect(p0, end))
-        hit_result[0] = BinaryImageRayCast(m_bimage, p0, end, hit[0]);
-
-    // 3.2) ray cast from p0-outside direction
-    end = p0 - dir_vec;
-    if(m_rect->intersect(p0, end))
-        hit_result[1] = BinaryImageRayCast(m_bimage, p0, end, hit[1]);
-
-    // 3.3) ray cast from p1-center direction
-    end = p1 - dir_vec;
-    if(m_rect->intersect(p1, end))
-        hit_result[2] = BinaryImageRayCast(m_bimage, p1, end, hit[2]);
-
-    // 3.4) ray cast from p1-outside direction
-    end = p1 + dir_vec;
-    if(m_rect->intersect(p1, end))
-        hit_result[3] = BinaryImageRayCast(m_bimage, p1, end, hit[3]);
-
-    // 4) analyze the result of the ray casts
-    Point2D<int> p0_hit = p0;
-    if(hit_result[0] && hit_result[1])  p0_hit = p0;
-    else if(hit_result[0])              p0_hit = hit[0];
-    else if(hit_result[1])              p0_hit = hit[1];
-    m_canvas->UsrDeviceToLogical(p0_hit);
-
-    Point2D<int> p1_hit;
-    if(hit_result[2] && hit_result[3])  p1_hit = p1;
-    else if(hit_result[2])              p1_hit = hit[2];
-    else if(hit_result[3])              p1_hit = hit[3];
-    m_canvas->UsrDeviceToLogical(p1_hit);
-
-    osg::Vec2d new_p0(p0_hit.x, p0_hit.y);
-    osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
-
-    if((hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {          // update p0, p1
-
-        if((m_dsegment->pt1 - new_p0).length2() < (m_dsegment->pt2 - new_p1).length2()) {
-            m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
-            m_dsegment->pt2 = new_p1;
-        }
-        else {
-            m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
-            m_dsegment->pt1 = new_p0;
-        }
-    }
-    else if((hit_result[0] || hit_result[1]) && !(hit_result[2] || hit_result[3])) {    // update p0, p1 is the mirror of p0
-        m_dsegment->pt2 = m_dsegment->pt2 + (m_dsegment->pt1 - new_p0);
-        m_dsegment->pt1 = new_p0;
-    }
-    else if(!(hit_result[0] || hit_result[1]) && (hit_result[2] || hit_result[3])) {    // update p1, p0 is the mirror of p1
-        osg::Vec2d new_p1(p1_hit.x, p1_hit.y);
-        m_dsegment->pt1 = m_dsegment->pt1 + (m_dsegment->pt2 - new_p1);
-    }
-    else {
-        return;
     }
 }
 
