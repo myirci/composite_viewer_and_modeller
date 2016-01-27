@@ -23,7 +23,6 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_pp(pp),
     m_canvas(canvas),
     m_gcyl(nullptr),
-    m_vertices(nullptr),
     m_rect(nullptr),
     m_rtype(rendering_type::triangle_strip),
     m_solver(new ModelSolver()),
@@ -102,9 +101,7 @@ ModelSolver* ImageModeller::GetModelSolver() {
 }
 
 void ImageModeller::Initialize2DDrawingInterface(osg::Geode* geode) {
-
     m_uihelper = std::unique_ptr<UIHelper>(new UIHelper(geode));
-    m_vertices = new osg::Vec2dArray;
 }
 
 void ImageModeller::SaveModel(const std::string& path) {
@@ -189,7 +186,6 @@ void ImageModeller::reset_2d_drawing_interface() {
     m_gcyl_dmode = gcyl_drawing_mode::mode_0;
     m_left_click = false;
     m_right_click = false;
-    m_vertices->clear();
     m_num_right_click = 0;
     m_segments.clear();
     m_uihelper->Reset();
@@ -217,7 +213,6 @@ void ImageModeller::OnLeftClick(double x, double y) {
 
     m_left_click = true;
     m_mouse.set(x,y);
-    m_vertices->push_back(m_mouse);
     model_update();
 }
 
@@ -226,7 +221,6 @@ void ImageModeller::OnRightClick(double x, double y) {
     if(m_gcyl_dmode == gcyl_drawing_mode::mode_3 || m_gcyl_dmode == gcyl_drawing_mode::mode_4) {
         m_right_click = true;
         m_mouse.set(x,y);
-        m_vertices->push_back(m_mouse);
         model_update();
     }
 }
@@ -267,6 +261,7 @@ void ImageModeller::model_generalized_cylinder() {
         if(m_left_click) {
             // first click
             m_left_click = false;
+            m_first_ellipse->points[0] = m_mouse;
             m_uihelper->InitializeMajorAxisDrawing(m_mouse);
             m_gcyl_dmode = gcyl_drawing_mode::mode_1;
         }
@@ -276,10 +271,10 @@ void ImageModeller::model_generalized_cylinder() {
         if(m_left_click) {
             // second click: major axis has been determined.
             m_left_click = false;
-            m_first_ellipse->update_major_axis(m_vertices->at(0), m_vertices->at(1));
+            m_first_ellipse->update_major_axis(m_first_ellipse->points[0], m_mouse);
 
             Segment2D seg;
-            m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(Segment2D(m_vertices->at(0), m_vertices->at(1)), seg);
+            m_pp->convert_segment_from_logical_device_coordinates_to_projected_coordinates(Segment2D(m_first_ellipse->points[0], m_first_ellipse->points[0]), seg);
             m_segments.push_back(seg);
 
             m_uihelper->InitializeMinorAxisDrawing(m_mouse);
@@ -300,6 +295,7 @@ void ImageModeller::model_generalized_cylinder() {
         if(m_left_click) {
             // third click: base ellipse (m_first_ellipse) has been determined.
             m_left_click = false;
+            m_first_ellipse->points[2] = m_mouse;
             initialize_axis_drawing_mode(projection_type::perspective);
             m_uihelper->InitializeAxisDrawing(m_first_ellipse);
             m_gcyl_dmode = gcyl_drawing_mode::mode_3;
@@ -736,9 +732,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogo
 }
 
 void ImageModeller::initialize_axis_drawing_mode(projection_type pt) {
-
-    // modify the user clicked point with its projection on the minor-axis guide line
-    m_vertices->at(2) = m_first_ellipse->points[2];
 
     // copy the base ellipse major axis into the last segment
     m_lsegment->pt1 = m_first_ellipse->points[0];
