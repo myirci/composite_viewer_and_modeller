@@ -52,10 +52,11 @@ EVT_MENU(wxID_MODEL_CONSTRAINTS_LINEAR_AXIS, OsgWxFrame::OnToggleModellingConstr
 EVT_MENU(wxID_MODEL_CONSTRAINTS_PLANAR_AXIS, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEL_CONSTRAINTS_NO_SECTION_CONSTRAINTS, OsgWxFrame::OnToggleModellingConstraints)
-EVT_MENU(wxID_MODEl_CONSTRAINTS_CONSTANT_SECTIONS, OsgWxFrame::OnToggleModellingConstraints)
+EVT_MENU(wxID_MODEL_CONSTRAINTS_CONSTANT_SECTIONS, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEL_CONSTRAINTS_LINEARLY_SCALED_SECTIONS, OsgWxFrame::OnToggleModellingConstraints)
 EVT_MENU(wxID_MODEL_AXIS_DRAWING_MODE_CONTINUOUS, OsgWxFrame::OnToggleAxisDrawingMode)
 EVT_MENU(wxID_MODEL_AXIS_DRAWING_MODE_PIECEWISE_LINEAR, OsgWxFrame::OnToggleAxisDrawingMode)
+EVT_MENU(wxID_MODEL_SYMMETRIC_2D_PROFILES, OsgWxFrame::OnToggleSymmetricProfile)
 EVT_MENU(wxID_MODEL_SAVE_COMPONENT, OsgWxFrame::OnSaveLastComponent)
 EVT_MENU(wxID_MODEL_SAVE_MODEL, OsgWxFrame::OnSaveModel)
 EVT_MENU(wxID_MODEL_DELETE_SELECTED_COMPONENTS, OsgWxFrame::OnDeleteSelectedComponents)
@@ -379,15 +380,17 @@ void OsgWxFrame::usrInitMenubar() {
 
     wxMenu* sctncnstrnts = new wxMenu;
     sctncnstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_NO_SECTION_CONSTRAINTS, wxT("None"));
-    sctncnstrnts->AppendRadioItem(wxID_MODEl_CONSTRAINTS_CONSTANT_SECTIONS, wxT("Constant Sections"));
-    sctncnstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_LINEARLY_SCALED_SECTIONS, wxT("Linearly Scaled Sections"));
+    sctncnstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_CONSTANT_SECTIONS, wxT("Constant Sections"));
+    sctncnstrnts->AppendRadioItem(wxID_MODEL_CONSTRAINTS_LINEARLY_SCALED_SECTIONS, wxT("Linearly Scaled Sections")); 
     model->AppendSubMenu(sctncnstrnts, wxT("Section Constraints"));
 
-    wxMenu* sp_dr_mode = new wxMenu;
-    sp_dr_mode->AppendRadioItem(wxID_MODEL_AXIS_DRAWING_MODE_CONTINUOUS, wxT("Continuous"));
-    wxMenuItem* mi = sp_dr_mode->AppendRadioItem(wxID_MODEL_AXIS_DRAWING_MODE_PIECEWISE_LINEAR, wxT("Piecewise Linear"));
+    wxMenu* axis_drawing_mode = new wxMenu;
+    axis_drawing_mode->AppendRadioItem(wxID_MODEL_AXIS_DRAWING_MODE_CONTINUOUS, wxT("Continuous"));
+    wxMenuItem* mi = axis_drawing_mode->AppendRadioItem(wxID_MODEL_AXIS_DRAWING_MODE_PIECEWISE_LINEAR, wxT("Piecewise Linear"));
     mi->Check(true);
-    model->AppendSubMenu(sp_dr_mode, wxT("Axis Drawing Mode"));
+    model->AppendSubMenu(axis_drawing_mode, wxT("Axis Drawing Mode"));
+
+    model->AppendCheckItem(wxID_MODEL_SYMMETRIC_2D_PROFILES, wxT("Symmetric Profiles"));
     menubar->Append(model, wxT("Model"));
 
     wxMenu* windows = new wxMenu;
@@ -539,7 +542,7 @@ void OsgWxFrame::usrEnableModellingMenus(bool flag) {
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_CONSTANT_DEPTH)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_LINEAR_AXIS)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_NO_SECTION_CONSTRAINTS)->Enable(flag);
-    GetMenuBar()->FindItem(wxID_MODEl_CONSTRAINTS_CONSTANT_SECTIONS)->Enable(flag);
+    GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_CONSTANT_SECTIONS)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_CONSTRAINTS_LINEARLY_SCALED_SECTIONS)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_AXIS_DRAWING_MODE_CONTINUOUS)->Enable(flag);
     GetMenuBar()->FindItem(wxID_MODEL_AXIS_DRAWING_MODE_PIECEWISE_LINEAR)->Enable(flag);
@@ -710,7 +713,7 @@ void OsgWxFrame::OnToggleModellingConstraints(wxCommandEvent& event) {
         modeller->sc_constraints = section_constraints::none;
         std::cout << "\t-Section constraint is set to none" << std::endl;
         break;
-    case wxID_MODEl_CONSTRAINTS_CONSTANT_SECTIONS:
+    case wxID_MODEL_CONSTRAINTS_CONSTANT_SECTIONS:
         modeller->sc_constraints = section_constraints::constant;
         std::cout << "\t-Section constraint is set to constant" << std::endl;
         break;
@@ -756,6 +759,14 @@ void OsgWxFrame::OnToggleImageDisplay(wxCommandEvent& event) {
         }
         break;
     }
+}
+
+void OsgWxFrame::OnToggleSymmetricProfile(wxCommandEvent& event) {
+
+    bool sym = GetMenuBar()->FindItem(event.GetId())->IsChecked();
+    m_canvas->UsrGetModeller()->SetSymmetricProfile(sym);
+    if(sym) std::cout << "\t-Symmetric profiles are on" << std::endl;
+    else    std::cout << "\t-Symmetric profiles are off" << std::endl;
 }
 
 void OsgWxFrame::OnEnableRayCastDisplay(wxCommandEvent& event) {

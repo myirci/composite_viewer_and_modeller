@@ -98,6 +98,7 @@ private:
 
     std::unique_ptr<Rectangle2D> m_rect;                    // for ray casting
     bool m_display_raycast;
+    bool m_symmetric_profile;
     osg::ref_ptr<osg::Vec2dArray> m_raycast;
 
     std::shared_ptr<ProjectionParameters> m_pp;             // for 3D circle estimation
@@ -108,7 +109,7 @@ private:
 
     int m_num_right_click;
     std::vector<Segment2D> m_segments;                      // array of major axis segments on the image plane (in projected coordinates)
-    bool m_double_circle_drawing;                            // double circle drawing mode for straight axis generalized cylinders
+    bool m_double_circle_drawing;                           // double circle drawing mode for straight axis generalized cylinders
 
     std::unique_ptr<ModelSolver> m_solver;
     std::unique_ptr<ComponentSolver> m_component_solver;
@@ -125,6 +126,7 @@ public:
     void DeleteModel();
     void DeleteSelectedComopnents(std::vector<int>& index_vector);
     void SetRenderingType(rendering_type rtype);
+    void SetSymmetricProfile(bool sym);
     void EnableRayCastDisplay(bool flag);
     void IncrementScaleFactor();
     void DecrementScaleFactor();
@@ -140,7 +142,6 @@ private:
     void model_generalized_cylinder();
     void calculate_ellipse(std::unique_ptr<Ellipse2D>& ellipse);
     void update_dynamic_segment();
-    void update_dynamic_segment_with_mirror_point(const osg::Vec2d& pt, bool first);
     void initialize_axis_drawing_mode(projection_type pt);
 
     // ray cast functiond
@@ -176,7 +177,6 @@ private:
 
     // selection of the estimated circles under perspective projection
     inline size_t select_first_3d_circle(const Circle3D* const circles, std::unique_ptr<Ellipse2D>& ellipse);
-    inline size_t select_parallel_circle(const Circle3D* const circles);
 
     // projection functions
     void project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d) const;
