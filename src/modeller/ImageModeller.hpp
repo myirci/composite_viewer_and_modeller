@@ -79,8 +79,6 @@ private:
     // osg related data members
     OsgWxGLCanvas* m_canvas;
     osg::ref_ptr<GeneralizedCylinder> m_gcyl;               // for generalized cylinder modelling
-    osg::ref_ptr<osg::Vec2dArray> m_vertices;               // for storing user clicks
-
     osg::Vec2d m_mouse;                                     // current position of the mouse updated by osgWxGLCanvas
     gcyl_drawing_mode m_gcyl_dmode;                         // current drawing mode of the generalized cylinder
     bool m_bimg_exists;                                     // indicates if the binary image exists or not
