@@ -47,7 +47,7 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_raycast(nullptr),
     m_scale_factor(0.35),
     m_num_right_click(0),
-    double_circle_drawing(true){
+    double_circle_drawing(false){
 
     std::string binary_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_binary"));
     std::ifstream infile(binary_img_path);
@@ -235,15 +235,15 @@ void ImageModeller::OnMouseMove(double x, double y) {
 
 void ImageModeller::IncrementScaleFactor() {
 
-    if(m_scale_factor < 1)
-        m_scale_factor += 0.05;
+    if(m_scale_factor < 0.1)    m_scale_factor += 0.01;
+    else if(m_scale_factor < 1) m_scale_factor += 0.05;
     std::cout << "Current scale factor: " << m_scale_factor << std::endl;
 }
 
 void ImageModeller::DecrementScaleFactor() {
 
-    if(m_scale_factor > 0.1)
-        m_scale_factor -= 0.05;
+    if(m_scale_factor > 0.1)       m_scale_factor -= 0.05;
+    else if(m_scale_factor > 0.02) m_scale_factor -= 0.01;
     std::cout << "Current scale factor: " << m_scale_factor << std::endl;
 }
 
@@ -364,8 +364,8 @@ void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
             add_planar_section_to_the_straight_generalized_cylinder_under_perspective_projection();
         }
         else {
-            add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
-            // add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
+            // add_planar_section_to_the_generalized_cylinder_under_perspective_projection();
+            add_planar_section_to_the_generalized_cylinder_under_orthographic_projection();
         }
     }
     else if(m_right_click) {
@@ -637,6 +637,9 @@ void ImageModeller::add_planar_section_to_the_straight_generalized_cylinder_unde
     m_last_circle->center *= sol[0];
     m_last_circle->radius *= sol[0];
 
+    // add estimated 3D circle to the generalized cylinder
+    m_gcyl->AddPlanarSection(*m_last_circle);
+    m_gcyl->Update();
 }
 
 void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthographic_projection() {
