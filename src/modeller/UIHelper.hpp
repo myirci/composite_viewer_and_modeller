@@ -24,6 +24,7 @@ public:
     void Reset();
     void ResetSweepCurve();
     void ResetSecondEllipse();
+    void ResetRayCastDisplay();
     void InitializeMajorAxisDrawing(const osg::Vec2d& pt, bool first = true);
     void Updatep1(const osg::Vec2d& pt, bool first = true);
     void InitializeMinorAxisDrawing(const osg::Vec2d& pt, bool first = true);

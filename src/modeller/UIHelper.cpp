@@ -201,10 +201,10 @@ osg::Geometry* UIHelper::initialize_ray_cast_display() {
     // for ray cast display
     // 2 for rays shot from p0
     // 2 for rays shot from p1
-    // 10 for p0 center-in hit
-    // 10 for p0 center-out hit
     // 10 for p1 center-in hit
     // 10 for p1 center-out hit
+    // 10 for p2 center-in hit
+    // 10 for p2 center-out hit
 
     osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
     geom->setUseDisplayList(false);
@@ -225,8 +225,8 @@ osg::Geometry* UIHelper::initialize_ray_cast_display() {
     }
 
     osg::Vec4Array* colors = new osg::Vec4Array;
-    colors->push_back(osg::Vec4(1.0f, 0.0f, 1.0f, 1.0f)); // magenta
-    colors->push_back(osg::Vec4(1.0f, 0.0f, 1.0f, 1.0f)); // magenta
+    colors->push_back(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)); // yellow
+    colors->push_back(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)); // yellow
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
     colors->push_back(osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
@@ -239,14 +239,11 @@ void UIHelper::Reset() {
 
     ResetSweepCurve();
     ResetSecondEllipse();
+    ResetRayCastDisplay();
 
     for(auto it = m_first_elp_arrays.begin(); it != m_first_elp_arrays.end(); ++it)
         (*it)->setCount(0);
     m_first_elp_vertices->dirty();
-
-    for(auto it = m_ray_cast_arrays.begin(); it != m_ray_cast_arrays.end(); ++it)
-        (*it)->setCount(0);
-    m_ray_cast_vertices->dirty();
 
     for(auto it = m_proj_arrays.begin(); it != m_proj_arrays.end(); ++it)
         (*it)->setCount(0);
@@ -272,6 +269,12 @@ void UIHelper::ResetSecondEllipse() {
     for(auto it = m_second_elp_arrays.begin(); it != m_second_elp_arrays.end(); ++it)
         (*it)->setCount(0);
     m_second_elp_vertices->dirty();
+}
+
+void UIHelper::ResetRayCastDisplay() {
+    for(auto it = m_ray_cast_arrays.begin(); it != m_ray_cast_arrays.end(); ++it)
+        (*it)->setCount(0);
+    m_ray_cast_vertices->dirty();
 }
 
 void UIHelper::ResetSweepCurve() {

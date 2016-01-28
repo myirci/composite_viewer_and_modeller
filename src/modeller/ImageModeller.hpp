@@ -127,6 +127,7 @@ public:
     void DeleteSelectedComopnents(std::vector<int>& index_vector);
     void SetRenderingType(rendering_type rtype);
     void SetSymmetricProfile(bool sym);
+    void SetDoubleCircleDrawingForLinaerAxisPrior(bool dc);
     void EnableRayCastDisplay(bool flag);
     void IncrementScaleFactor();
     void DecrementScaleFactor();
@@ -144,7 +145,7 @@ private:
     void update_dynamic_segment();
     void initialize_axis_drawing_mode(projection_type pt);
 
-    // ray cast functiond
+    // ray cast
     void ray_cast_within_gradient_image_for_profile_match();
 
     // reset
@@ -162,7 +163,7 @@ private:
     inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
 
     inline void compute_generalized_cylinder();
-    inline void recompute_generalized_cylinder();
+    inline void compute_generalized_right_generalized_cylinder();
 
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
