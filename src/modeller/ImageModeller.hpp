@@ -44,9 +44,9 @@ enum class axis_constraints : unsigned char {
 };
 
 enum class section_constraints : unsigned char {
-    none,
-    constant,
-    linear_scaling
+    none,             // no constraint
+    constant,         // same size
+    linear_scaling    // linear scaling
 };
 
 enum class axis_drawing_mode : unsigned char {
@@ -104,6 +104,8 @@ private:
     std::shared_ptr<ProjectionParameters> m_pp;             // for 3D circle estimation
     std::unique_ptr<CircleEstimator> m_circle_estimator;
 
+    bool m_rgcc;                                            // right generalized cylinder constraint
+
     double m_fixed_depth;                                   // fixed depth
     double m_scale_factor;                                  // scale factor
 
@@ -128,6 +130,7 @@ public:
     void SetRenderingType(rendering_type rtype);
     void SetSymmetricProfile(bool sym);
     void SetDoubleCircleDrawingForLinaerAxisPrior(bool dc);
+    void SetRightGeneralizedCylinderConstraint(bool rgc);
     void EnableRayCastDisplay(bool flag);
     void IncrementScaleFactor();
     void DecrementScaleFactor();
@@ -163,7 +166,7 @@ private:
     inline void add_planar_section_to_the_generalized_cylinder_under_orthogonality_constraint();
 
     inline void compute_generalized_cylinder();
-    inline void compute_generalized_right_generalized_cylinder();
+    inline void compute_right_generalized_cylinder();
 
     // estimation of the first circle
     inline void estimate_first_circle_under_persective_projection();
@@ -177,7 +180,7 @@ private:
     inline void estimate_3d_circle_under_orthographic_projection(std::unique_ptr<Ellipse2D>& ellipse, Circle3D& circle);
 
     // selection of the estimated circles under perspective projection
-    inline size_t select_first_3d_circle(const Circle3D* const circles, std::unique_ptr<Ellipse2D>& ellipse);
+    inline size_t select_correctly_oriented_3d_circle(const Circle3D* const circles, const osg::Vec2d& pt);
 
     // projection functions
     void project_point(const osg::Vec3d& pt3d, osg::Vec2d& pt2d) const;

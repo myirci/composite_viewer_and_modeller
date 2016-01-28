@@ -73,6 +73,7 @@ EVT_MENU(wxID_VIEW_DISPLAY_RAY_CAST, OsgWxFrame::OnEnableRayCastDisplay)
 EVT_MENU(wxID_WINDOWS_COMPONENT_RELATIONS, OsgWxFrame::OnDisplayComponentRelationsDialog)
 EVT_MENU(wxID_MODES_OPERATION_MODE_DISPLAY, OsgWxFrame::OnToggleUIOperationMode)
 EVT_MENU(wxID_MODES_OPERATION_MODE_MODELLING, OsgWxFrame::OnToggleUIOperationMode)
+EVT_MENU(wxID_MODEL_RIGHT_GENERALIZED_CYLINDER, OsgWxFrame::OnToggleRightCylinderConstraint)
 END_EVENT_TABLE()
 
 OsgWxFrame::OsgWxFrame(wxWindow* parent, const wxPoint& pos, const wxSize& size, operation_mode md) :
@@ -393,6 +394,7 @@ void OsgWxFrame::usrInitMenubar() {
 
     model->AppendCheckItem(wxID_MODEL_SYMMETRIC_2D_PROFILES, wxT("Symmetric Profiles"));
     model->AppendCheckItem(wxID_MODEL_DOUBLE_CIRCLE_FOR_LINEAR_AXIS, wxT("Double Circle Drawing for Linear Axis Prior"));
+    model->AppendCheckItem(wxID_MODEL_RIGHT_GENERALIZED_CYLINDER, wxT("Right Generalized Cylinder Constraint"));
     menubar->Append(model, wxT("Model"));
 
     wxMenu* windows = new wxMenu;
@@ -769,6 +771,14 @@ void OsgWxFrame::OnToggleSymmetricProfile(wxCommandEvent& event) {
     m_canvas->UsrGetModeller()->SetSymmetricProfile(sym);
     if(sym) std::cout << "\t-Symmetric profiles are on" << std::endl;
     else    std::cout << "\t-Symmetric profiles are off" << std::endl;
+}
+
+void OsgWxFrame::OnToggleRightCylinderConstraint(wxCommandEvent& event) {
+
+    bool rgc = GetMenuBar()->FindItem(event.GetId())->IsChecked();
+    m_canvas->UsrGetModeller()->SetRightGeneralizedCylinderConstraint(rgc);
+    if(rgc) std::cout << "\t-Right cylinder constraint is on" << std::endl;
+    else    std::cout << "\t-Right cylinder constraint is off" << std::endl;
 }
 
 void OsgWxFrame::OnToggleDoubleCircleDrawingForLinearAxis(wxCommandEvent& event) {

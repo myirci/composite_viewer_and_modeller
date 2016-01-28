@@ -47,7 +47,8 @@ ImageModeller::ImageModeller(const wxString& fpath, const std::shared_ptr<Projec
     m_raycast(nullptr),
     m_scale_factor(0.35),
     m_num_right_click(0),
-    m_double_circle_drawing(false){
+    m_double_circle_drawing(false),
+    m_rgcc(false) {
 
     std::string grad_img_path = utilityInsertAfter(fpath, wxT('.'), wxT("_grad"));
     std::ifstream grad_file(grad_img_path);
@@ -113,6 +114,10 @@ void ImageModeller::SetSymmetricProfile(bool sym) {
 
 void ImageModeller::SetDoubleCircleDrawingForLinaerAxisPrior(bool dc) {
     m_double_circle_drawing = dc;
+}
+
+void ImageModeller::SetRightGeneralizedCylinderConstraint(bool rgc) {
+    m_rgcc = rgc;
 }
 
 void ImageModeller::EnableRayCastDisplay(bool flag) {
@@ -323,8 +328,7 @@ void ImageModeller::model_generalized_cylinder() {
             else if(m_num_right_click == 3) {
                 calculate_ellipse(m_final_ellipse);
                 m_uihelper->UpdateEllipse(m_final_ellipse, false);
-                // compute_generalized_cylinder();
-                compute_generalized_right_generalized_cylinder();
+                compute_generalized_cylinder();
                 reset_2d_drawing_interface();
             }
         }
@@ -402,7 +406,7 @@ void ImageModeller::estimate_first_circle_under_persective_projection() {
     int count = estimate_3d_circles_with_fixed_depth(m_first_ellipse, circles, m_fixed_depth);
 
     // 2) Select one of the two estimated circles based on how the user drew the ellipse
-    if(count == 2)       *m_first_circle = circles[select_first_3d_circle(circles, m_first_ellipse)];
+    if(count == 2)       *m_first_circle = circles[select_correctly_oriented_3d_circle(circles, m_first_ellipse->points[2])];
     else if (count == 1) *m_first_circle = circles[0];
     else                  std::cout << "ERROR: Perspective 3D circle estimation error " << std::endl;
 
@@ -443,8 +447,8 @@ void ImageModeller::compute_generalized_cylinder() {
 
     Circle3D final_circle;
     // 2) Select one of the two estimated circles based on how the user drew the ellipse
-    if(count == 2)       final_circle = circles[select_first_3d_circle(circles, m_final_ellipse)];
-    else                 final_circle = circles[0];
+    if(count == 2) final_circle = circles[select_correctly_oriented_3d_circle(circles, m_final_ellipse->points[2])];
+    else           final_circle = circles[0];
 
     if(ax_constraints == axis_constraints::planar) {
 
@@ -466,92 +470,23 @@ void ImageModeller::compute_generalized_cylinder() {
             sections[i].center *= factor;
             sections[i].radius *= factor;
         }
-        m_gcyl->Recalculate();
 
-        // scale the last circle so that it's center lies on the computed plane
-        double scale = m_first_circle->center.dot(n) / final_circle.center.dot(n);
-        final_circle.radius *= scale;
-        final_circle.center *= scale;
-        if(final_circle.normal.dot(sections.back().normal) < 0)
-            final_circle.normal *= -1;
-    }
-    else if(ax_constraints == axis_constraints::linear && m_double_circle_drawing) {
+        if(m_rgcc) {
 
-        m_component_solver->SolveDepth(*m_first_circle, final_circle);
+            for(int i = 1; i < sections.size(); ++i) {
+                // update the normal
+                sections[i].normal = sections[i-1].center - sections[i].center;
+                sections[i].normal.normalize();
+                if(sections[i].normal.dot(sections[i-1].normal) < 0)
+                    sections[i].normal *= -1;
 
-        Eigen::Vector3d vec = m_first_circle->center - final_circle.center;
-        Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
-        Eigen::Vector2d sol;
-        A(0,1) = vec[0];
-        A(1,1) = vec[1];
-        A(2,1) = vec[2];
+                m_circle_estimator->estimate_unit_3d_circle_from_major_axis(m_segments[i], -m_pp->near, sections[i]);
+                double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
+                sections[i].center *= factor;
+                sections[i].radius *= factor;
+            }
 
-        vec.normalize();
-        if(vec.dot(m_first_circle->normal) < 0) vec *= -1;
-
-        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-        for(int i = 1; i < sections.size(); ++i) {
-
-            A(0,0) = sections[i].center[0];
-            A(1,0) = sections[i].center[1];
-            A(2,0) = sections[i].center[2];
-            sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
-            std::cout << "sol[0]: " << sol[0] << std::endl;
-            sections[i].center *= sol[0];
-            sections[i].radius *= sol[0];
-            // sections[i].normal = m_first_circle->normal;
-            sections[i].normal = vec;
-        }
-        m_gcyl->Recalculate();
-
-        // final_circle.normal = vec;
-    }
-
-    m_gcyl->AddPlanarSection(final_circle);
-    m_gcyl->Update();
-}
-
-void ImageModeller::compute_generalized_right_generalized_cylinder() {
-
-    Circle3D circles[2];
-    int count = estimate_3d_circles_with_fixed_depth(m_final_ellipse, circles, m_fixed_depth);
-
-    Circle3D final_circle;
-    // 2) Select one of the two estimated circles based on how the user drew the ellipse
-    if(count == 2)       final_circle = circles[select_first_3d_circle(circles, m_final_ellipse)];
-    else                 final_circle = circles[0];
-
-    if(ax_constraints == axis_constraints::planar) {
-
-        // find the plane of the generalized cylinder's axis
-        Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
-        n.normalize();
-        Plane3D main_axis_plane(n, m_first_circle->center);
-
-        // update the sections
-        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-        for(int i = 1; i < sections.size(); ++i) {
-            // update the normal
-            sections[i].normal = sections[i].normal - sections[i].normal.dot(n) * n;
-            sections[i].normal.normalize();
-
-            m_circle_estimator->estimate_unit_3d_circle_from_major_axis(m_segments[i], -m_pp->near, sections[i]);
-            double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
-            sections[i].center *= factor;
-            sections[i].radius *= factor;
-        }
-
-        for(int i = 1; i < sections.size(); ++i) {
-            // update the normal
-            sections[i].normal = sections[i-1].center - sections[i].center;
-            sections[i].normal.normalize();
-            if(sections[i].normal.dot(sections[i-1].normal) < 0)
-                sections[i].normal *= -1;
-
-            m_circle_estimator->estimate_unit_3d_circle_from_major_axis(m_segments[i], -m_pp->near, sections[i]);
-            double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
-            sections[i].center *= factor;
-            sections[i].radius *= factor;
+            m_gcyl->Recalculate();
         }
 
         m_gcyl->Recalculate();
@@ -588,12 +523,9 @@ void ImageModeller::compute_generalized_right_generalized_cylinder() {
             std::cout << "sol[0]: " << sol[0] << std::endl;
             sections[i].center *= sol[0];
             sections[i].radius *= sol[0];
-            // sections[i].normal = m_first_circle->normal;
             sections[i].normal = vec;
         }
         m_gcyl->Recalculate();
-
-        // final_circle.normal = vec;
     }
 
     m_gcyl->AddPlanarSection(final_circle);
@@ -802,7 +734,8 @@ void ImageModeller::update_dynamic_segment() {
 
         osg::Vec2d vec = m_first_ellipse->points[2] - m_first_ellipse->points[3];
         vec.normalize();
-        m_dsegment->translate(vec * (vec * m_tvec));
+        m_tvec = vec * (vec * m_tvec);
+        m_dsegment->translate(m_tvec);
     }
     else {
 
@@ -854,7 +787,7 @@ void ImageModeller::estimate_3d_circle_under_orthographic_projection(std::unique
     circle.center *= ratio;
 }
 
-size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles, std::unique_ptr<Ellipse2D>& ellipse) {
+size_t ImageModeller::select_correctly_oriented_3d_circle(const Circle3D* const circles, const osg::Vec2d& pt) {
 
     // get projection and viewport mapping matrix
     const osg::Camera* const cam = m_canvas->UsrGetMainCamera();
@@ -872,7 +805,7 @@ size_t ImageModeller::select_first_3d_circle(const Circle3D* const circles, std:
 
     // construct 2D vectors:
     Vector2D<double> vec1(ntip.x() - ctr.x(), ntip.y() - ctr.y());
-    Vector2D<double> vec2(ctr.x() - ellipse->points[2].x(), ctr.y() - ellipse->points[2].y());
+    Vector2D<double> vec2(ctr.x() - pt.x(), ctr.y() - pt.y());
 
     return (vec1.dot(vec2) < 0) ? 0 : 1;
 }
