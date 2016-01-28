@@ -111,6 +111,10 @@ void ImageModeller::SetSymmetricProfile(bool sym) {
     m_symmetric_profile = sym;
 }
 
+void ImageModeller::SetDoubleCircleDrawingForLinaerAxisPrior(bool dc) {
+    m_double_circle_drawing = dc;
+}
+
 void ImageModeller::EnableRayCastDisplay(bool flag) {
 
     if(m_display_raycast == flag) return;
@@ -183,6 +187,8 @@ void ImageModeller::reset_second_ellipse_drawing() {
     m_right_click = false;
     m_num_right_click = 0;
     m_uihelper->ResetSecondEllipse();
+    if(m_display_raycast)
+        m_uihelper->ResetRayCastDisplay();
 }
 
 void ImageModeller::DeleteLastSection() {
@@ -318,7 +324,7 @@ void ImageModeller::model_generalized_cylinder() {
                 calculate_ellipse(m_final_ellipse);
                 m_uihelper->UpdateEllipse(m_final_ellipse, false);
                 // compute_generalized_cylinder();
-                recompute_generalized_cylinder();
+                compute_generalized_right_generalized_cylinder();
                 reset_2d_drawing_interface();
             }
         }
@@ -375,6 +381,8 @@ void ImageModeller::operate_piecewise_linear_axis_drawing_mode() {
                 (ax_constraints == axis_constraints::linear && m_double_circle_drawing)) {
             m_gcyl_dmode = gcyl_drawing_mode::mode_4;
             m_uihelper->ResetSweepCurve();
+            if(m_display_raycast)
+                m_uihelper->ResetRayCastDisplay();
         }
     }
     else {
@@ -436,79 +444,6 @@ void ImageModeller::compute_generalized_cylinder() {
     Circle3D final_circle;
     // 2) Select one of the two estimated circles based on how the user drew the ellipse
     if(count == 2)       final_circle = circles[select_first_3d_circle(circles, m_final_ellipse)];
-    else if (count == 1) final_circle = circles[0];
-    else                 std::cout << "ERROR: Perspective 3D circle estimation error " << std::endl;
-
-    if(ax_constraints == axis_constraints::planar) {
-
-        // find the plane of the generalized cylinder's axis
-        Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
-        n.normalize();
-        Plane3D main_axis_plane(n, m_first_circle->center);
-
-        // update the sections
-        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-        for(int i = 1; i < sections.size(); ++i) {
-            double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
-            sections[i].center *= factor;
-            sections[i].radius *= factor;
-
-            sections[i].normal[2] = (-n[0]*sections[i].normal[0] - n[1]*sections[i].normal[1]) / n[2];
-            sections[i].normal.normalize();
-        }
-        m_gcyl->Recalculate();
-
-        // scale the last circle so that it's center lies on the computed plane
-        double scale = m_first_circle->center.dot(n) / final_circle.center.dot(n);
-        final_circle.radius *= scale;
-        final_circle.center *= scale;
-        if(final_circle.normal.dot(sections.back().normal) < 0)
-            final_circle.normal *= -1;
-    }
-    else if(ax_constraints == axis_constraints::linear) {
-
-        m_component_solver->SolveDepth(*m_first_circle, final_circle);
-
-        Eigen::Vector3d vec = m_first_circle->center - final_circle.center;
-        Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
-        Eigen::Vector2d sol;
-        A(0,1) = vec[0];
-        A(1,1) = vec[1];
-        A(2,1) = vec[2];
-
-        vec.normalize();
-        if(vec.dot(m_first_circle->normal) < 0) vec *= -1;
-
-        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-        for(int i = 1; i < sections.size(); ++i) {
-
-            A(0,0) = sections[i].center[0];
-            A(1,0) = sections[i].center[1];
-            A(2,0) = sections[i].center[2];
-            sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
-            std::cout << "sol[0]: " << sol[0] << std::endl;
-            sections[i].center *= sol[0];
-            sections[i].radius *= sol[0];
-            // sections[i].normal = m_first_circle->normal;
-            sections[i].normal = vec;
-        }
-        m_gcyl->Recalculate();
-
-        final_circle.normal = vec;
-    }
-
-    m_gcyl->AddPlanarSection(final_circle);
-    m_gcyl->Update();
-}
-
-void ImageModeller::recompute_generalized_cylinder() {
-
-    Circle3D circles[2];
-    int count = estimate_3d_circles_with_fixed_depth(m_final_ellipse, circles, m_fixed_depth);
-
-    Circle3D final_circle;
-    // 2) Select one of the two estimated circles based on how the user drew the ellipse
-    if(count == 2)       final_circle = circles[select_first_3d_circle(circles, m_final_ellipse)];
     else                 final_circle = circles[0];
 
     if(ax_constraints == axis_constraints::planar) {
@@ -540,7 +475,96 @@ void ImageModeller::recompute_generalized_cylinder() {
         if(final_circle.normal.dot(sections.back().normal) < 0)
             final_circle.normal *= -1;
     }
-    else if(ax_constraints == axis_constraints::linear) {
+    else if(ax_constraints == axis_constraints::linear && m_double_circle_drawing) {
+
+        m_component_solver->SolveDepth(*m_first_circle, final_circle);
+
+        Eigen::Vector3d vec = m_first_circle->center - final_circle.center;
+        Eigen::MatrixXd A = Eigen::MatrixXd(3, 2);
+        Eigen::Vector2d sol;
+        A(0,1) = vec[0];
+        A(1,1) = vec[1];
+        A(2,1) = vec[2];
+
+        vec.normalize();
+        if(vec.dot(m_first_circle->normal) < 0) vec *= -1;
+
+        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+        for(int i = 1; i < sections.size(); ++i) {
+
+            A(0,0) = sections[i].center[0];
+            A(1,0) = sections[i].center[1];
+            A(2,0) = sections[i].center[2];
+            sol = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(m_first_circle->center);
+            std::cout << "sol[0]: " << sol[0] << std::endl;
+            sections[i].center *= sol[0];
+            sections[i].radius *= sol[0];
+            // sections[i].normal = m_first_circle->normal;
+            sections[i].normal = vec;
+        }
+        m_gcyl->Recalculate();
+
+        // final_circle.normal = vec;
+    }
+
+    m_gcyl->AddPlanarSection(final_circle);
+    m_gcyl->Update();
+}
+
+void ImageModeller::compute_generalized_right_generalized_cylinder() {
+
+    Circle3D circles[2];
+    int count = estimate_3d_circles_with_fixed_depth(m_final_ellipse, circles, m_fixed_depth);
+
+    Circle3D final_circle;
+    // 2) Select one of the two estimated circles based on how the user drew the ellipse
+    if(count == 2)       final_circle = circles[select_first_3d_circle(circles, m_final_ellipse)];
+    else                 final_circle = circles[0];
+
+    if(ax_constraints == axis_constraints::planar) {
+
+        // find the plane of the generalized cylinder's axis
+        Eigen::Vector3d n = final_circle.normal.cross(m_first_circle->normal);
+        n.normalize();
+        Plane3D main_axis_plane(n, m_first_circle->center);
+
+        // update the sections
+        std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
+        for(int i = 1; i < sections.size(); ++i) {
+            // update the normal
+            sections[i].normal = sections[i].normal - sections[i].normal.dot(n) * n;
+            sections[i].normal.normalize();
+
+            m_circle_estimator->estimate_unit_3d_circle_from_major_axis(m_segments[i], -m_pp->near, sections[i]);
+            double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
+            sections[i].center *= factor;
+            sections[i].radius *= factor;
+        }
+
+        for(int i = 1; i < sections.size(); ++i) {
+            // update the normal
+            sections[i].normal = sections[i-1].center - sections[i].center;
+            sections[i].normal.normalize();
+            if(sections[i].normal.dot(sections[i-1].normal) < 0)
+                sections[i].normal *= -1;
+
+            m_circle_estimator->estimate_unit_3d_circle_from_major_axis(m_segments[i], -m_pp->near, sections[i]);
+            double factor =  (- main_axis_plane.get_plane().w()) / (n.dot(sections[i].center));
+            sections[i].center *= factor;
+            sections[i].radius *= factor;
+        }
+
+        m_gcyl->Recalculate();
+
+        // scale the last circle so that it's center lies on the computed plane
+        double scale = m_first_circle->center.dot(n) / final_circle.center.dot(n);
+        final_circle.radius *= scale;
+        final_circle.center *= scale;
+        if(final_circle.normal.dot(sections.back().normal) < 0)
+            final_circle.normal *= -1;
+
+    }
+    else if(ax_constraints == axis_constraints::linear && m_double_circle_drawing) {
 
         m_component_solver->SolveDepth(*m_first_circle, final_circle);
 
@@ -648,10 +672,8 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
     m_last_circle->normal[1] = m_tvec.y();
     m_last_circle->normal[2] = 0;
     std::vector<Circle3D>& sections = m_gcyl->GetGeometry()->GetSections();
-    if(m_last_circle->normal.dot(sections.back().normal) < 0) m_last_circle->normal *= -1;
-
-    if(sections.size() == 1)
-        m_last_circle->normal = m_first_circle->normal;
+    if(m_last_circle->normal.dot(sections.back().normal) < 0)
+        m_last_circle->normal *= -1;
 
     /*
     if(sections.size() == 1) {
@@ -659,7 +681,6 @@ void ImageModeller::add_planar_section_to_the_generalized_cylinder_under_orthogr
         m_gcyl->Recalculate();
     }
     */
-
 
     // update the circle normal alternative but does not work when the mouse pointer does nor coincide
     // the center of the ellipse.

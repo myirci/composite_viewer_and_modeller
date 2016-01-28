@@ -57,6 +57,7 @@ EVT_MENU(wxID_MODEL_CONSTRAINTS_LINEARLY_SCALED_SECTIONS, OsgWxFrame::OnToggleMo
 EVT_MENU(wxID_MODEL_AXIS_DRAWING_MODE_CONTINUOUS, OsgWxFrame::OnToggleAxisDrawingMode)
 EVT_MENU(wxID_MODEL_AXIS_DRAWING_MODE_PIECEWISE_LINEAR, OsgWxFrame::OnToggleAxisDrawingMode)
 EVT_MENU(wxID_MODEL_SYMMETRIC_2D_PROFILES, OsgWxFrame::OnToggleSymmetricProfile)
+EVT_MENU(wxID_MODEL_DOUBLE_CIRCLE_FOR_LINEAR_AXIS, OsgWxFrame::OnToggleDoubleCircleDrawingForLinearAxis)
 EVT_MENU(wxID_MODEL_SAVE_COMPONENT, OsgWxFrame::OnSaveLastComponent)
 EVT_MENU(wxID_MODEL_SAVE_MODEL, OsgWxFrame::OnSaveModel)
 EVT_MENU(wxID_MODEL_DELETE_SELECTED_COMPONENTS, OsgWxFrame::OnDeleteSelectedComponents)
@@ -391,6 +392,7 @@ void OsgWxFrame::usrInitMenubar() {
     model->AppendSubMenu(axis_drawing_mode, wxT("Axis Drawing Mode"));
 
     model->AppendCheckItem(wxID_MODEL_SYMMETRIC_2D_PROFILES, wxT("Symmetric Profiles"));
+    model->AppendCheckItem(wxID_MODEL_DOUBLE_CIRCLE_FOR_LINEAR_AXIS, wxT("Double Circle Drawing for Linear Axis Prior"));
     menubar->Append(model, wxT("Model"));
 
     wxMenu* windows = new wxMenu;
@@ -767,6 +769,14 @@ void OsgWxFrame::OnToggleSymmetricProfile(wxCommandEvent& event) {
     m_canvas->UsrGetModeller()->SetSymmetricProfile(sym);
     if(sym) std::cout << "\t-Symmetric profiles are on" << std::endl;
     else    std::cout << "\t-Symmetric profiles are off" << std::endl;
+}
+
+void OsgWxFrame::OnToggleDoubleCircleDrawingForLinearAxis(wxCommandEvent& event) {
+
+    bool dc = GetMenuBar()->FindItem(event.GetId())->IsChecked();
+    m_canvas->UsrGetModeller()->SetDoubleCircleDrawingForLinaerAxisPrior(dc);
+    if(dc) std::cout << "\t-Double circle drawing for lienar axis prior is enabled" << std::endl;
+    else   std::cout << "\t-Double circle drawing for lienar axis prior is disabled" << std::endl;
 }
 
 void OsgWxFrame::OnEnableRayCastDisplay(wxCommandEvent& event) {
