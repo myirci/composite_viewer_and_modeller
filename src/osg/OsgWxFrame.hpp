@@ -97,6 +97,7 @@ private:
     void OnToggleAxisDrawingMode(wxCommandEvent& event);
     void OnToggleImageDisplay(wxCommandEvent& event);
     void OnToggleSymmetricProfile(wxCommandEvent& event);
+    void OnToggleRightCylinderConstraint(wxCommandEvent& event);
     void OnToggleDoubleCircleDrawingForLinearAxis(wxCommandEvent& event);
     void OnEnableRayCastDisplay(wxCommandEvent& event);
     void OnDisplayLocalFrames(wxCommandEvent& event);
