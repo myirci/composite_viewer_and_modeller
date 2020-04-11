@@ -9,22 +9,36 @@
 
 void OsgSelectionHandler::HandleSelection(osg::Camera* cam, int x, int y) {
 
-    osg::ref_ptr<osgUtil::LineSegmentIntersector> intersector = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::WINDOW, static_cast<float>(x), static_cast<float>(y));
+    osg::ref_ptr<osgUtil::LineSegmentIntersector> intersector =
+            new osgUtil::LineSegmentIntersector(
+                osgUtil::Intersector::WINDOW,
+                static_cast<double>(x),
+                static_cast<double>(y));
+
     osgUtil::IntersectionVisitor iv(intersector.get());
     iv.setTraversalMask(~0x1);
     cam->accept(iv);
-    if(intersector->containsIntersections()) {
-        const osgUtil::LineSegmentIntersector::Intersection& result = *(intersector->getIntersections().begin());
-        osg::BoundingBox bb = result.drawable->getBound();
-        int selection_box_id = process_selections(result.drawable->getParent(0));
-        if(selection_box_id != -1) {
+
+    if(intersector->containsIntersections())
+    {
+        const osgUtil::LineSegmentIntersector::Intersection& result =
+                *(intersector->getIntersections().begin());
+
+        osg::BoundingBox bb = result.drawable->getBoundingBox();
+        auto selection_box_id = process_selections(result.drawable->getParent(0));
+
+        if(selection_box_id != -1)
+        {
             osg::MatrixTransform* active_selection_box = dynamic_cast<osg::MatrixTransform*>(m_selection_boxes->getChild(selection_box_id));
-            if(active_selection_box) {
+            if(active_selection_box)
+            {
                 osg::Vec3 worldCenter = bb.center() * osg::computeLocalToWorld(result.nodePath);
                 active_selection_box->setMatrix(osg::Matrix::scale(bb.xMax() - bb.xMin(), bb.yMax() - bb.yMin(), bb.zMax() - bb.zMin()) * osg::Matrix::translate(worldCenter));
             }
             else
+            {
                 std::cout << "ERROR: Active selection box error!" << std::endl;
+            }
         }
     }
 }

@@ -1,111 +1,92 @@
-cmake_minimum_required(VERSION 2.8)
-project(composite_viewer_and_modeller)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
+PROJECT(composite_viewer_and_modeller)
 
-set(CMAKE_BUILD_TYPE Debug)
+SET(CMAKE_BUILD_TYPE Debug)
 
-add_definitions(-std=c++11)
+ADD_DEFINITIONS(-std=c++11)
 
-aux_source_directory(./src SOURCES)
-aux_source_directory(./src/image/gui SOURCES)
-aux_source_directory(./src/image/algorithms SOURCES)
-aux_source_directory(./src/geometry SOURCES)
-aux_source_directory(./src/modeller SOURCES)
-aux_source_directory(./src/modeller/components SOURCES)
-aux_source_directory(./src/modeller/gui SOURCES)
-aux_source_directory(./src/modeller/optimization SOURCES)
-aux_source_directory(./src/osg SOURCES)
-aux_source_directory(./src/utility SOURCES)
-aux_source_directory(./src/wx SOURCES)
+AUX_SOURCE_DIRECTORY(./src SOURCES)
+AUX_SOURCE_DIRECTORY(./src/image/gui SOURCES)
+AUX_SOURCE_DIRECTORY(./src/image/algorithms SOURCES)
+AUX_SOURCE_DIRECTORY(./src/geometry SOURCES)
+AUX_SOURCE_DIRECTORY(./src/modeller SOURCES)
+AUX_SOURCE_DIRECTORY(./src/modeller/components SOURCES)
+AUX_SOURCE_DIRECTORY(./src/modeller/gui SOURCES)
+AUX_SOURCE_DIRECTORY(./src/modeller/optimization SOURCES)
+AUX_SOURCE_DIRECTORY(./src/osg SOURCES)
+AUX_SOURCE_DIRECTORY(./src/utility SOURCES)
+AUX_SOURCE_DIRECTORY(./src/wx SOURCES)
 
-set(SOURCES ${SOURCES}
+SET(SOURCES ${SOURCES}
             src/geometry/Primitives.hpp
             src/modeller/optimization/ExtractPlaneNormals.hpp
             src/modeller/optimization/OptimizationUtility.hpp
             src/wx/WxGuiId.hpp)
 
-include_directories(/usr/local/include/eigen3)
+FIND_PACKAGE(Eigen3 3.3 REQUIRED NO_MODULE)
+SET(LINK_LIBS Eigen3::Eigen)
 
-find_package(CGAL COMPONENTS Core REQUIRED)
-if(CGAL_FOUND )
-    include(${CGAL_USE_FILE})
-    set(LINK_LIBS ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES})
-    message(STATUS "CGAL_LIBRARIES: " ${CGAL_LIBRARIES})
-    message(STATUS "CGAL_3RD_PARTY_LIBRARIES: " ${CGAL_3RD_PARTY_LIBRARIES})
-else()
-    message(FATAL_ERROR "CGAL is not found!")
-endif()
+INCLUDE_DIRECTORIES(/usr/local/include/eigen3)
 
-find_package(wxWidgets REQUIRED core gl)
-if(wxWidgets_FOUND)
-    include(${wxWidgets_USE_FILE})
-    message(STATUS "wxWidgets_USE_FILE: " ${wxWidgets_USE_FILE})
-    set(LINK_LIBS ${LINK_LIBS} ${wxWidgets_LIBRARIES})
-    message(STATUS "wxWidgets_LIBRARIES: " ${wxWidgets_LIBRARIES})
-else()
-    message(FATAL_ERROR "wxWidgets is not found!")
-endif()
+FIND_PACKAGE(CGAL COMPONENTS Core REQUIRED)
+IF(CGAL_FOUND )
+    INCLUDE(${CGAL_USE_FILE})
+    set(LINK_LIBS ${LINK_LIBS} ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES})
+    MESSAGE(STATUS "CGAL_LIBRARIES: " ${CGAL_LIBRARIES})
+    MESSAGE(STATUS "CGAL_3RD_PARTY_LIBRARIES: " ${CGAL_3RD_PARTY_LIBRARIES})
+ELSE()
+    MESSAGE(FATAL_ERROR "CGAL is not found!")
+ENDIF()
 
-link_directories(/usr/local/lib64)
+FIND_PACKAGE(wxWidgets REQUIRED core gl)
+IF(wxWidgets_FOUND)
+    INCLUDE(${wxWidgets_USE_FILE})
+    MESSAGE(STATUS "wxWidgets_USE_FILE: " ${wxWidgets_USE_FILE})
+    SET(LINK_LIBS ${LINK_LIBS} ${wxWidgets_LIBRARIES})
+    MESSAGE(STATUS "wxWidgets_LIBRARIES: " ${wxWidgets_LIBRARIES})
+ELSE()
+    MESSAGE(FATAL_ERROR "wxWidgets is not found!")
+ENDIF()
 
-#find_package(OpenSceneGraph REQUIRED osgDB osgUtil osgGA osgViewer)
-#if(OPENSCENEGRAPH_FOUND)
-#    include_directories(${OPENSCENEGRAPH_INCLUDE_DIRS})
-#    set(LINK_LIBS ${LINK_LIBS} ${OPENSCENEGRAPH_LIBRARIES})
-#    message(STATUS "OPENSCENEGRAPH_LIBRARIES: " ${OPENSCENEGRAPH_LIBRARIES})
-#else(OPENSCENEGRAPH_FOUND)
-#    message(FATAL_ERROR "OSG is not found!")
-#endif(OPENSCENEGRAPH_FOUND)
+FIND_PACKAGE(OpenSceneGraph REQUIRED osgDB osgUtil osgGA osgViewer)
+IF(OPENSCENEGRAPH_FOUND)
+    INCLUDE_DIRECTORIES(${OPENSCENEGRAPH_INCLUDE_DIRS})
+    SET(LINK_LIBS ${LINK_LIBS} ${OPENSCENEGRAPH_LIBRARIES})
+    MESSAGE(STATUS "OPENSCENEGRAPH_LIBRARIES: " ${OPENSCENEGRAPH_LIBRARIES})
+ELSE(OPENSCENEGRAPH_FOUND)
+    MESSAGE(FATAL_ERROR "OSG is not found!")
+ENDIF(OPENSCENEGRAPH_FOUND)
 
-# If the find_package OpenSceneGraph fails use the following
-set(LINK_LIBS ${LINK_LIBS} libosg.so libosgViewer.so libosgDB.so libosgGA.so libosgUtil.so)
+# link_directories(/usr/local/lib64)
 
-# Names of the OpenSceneGraph Libraries
-# libosg.so
-# libosgViewer.so
-# libOpenThreads.so
-# libosgAnimation.so
-# libosgDB.so
-# libosgFX.so
-# libosgGA.so
-# libosgManipulator.so
-# libosgParticle.so
-# libosgPresentation.so
-# libosgQt.so
-# libosgShadow.so
-# libosgSim.so
-# libosgTerrain.so
-# libosgText.so
-# libosgUtil.so
-# libosgVolume.so
-# libosgWidget.so
-
-find_package(OTB REQUIRED)
+FIND_PACKAGE(OTB REQUIRED)
 if(OTB_FOUND)
-    include(${OTB_USE_FILE})
-    set(LINK_LIBS ${LINK_LIBS} ${OTB_LIBRARIES})
-    message(STATUS "OTB: " ${OTB_LIBRARIES})
+    INCLUDE(${OTB_USE_FILE})
+    SET(LINK_LIBS ${LINK_LIBS} ${OTB_LIBRARIES})
+    MESSAGE(STATUS "OTB: " ${OTB_LIBRARIES})
 else(OTB_FOUND)
-    message(FATAL_ERROR "OTB is not found!")
+    MESSAGE(FATAL_ERROR "OTB is not found!")
 endif(OTB_FOUND)
 
-find_package(OriLight REQUIRED)
-if(OriLight_FOUND)
-    include_directories(${OriLight_INCLUDE_DIRS})
-    add_definitions(${OriLight_DEFINITIONS})
-    set(LINK_LIBS ${LINK_LIBS} ${OriLight_LIBRARIES})
-    message(STATUS "OriLight_LIBRARIES: " ${OriLight_LIBRARIES})
-else()
-    message(FATAL_ERROR "OriLight is not found!")
-endif()
+# find_package(OriLight REQUIRED)
+#if(OriLight_FOUND)
+#   include_directories(${OriLight_INCLUDE_DIRS})
+#    add_definitions(${OriLight_DEFINITIONS})
+#    set(LINK_LIBS ${LINK_LIBS} ${OriLight_LIBRARIES})
+#    message(STATUS "OriLight_LIBRARIES: " ${OriLight_LIBRARIES})
+#else()
+#    message(FATAL_ERROR "OriLight is not found!")
+#endif()
 
-find_package(Ceres 1.9.0 REQUIRED)
-if(Ceres_FOUND)
-    include_directories(${CERES_INCLUDE_DIRS})
-    set(LINK_LIBS ${LINK_LIBS} ${CERES_LIBRARIES})
-    message(STATUS "CERES_LIBRARIES: " ${CERES_LIBRARIES})
-else()
-    message(FATAL_ERROR "Ceres solver is not found!")
-endif()
 
-add_executable(cvm ${SOURCES})
-target_link_libraries(cvm ${LINK_LIBS})
+FIND_PACKAGE(Ceres 1.9.0 REQUIRED)
+IF(Ceres_FOUND)
+    INCLUDE_DIRECTORIES(${CERES_INCLUDE_DIRS})
+    SET(LINK_LIBS ${LINK_LIBS} ${CERES_LIBRARIES})
+    MESSAGE(STATUS "CERES_LIBRARIES: " ${CERES_LIBRARIES})
+ELSE()
+    MESSAGE(FATAL_ERROR "Ceres solver is not found!")
+ENDIF()
+
+ADD_EXECUTABLE(cvm ${SOURCES})
+TARGET_LINK_LIBRARIES(cvm ${LINK_LIBS})

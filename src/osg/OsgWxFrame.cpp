@@ -25,7 +25,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osg/Image>
 
-#include <OriLight/Orientation.hpp>
+// #include <OriLight/Orientation.hpp>
 
 BEGIN_EVENT_TABLE(OsgWxFrame, wxFrame)
 EVT_IDLE(OsgWxFrame::OnIdle)
@@ -428,11 +428,14 @@ bool OsgWxFrame::usrLoadModelFile(const wxString& fpath) {
 
 bool OsgWxFrame::usrLoadOrientationFile(const wxString& fpath) {
 
+    /*
     std::shared_ptr<Orientation> ori(new Orientation());
     if(ori->Read(fpath.ToStdString())) {
         return true;
     }
+    */
     return false;
+
 }
 
 bool OsgWxFrame::usrLoadImageFile(const wxString& fpath) {
