@@ -38,7 +38,7 @@ ELSE()
     MESSAGE(FATAL_ERROR "CGAL is not found!")
 ENDIF()
 
-FIND_PACKAGE(wxWidgets REQUIRED core gl)
+FIND_PACKAGE(wxWidgets COMPONENTS core base gl REQUIRED)
 IF(wxWidgets_FOUND)
     INCLUDE(${wxWidgets_USE_FILE})
     MESSAGE(STATUS "wxWidgets_USE_FILE: " ${wxWidgets_USE_FILE})
